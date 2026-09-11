@@ -216,6 +216,13 @@ window.VOICE_FLEA_CONFIG={SUPABASE_URL:"https://tyulybijubckitybgubc.supabase.co
 .review-confirm-send{background:linear-gradient(135deg,#5f5ce8,#7151f4);color:#fff}
 .review-confirm-actions button:active{transform:scale(.985)}
 </style>
+
+<style id="safety-center-20260911">
+.safety-chat-btn{margin-left:auto;border:1px solid #ddd9f6;background:#f6f3ff;color:#5c53c8;border-radius:11px;padding:8px 10px;font-size:11px;font-weight:850}
+.safety-overlay{display:none;position:fixed;inset:0;background:rgba(22,25,45,.42);z-index:12000;padding:20px;align-items:center;justify-content:center;backdrop-filter:blur(2px);-webkit-backdrop-filter:blur(2px)}
+.safety-overlay.on{display:flex}.safety-box{width:min(100%,370px);max-height:88dvh;overflow:auto;background:#fff;border:1px solid #e9e5f8;border-radius:24px;padding:20px;box-shadow:0 24px 70px rgba(28,25,60,.28)}
+.safety-head{display:flex;align-items:center;justify-content:space-between;gap:12px}.safety-head h3{margin:0;font-size:20px}.safety-close{border:0;background:#f1eff8;border-radius:10px;width:34px;height:34px;font-size:18px}.safety-actions{display:grid;gap:9px;margin-top:14px}.safety-action{width:100%;text-align:left;border:1px solid #e5e1f5;background:#fff;border-radius:14px;padding:13px;font-size:13px;font-weight:800;color:#30354d}.safety-action.danger{border-color:#f0c9c4;background:#fff8f7;color:#a93226}.safety-section{margin-top:14px;padding-top:14px;border-top:1px solid #eeeaf8}.safety-section label{display:block;font-size:11px;font-weight:850;margin:9px 0 6px}.safety-section select,.safety-section textarea{width:100%;border:1px solid #ddd9ef;border-radius:12px;padding:11px;font-size:14px;background:#fff}.safety-section textarea{min-height:92px}.safety-note{font-size:11px;line-height:1.55;color:#69718a;margin-top:8px}.safety-msg{margin-top:10px}.safety-card{margin-top:12px}.blocked-notice{background:#fff6f4;color:#9b2c22;border:1px solid #f0c9c4;border-radius:12px;padding:10px 12px;font-size:12px;font-weight:750;margin:8px 0}.chatcomposer.blocked{opacity:.55;pointer-events:none}
+</style>
 </head><body><div id="pullRefreshIndicator" class="pull-refresh-indicator">↓ 引っ張って更新</div><div class="app">
 <div class="topbar"><div class="brandwrap"><div class="brandicon">🎙️</div><div class="brandtext"><div class="brand">声のフリマ</div><div class="tag"><span class="line1">世界に、あなたの声を売る。</span><span class="line2">あなたの声を、世界が買う。</span></div></div></div><div class="topactions"><button id="refreshBtn" class="refreshbtn hide" onclick="refreshAllData()" aria-label="最新情報に更新" title="最新情報に更新">↻</button><button id="bellBtn" class="bellbtn hide" onclick="openNotifications()" aria-label="お知らせ">🔔<span id="bellBadge" class="bellbadge"></span></button><span id="cloudStatus" class="status">確認中</span></div></div>
 
@@ -233,11 +240,12 @@ window.VOICE_FLEA_CONFIG={SUPABASE_URL:"https://tyulybijubckitybgubc.supabase.co
 
 <section id="jobs" class="page"><h2>仕事を探す / 募集する</h2><div class="card"><div class="field"><label>募集タイトル</label><input id="jobTitle" placeholder="例：英語リスニング30秒"></div><div class="field"><label>依頼内容</label><textarea id="jobDesc"></textarea></div><div class="field"><label>予算（円）</label><input id="jobBudget" type="number" value="1500" min="0"></div><div class="field"><label>AI利用</label><select id="jobAI"><option>禁止</option><option>案件ごとに相談</option><option>許可</option></select></div><button class="btn full" onclick="createJob()">募集を公開</button><div id="jobMsg"></div></div><div id="jobList"></div></section>
 
-<section id="messages" class="page"><div class="messages-list-head"><button class="chatback" onclick="go('home')" aria-label="ホームへ戻る">‹</button><div class="messages-list-title"><b>メッセージ</b><span>取引相手とのやり取り</span></div></div><h2>メッセージ</h2><div id="conversationList" class="chatlist"></div><div id="chatBox" class="card chatbox"><div class="chatroom-head"><button class="chatback" onclick="closeChat()" aria-label="メッセージ一覧へ">‹</button><div class="chatroom-title"><b id="chatTitle">チャット</b><span id="chatSub">取引メッセージ</span></div></div><div id="chatMessages" class="chatmessages"></div><div id="deliveryArea" class="chatdelivery"></div><div class="chatdock"><div class="chatcomposer"><textarea id="chatInput" placeholder="メッセージを入力"></textarea><button class="btn" onclick="sendChatMessage()">送信</button></div><div id="chatMsg"></div></div></div></section>
+<section id="messages" class="page"><div class="messages-list-head"><button class="chatback" onclick="go('home')" aria-label="ホームへ戻る">‹</button><div class="messages-list-title"><b>メッセージ</b><span>取引相手とのやり取り</span></div></div><h2>メッセージ</h2><div id="conversationList" class="chatlist"></div><div id="chatBox" class="card chatbox"><div class="chatroom-head"><button class="chatback" onclick="closeChat()" aria-label="メッセージ一覧へ">‹</button><div class="chatroom-title"><b id="chatTitle">チャット</b><span id="chatSub">取引メッセージ</span></div><button id="chatSafetyBtn" class="safety-chat-btn" onclick="openSafetyCenter('chat')">安全</button></div><div id="chatMessages" class="chatmessages"></div><div id="deliveryArea" class="chatdelivery"></div><div class="chatdock"><div class="chatcomposer"><textarea id="chatInput" placeholder="メッセージを入力"></textarea><button class="btn" onclick="sendChatMessage()">送信</button></div><div id="chatMsg"></div></div></div></section>
 
-<section id="me" class="page"><h2>マイページ</h2><div class="card profile-compact"><div id="meText">-</div></div><div id="myListings"></div><div id="mySellerJobs"></div><div id="myBuyerJobs"></div></section>
+<section id="me" class="page"><h2>マイページ</h2><div class="card profile-compact"><div id="meText">-</div></div><div id="myListings"></div><div id="mySellerJobs"></div><div id="myBuyerJobs"></div><div class="card safety-card"><b>🛡️ 安全・サポート</b><div class="small" style="margin-top:5px">問い合わせ、違反報告などはこちらから。</div><button class="btn secondary full" onclick="openSafetyCenter('support')">安全・サポートを開く</button></div></section>
 
 <div id="notifOverlay" class="notif-overlay" onclick="if(event.target===this)closeNotifications()"><aside class="notif-sheet"><div class="notif-head"><h2>お知らせ</h2><div class="notif-actions"><button class="notif-readall" onclick="markAllNotificationsRead()">すべて既読</button><button class="notif-close" onclick="closeNotifications()">×</button></div></div><div class="small">必要な連絡をまとめて確認できます。</div><div id="notifContent"><div class="notif-empty">読み込み中...</div></div></aside></div>
+<div id="safetyOverlay" class="safety-overlay" onclick="if(event.target===this)closeSafetyCenter()"><div class="safety-box"><div class="safety-head"><h3 id="safetyTitle">安全・サポート</h3><button class="safety-close" onclick="closeSafetyCenter()">×</button></div><div id="safetyIntro" class="safety-note">困ったときはここから運営へ連絡できます。</div><div id="safetyPartnerActions" class="safety-actions hide"><button id="blockUserBtn" class="safety-action danger" onclick="toggleBlockCurrentPartner()">このユーザーをブロック</button></div><div class="safety-section"><label>内容</label><select id="safetyCategory"><option value="harassment">迷惑行為・嫌がらせ</option><option value="fraud">詐欺・不審な取引</option><option value="rights">権利侵害・無断利用</option><option value="inappropriate">不適切な内容</option><option value="support">使い方・不具合・問い合わせ</option><option value="other">その他</option></select><label>詳細</label><textarea id="safetyDetail" placeholder="状況をできるだけ具体的に書いてください。"></textarea><button class="btn full" onclick="submitSafetyRequest()">運営へ送信</button><div id="safetyMsg" class="safety-msg"></div><div class="safety-note">緊急性のある危険がある場合は、このサービス内だけで対応せず、必要に応じて警察・緊急窓口等へ連絡してください。</div></div></div></div>
 <nav id="nav" class="nav hide"><button onclick="go('home')">ホーム</button><button onclick="go('voices')">声を探す</button><button onclick="go('sell')">出品</button><button onclick="go('jobs')">仕事<span id="jobBadge" class="badge"></span></button><button onclick="go('messages')">メッセージ<span id="msgBadge" class="badge"></span></button><button onclick="go('me')">マイページ</button></nav>
 </div>
 <script>
@@ -344,14 +352,14 @@ async function loadConversations(){
  conversationList.innerHTML=rows.join('');loadMessageBadge()
 }
 async function openConversation(id,title='チャット',opts={}){
- clearChatNotice();currentConversationId=id;const {data:c,error:ce}=await sb.from('conversations').select('id,buyer_id,seller_id,job_id,listing_id,delivery_path,delivery_status,delivered_at,accepted_at').eq('id',id).single();if(ce)return info('chatMsg',ce.message,'err');currentConversation=c;conversationList.style.display='none';chatBox.classList.add('on');setShellMode('chat');chatTitle.textContent=title;chatSub.textContent=currentUser.id===c.seller_id?'受注した仕事のチャット':'依頼した仕事のチャット';if(currentUser&&!opts.skipSave){localStorage.setItem(uiKey('page'),'messages');saveChatState(id,title)}markConversationSeen(id);await Promise.all([loadChatMessages(),loadDeliveries()]);loadMessageBadge()
+ clearChatNotice();currentConversationId=id;const {data:c,error:ce}=await sb.from('conversations').select('id,buyer_id,seller_id,job_id,listing_id,delivery_path,delivery_status,delivered_at,accepted_at').eq('id',id).single();if(ce)return info('chatMsg',ce.message,'err');currentConversation=c;currentConversationPartner=currentUser.id===c.buyer_id?c.seller_id:c.buyer_id;conversationList.style.display='none';chatBox.classList.add('on');setShellMode('chat');chatTitle.textContent=title;chatSub.textContent=currentUser.id===c.seller_id?'受注した仕事のチャット':'依頼した仕事のチャット';if(currentUser&&!opts.skipSave){localStorage.setItem(uiKey('page'),'messages');saveChatState(id,title)}markConversationSeen(id);await Promise.all([loadChatMessages(),loadDeliveries()]);await applyChatBlockState();loadMessageBadge()
 }
-function closeChat(){clearChatNotice();clearChatState();currentConversationId=null;currentConversation=null;setShellMode('messages');chatBox.classList.remove('on');conversationList.style.display='grid';loadConversations()}
+function closeChat(){clearChatNotice();clearChatState();currentConversationId=null;currentConversation=null;currentConversationPartner=null;setShellMode('messages');chatBox.classList.remove('on');conversationList.style.display='grid';loadConversations()}
 async function loadChatMessages(){
  if(!currentConversationId)return;const {data,error}=await sb.from('messages').select('id,sender_id,body,created_at').eq('conversation_id',currentConversationId).order('created_at',{ascending:true}).limit(200);if(error){chatMessages.innerHTML=`<div class="err">${esc(error.message)}</div>`;return}chatMessages.innerHTML=(data||[]).map(m=>`<div class="bubble ${m.sender_id===currentUser.id?'mine':'theirs'}">${esc(m.body)}</div>`).join('')||'<div class="small">まだメッセージはありません。最初のメッセージを送ってみましょう。</div>';markConversationSeen(currentConversationId);setTimeout(()=>chatMessages.scrollTop=chatMessages.scrollHeight,0)
 }
 async function sendChatMessage(){
- const body=chatInput.value.trim();if(!body||!currentConversationId)return;clearChatNotice();const {error}=await sb.from('messages').insert({conversation_id:currentConversationId,sender_id:currentUser.id,body});if(error)return info('chatMsg',error.message,'err');chatInput.value='';info('chatMsg','送信しました。');setTimeout(()=>{if(chatMsg?.textContent.includes('送信しました'))chatMsg.innerHTML=''},2200);await loadChatMessages();loadMessageBadge()
+ const body=chatInput.value.trim();if(!body||!currentConversationId)return;clearChatNotice();if(await isCurrentConversationBlocked())return info('chatMsg','ブロック中のためメッセージを送信できません。','err');const {error}=await sb.from('messages').insert({conversation_id:currentConversationId,sender_id:currentUser.id,body});if(error)return info('chatMsg',error.message,'err');chatInput.value='';info('chatMsg','送信しました。');setTimeout(()=>{if(chatMsg?.textContent.includes('送信しました'))chatMsg.innerHTML=''},2200);await loadChatMessages();loadMessageBadge()
 }
 async function loadDeliveries(){
  if(!currentConversationId||!currentConversation||!deliveryArea)return;
@@ -517,6 +525,48 @@ async function openNotifications(){if(!currentUser)return;notifOverlay.classList
 function closeNotifications(){notifOverlay?.classList.remove('on')}
 async function openNotificationTarget(target,seen=''){if(seen)localStorage.setItem(seen,new Date().toISOString());closeNotifications();if(target.startsWith('chat:')){const id=target.split(':')[1];await go('messages');await openConversation(id,'チャット')}else{await go(target)}loadNotificationBadge()}
 async function markAllNotificationsRead(){if(!currentUser)return;const {items}=await getNotificationData();const now=new Date().toISOString();for(const n of items){if(n.seenKey)localStorage.setItem(n.seenKey,now)}loadNotificationBadge();await openNotifications()}
+
+
+let safetyMode='support';
+function closeSafetyCenter(){document.getElementById('safetyOverlay')?.classList.remove('on');const m=document.getElementById('safetyMsg');if(m)m.innerHTML=''}
+async function openSafetyCenter(mode='support'){
+ safetyMode=mode;const ov=document.getElementById('safetyOverlay'),actions=document.getElementById('safetyPartnerActions'),title=document.getElementById('safetyTitle'),intro=document.getElementById('safetyIntro');
+ if(!ov)return;document.getElementById('safetyDetail').value='';document.getElementById('safetyCategory').value=mode==='support'?'support':'harassment';
+ if(mode==='chat'&&currentConversationPartner){title.textContent='この取引の安全・サポート';intro.textContent='相手のブロック、違反報告、運営への問い合わせができます。';actions.classList.remove('hide');await refreshBlockButton()}else{title.textContent='安全・サポート';intro.textContent='使い方、不具合、トラブルなどを運営へ連絡できます。';actions.classList.add('hide')}
+ ov.classList.add('on')
+}
+async function getBlockRows(){
+ if(!sb||!currentUser||!currentConversationPartner)return [];
+ const {data,error}=await sb.from('blocks').select('id,blocker_id,blocked_user_id').or(`and(blocker_id.eq.${currentUser.id},blocked_user_id.eq.${currentConversationPartner}),and(blocker_id.eq.${currentConversationPartner},blocked_user_id.eq.${currentUser.id})`);
+ if(error){console.warn('block check',error);return []}return data||[]
+}
+async function isCurrentConversationBlocked(){const rows=await getBlockRows();return rows.length>0}
+async function refreshBlockButton(){
+ const b=document.getElementById('blockUserBtn');if(!b||!currentConversationPartner)return;const rows=await getBlockRows();const mine=rows.find(x=>x.blocker_id===currentUser.id);b.textContent=mine?'ブロックを解除':'このユーザーをブロック';b.classList.toggle('danger',!mine)
+}
+async function toggleBlockCurrentPartner(){
+ if(!currentConversationPartner)return;
+ const rows=await getBlockRows();const mine=rows.find(x=>x.blocker_id===currentUser.id);
+ if(mine){const {error}=await sb.from('blocks').delete().eq('id',mine.id);if(error)return info('safetyMsg',error.message,'err');info('safetyMsg','ブロックを解除しました。');}
+ else{const {error}=await sb.from('blocks').insert({blocker_id:currentUser.id,blocked_user_id:currentConversationPartner});if(error)return info('safetyMsg',error.code==='23505'?'すでにブロックしています。':error.message,'err');info('safetyMsg','このユーザーをブロックしました。今後この取引ではメッセージを送受信できません。');}
+ await refreshBlockButton();await applyChatBlockState();
+}
+async function applyChatBlockState(){
+ if(!currentConversationId)return;const composer=document.querySelector('#chatBox .chatcomposer');let notice=document.getElementById('blockedNotice');const rows=await getBlockRows();const mine=rows.find(x=>x.blocker_id===currentUser.id),theirs=rows.find(x=>x.blocker_id!==currentUser.id);const blocked=rows.length>0;
+ composer?.classList.toggle('blocked',blocked);
+ if(blocked){if(!notice){notice=document.createElement('div');notice.id='blockedNotice';notice.className='blocked-notice';composer?.parentElement?.insertBefore(notice,composer)}notice.textContent=mine?'このユーザーをブロック中です。ブロックを解除するとメッセージを再開できます。':'この取引ではメッセージを送信できません。'}else if(notice)notice.remove();
+}
+async function submitSafetyRequest(){
+ if(!sb||!currentUser)return;const cat=document.getElementById('safetyCategory').value;const detail=document.getElementById('safetyDetail').value.trim();if(detail.length<5)return info('safetyMsg','詳細を5文字以上入力してください。','err');
+ if(safetyMode==='chat'&&currentConversationPartner&&cat!=='support'){
+   const {error}=await sb.from('reports').insert({reporter_id:currentUser.id,target_user_id:currentConversationPartner,conversation_id:currentConversationId,reason:cat,detail});
+   if(error)return info('safetyMsg',error.message,'err');info('safetyMsg','通報を受け付けました。運営で確認します。');
+ }else{
+   const {error}=await sb.from('support_requests').insert({user_id:currentUser.id,category:cat,message:detail,conversation_id:safetyMode==='chat'?currentConversationId:null});
+   if(error)return info('safetyMsg',error.message,'err');info('safetyMsg','問い合わせを受け付けました。');
+ }
+ document.getElementById('safetyDetail').value='';
+}
 
 async function refreshAllData(){
  if(!sb||!currentUser)return;
