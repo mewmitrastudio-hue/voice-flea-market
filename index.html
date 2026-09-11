@@ -190,7 +190,7 @@ body.normal-mode #nav button{height:46px!important;min-height:46px!important;bor
 /* 決済・売上プレビュー（正式決済導入前） */
 .finance-card{border-color:#ded9ff;background:linear-gradient(145deg,#fff,#faf8ff)}
 .finance-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:10px}.finance-grid .btn{margin-top:0}
-.finance-overlay{display:none;position:fixed;inset:0;background:rgba(24,25,52,.45);backdrop-filter:blur(3px);z-index:30;padding:16px;align-items:center;justify-content:center}.finance-overlay.on{display:flex}.finance-box{width:min(430px,100%);max-height:88vh;overflow:auto;background:#fff;border-radius:28px;padding:22px;box-shadow:0 24px 80px rgba(30,26,74,.28)}
+.finance-overlay{display:none;position:fixed;inset:0;background:rgba(24,25,52,.45);backdrop-filter:blur(3px);z-index:30000;padding:16px;align-items:center;justify-content:center}.finance-overlay.on{display:flex}.finance-box{width:min(430px,100%);max-height:calc(100dvh - 32px);overflow:auto;background:#fff;border-radius:28px;padding:22px 22px calc(28px + env(safe-area-inset-bottom));box-shadow:0 24px 80px rgba(30,26,74,.28)}body.finance-modal-open #nav{display:none!important}
 .finance-head{display:flex;align-items:center;justify-content:space-between;gap:10px}.finance-head h3{margin:0;font-size:25px}.finance-close{width:48px;height:48px;border:0;border-radius:16px;background:#f2f0ff;color:#5f5af4;font-size:28px}.finance-beta{margin:14px 0;padding:12px;border:1px solid #f0d49b;border-radius:14px;background:#fff8e8;color:#805600;font-size:12px;line-height:1.65}.finance-tabs{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin:12px 0}.finance-tab{border:1px solid #d7d3ff;background:#fff;color:#4f46c8;border-radius:14px;padding:11px;font-weight:900}.finance-tab.active{background:var(--brand);color:#fff;border-color:transparent}.finance-summary{border:1px solid #e4e0fb;border-radius:18px;padding:14px;background:#fcfbff}.finance-line{display:flex;justify-content:space-between;gap:12px;padding:10px 0;border-bottom:1px solid #eeeafd}.finance-line:last-child{border-bottom:0}.finance-line strong{font-size:15px}.finance-total{font-size:19px!important;color:#4f46c8}.finance-status{display:inline-block;margin-top:10px;padding:6px 9px;border-radius:999px;background:#eefbf3;color:#087443;font-size:11px;font-weight:900}.finance-muted{font-size:11px;color:var(--sub);line-height:1.65;margin-top:12px}.btn.disabled-preview{background:#e8e8ef;color:#8a8da0;pointer-events:none}
 </style>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
@@ -270,8 +270,8 @@ function uiKey(name){return `voice_flea_ui_${currentUser?.id||'guest'}_${name}`}
 function clearChatNotice(){if(window.chatMsg)chatMsg.innerHTML=''}
 const FINANCE_FEE_RATE=0.15;
 function financeYen(n){return `¥${Number(n||0).toLocaleString()}`}
-function closeFinanceCenter(){document.getElementById('financeOverlay')?.classList.remove('on')}
-function openFinanceCenter(mode='buyer'){document.getElementById('financeOverlay')?.classList.add('on');showFinancePanel(mode)}
+function closeFinanceCenter(){document.getElementById('financeOverlay')?.classList.remove('on');document.body.classList.remove('finance-modal-open')}
+function openFinanceCenter(mode='buyer'){document.body.classList.add('finance-modal-open');document.getElementById('financeOverlay')?.classList.add('on');showFinancePanel(mode)}
 function showFinancePanel(mode='buyer'){
  const b=document.getElementById('financeTabBuyer'),s=document.getElementById('financeTabSeller'),body=document.getElementById('financeBody');if(!body)return;
  b?.classList.toggle('active',mode==='buyer');s?.classList.toggle('active',mode==='seller');
