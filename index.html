@@ -214,6 +214,7 @@ window.VOICE_FLEA_CONFIG={SUPABASE_URL:"https://tyulybijubckitybgubc.supabase.co
 </div>
 <script>
 let sb=null,currentUser=null,currentConversationId=null,currentConversationPartner=null,currentConversation=null;
+const selectedDeliveryFiles=new Map();
 const cfg=window.VOICE_FLEA_CONFIG||{};
 const configured=cfg.SUPABASE_URL && cfg.SUPABASE_PUBLISHABLE_KEY && !cfg.SUPABASE_URL.includes('YOUR_PROJECT') && !cfg.SUPABASE_PUBLISHABLE_KEY.includes('YOUR_');
 function esc(s=''){return String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]))}
@@ -320,7 +321,7 @@ async function loadDeliveries(){
  const isBuyer=currentUser.id===currentConversation.buyer_id;
  let html='';
  if(isSeller&&currentConversation.delivery_status!=='accepted'){
-   html=`<div class="delivery-panel"><div class="row"><div><b style="font-size:12px">📦 音声を納品</b><div class="small">ここから送る音声は取引相手だけが確認できます。</div></div></div><input id="deliveryFile" type="file" accept="audio/*,.m4a,.mp3,.wav,.aac,.mp4"><button class="btn full" onclick="uploadDelivery()">納品する</button><div id="deliveryMsg"></div></div>`;
+   html=`<div class="delivery-panel"><div class="row"><div><b style="font-size:12px">📦 音声を納品</b><div class="small">ここから送る音声は取引相手だけが確認できます。</div></div></div><input id="deliveryFile" type="file" accept="audio/*,.m4a,.mp3,.wav,.aac,.mp4" onchange="rememberDeliveryFile(this)"><div id="deliverySelectedName" class="small" style="margin-top:6px;font-weight:700"></div><button class="btn full" onclick="uploadDelivery()">納品する</button><div id="deliveryMsg"></div></div>`;
  }
  if(currentConversation.delivery_path){
    let player='';
@@ -331,10 +332,20 @@ async function loadDeliveries(){
    html+=`<div class="delivery-card"><div class="row"><div class="delivery-name">🎧 納品音声</div><span class="delivery-status ${accepted?'received':''}">${accepted?'受取済み':'納品済み'}</span></div>${player}${isBuyer&&!accepted?`<button class="btn full" onclick="confirmDelivery()">受取確認</button>`:''}</div>`;
  }
  deliveryArea.innerHTML=html||'<div class="small">まだ納品はありません。</div>';
+ const kept=selectedDeliveryFiles.get(currentConversationId);
+ const keptName=document.getElementById('deliverySelectedName');
+ if(kept&&keptName)keptName.textContent=`選択中：${kept.name}`;
+}
+function rememberDeliveryFile(input){
+ const f=input?.files?.[0]||null;
+ const nameEl=document.getElementById('deliverySelectedName');
+ const msgEl=document.getElementById('deliveryMsg');
+ if(f){selectedDeliveryFiles.set(currentConversationId,f);if(nameEl)nameEl.textContent=`選択中：${f.name}`;if(msgEl)msgEl.innerHTML=''}
+ else{selectedDeliveryFiles.delete(currentConversationId);if(nameEl)nameEl.textContent=''}
 }
 async function uploadDelivery(){
  if(!currentConversationId||!currentConversation||currentUser.id!==currentConversation.seller_id)return;
- const f=document.getElementById('deliveryFile')?.files?.[0];if(!f)return info('deliveryMsg','納品する音声ファイルを選択してください。','err');
+ const f=selectedDeliveryFiles.get(currentConversationId)||document.getElementById('deliveryFile')?.files?.[0];if(!f)return info('deliveryMsg','納品する音声ファイルを選択してください。','err');
  const ext=(f.name.split('.').pop()||'').toLowerCase().replace(/[^a-z0-9]/g,'');const allowed=['m4a','mp3','wav','aac','mp4','mpeg','ogg','webm'];const mime=(f.type||'').toLowerCase();if(!allowed.includes(ext)&&!mime.startsWith('audio/'))return info('deliveryMsg','音声ファイルを選択してください。','err');
  const path=`${currentConversationId}/${crypto.randomUUID()}.${ext||'audio'}`;info('deliveryMsg','アップロード中...');
  const {error:ue}=await sb.storage.from('deliveries').upload(path,f,{upsert:false,contentType:mime||undefined});if(ue)return info('deliveryMsg',ue.message,'err');
@@ -342,7 +353,7 @@ async function uploadDelivery(){
  if(ce){await sb.storage.from('deliveries').remove([path]);return info('deliveryMsg',ce.message,'err')}
  currentConversation=updated;
  await sb.from('messages').insert({conversation_id:currentConversationId,sender_id:currentUser.id,body:'📦 音声を納品しました。チャット内の納品欄から確認できます。'});
- info('deliveryMsg','納品しました。');await Promise.all([loadDeliveries(),loadChatMessages()]);loadMessageBadge();loadNotificationBadge();
+ selectedDeliveryFiles.delete(currentConversationId);info('deliveryMsg','納品しました。');await Promise.all([loadDeliveries(),loadChatMessages()]);loadMessageBadge();loadNotificationBadge();
 }
 async function confirmDelivery(){
  if(!currentConversation||currentUser.id!==currentConversation.buyer_id)return;if(!confirm('この納品を受け取り済みにしますか？'))return;
