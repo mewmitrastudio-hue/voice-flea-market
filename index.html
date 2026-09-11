@@ -36,6 +36,31 @@ body.chat-mode .chatbox{display:flex!important;flex-direction:column;position:fi
 .chatroom-title{min-width:0}.chatroom-title b{display:block;font-size:16px}.chatroom-title span{display:block;font-size:11px;color:var(--sub);margin-top:2px}
 body.chat-mode .chatmessages{flex:1;max-height:none;min-height:0;overflow:auto;padding:16px 14px 10px}
 .chatdelivery{padding:0 14px 8px;background:#fff}.delivery-panel{border:1px solid #ded9f7;border-radius:14px;background:linear-gradient(135deg,#fbf9ff,#fff7fb);padding:10px}.delivery-panel input{width:100%;font-size:12px}.delivery-card{border:1px solid #e5e1f5;background:#fff;border-radius:14px;padding:10px;margin:8px 0}.delivery-card audio{width:100%;height:34px;margin-top:8px}.delivery-status{display:inline-block;font-size:10px;font-weight:900;padding:4px 7px;border-radius:999px;background:#eef8ff;color:#3272a8}.delivery-status.received{background:#ecfdf3;color:#087443}.delivery-name{font-size:12px;font-weight:800;word-break:break-all}.chatdock{padding:8px 14px calc(8px + env(safe-area-inset-bottom));border-top:1px solid var(--line);background:rgba(255,255,255,.98);position:sticky;bottom:0}.chatdock .chatcomposer{margin:0}.chatdock .chatcomposer textarea{min-height:46px}.chatdock #chatMsg{min-height:0}
+
+/* robust message screen: always covers normal header/nav */
+#messages.message-fullscreen{display:block!important;position:fixed!important;inset:0!important;z-index:120!important;width:100%!important;height:100dvh!important;min-height:100dvh!important;margin:0!important;padding:0 14px calc(24px + env(safe-area-inset-bottom))!important;background:linear-gradient(180deg,#f7f4ff,#fff 34%)!important;overflow:auto!important}
+#messages.message-fullscreen>h2{display:none!important}
+#messages.message-fullscreen .messages-list-head{display:flex!important;align-items:center;gap:10px;margin:0 -14px 14px;padding:calc(env(safe-area-inset-top) + 12px) 14px 12px;border-bottom:1px solid var(--line);background:rgba(255,255,255,.98);backdrop-filter:blur(14px);position:sticky;top:0;z-index:4}
+#messages.message-fullscreen #conversationList{display:grid!important;gap:10px;padding-bottom:18px}
+body.chat-mode #messages.message-fullscreen{overflow:hidden!important;padding:0!important;background:#fff!important}
+/* keep fixed nav content clear */
+.app{padding-bottom:260px}
+
+/* 2026-09-11: normal shell / Safari-safe fixed navigation / hard message isolation */
+.force-hide{display:none!important}
+body.normal-mode{overflow:hidden}
+body.normal-mode .app{height:calc(100dvh - 184px);min-height:0;overflow-y:auto;-webkit-overflow-scrolling:touch;padding-bottom:24px;overscroll-behavior:contain}
+body.normal-mode #nav{display:grid}
+@supports (-webkit-touch-callout:none){
+  body.normal-mode .app{height:calc(100dvh - 248px - env(safe-area-inset-bottom));padding-bottom:24px}
+  body.normal-mode #nav{bottom:calc(84px + env(safe-area-inset-bottom))}
+}
+/* Messages and chat are independent full-screen surfaces. */
+body.messages-mode,body.chat-mode{overflow:hidden!important}
+body.messages-mode #messages.page.on,body.chat-mode #messages.page.on{display:block!important;position:fixed!important;inset:0!important;z-index:500!important;width:100%!important;height:100dvh!important;min-height:100dvh!important;margin:0!important;background:linear-gradient(180deg,#f7f4ff,#fff 34%)!important}
+body.messages-mode #messages.page.on{padding:0 14px calc(24px + env(safe-area-inset-bottom))!important;overflow:auto!important}
+body.chat-mode #messages.page.on{padding:0!important;overflow:hidden!important;background:#fff!important}
+
 </style>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script>
@@ -75,13 +100,21 @@ function uiKey(name){return `voice_flea_ui_${currentUser?.id||'guest'}_${name}`}
 function clearChatNotice(){if(window.chatMsg)chatMsg.innerHTML=''}
 function saveChatState(id,title){if(!currentUser)return;localStorage.setItem(uiKey('chat'),JSON.stringify({id,title}))}
 function clearChatState(){if(currentUser)localStorage.removeItem(uiKey('chat'))}
-async function go(id,opts={}){const allowed=['home','voices','sell','jobs','messages','me'];if(!allowed.includes(id))id='home';if(id==='messages'){document.body.classList.remove('chat-mode');document.body.classList.add('messages-mode')}else{document.body.classList.remove('chat-mode','messages-mode')}document.querySelectorAll('.page').forEach(p=>p.classList.remove('on'));document.getElementById(id).classList.add('on');document.querySelectorAll('#nav button').forEach((b,i)=>b.classList.toggle('on',allowed[i]===id));if(currentUser&&!opts.skipSave)localStorage.setItem(uiKey('page'),id);if(id==='voices')await loadListings();if(id==='jobs')await loadJobs();if(id==='messages')await loadConversations();if(id==='me')await loadMe();if(!opts.keepScroll)window.scrollTo(0,0)}
+function setShellMode(mode){
+ const top=document.querySelector('.topbar'),navEl=document.getElementById('nav'),msgPage=document.getElementById('messages');
+ document.body.classList.remove('normal-mode','messages-mode','chat-mode');
+ top?.classList.remove('force-hide'); navEl?.classList.remove('force-hide');
+ if(mode==='messages'){document.body.classList.add('messages-mode');top?.classList.add('force-hide');navEl?.classList.add('force-hide');msgPage?.classList.add('message-fullscreen')}
+ else if(mode==='chat'){document.body.classList.add('chat-mode');top?.classList.add('force-hide');navEl?.classList.add('force-hide');msgPage?.classList.add('message-fullscreen')}
+ else {document.body.classList.add('normal-mode');msgPage?.classList.remove('message-fullscreen')}
+}
+async function go(id,opts={}){const allowed=['home','voices','sell','jobs','messages','me'];if(!allowed.includes(id))id='home';setShellMode(id==='messages'?'messages':'normal');document.querySelectorAll('.page').forEach(p=>p.classList.remove('on'));document.getElementById(id).classList.add('on');document.querySelectorAll('#nav button').forEach((b,i)=>b.classList.toggle('on',allowed[i]===id));if(currentUser&&!opts.skipSave)localStorage.setItem(uiKey('page'),id);if(id==='voices')await loadListings();if(id==='jobs')await loadJobs();if(id==='messages')await loadConversations();if(id==='me')await loadMe();if(!opts.keepScroll){if(id==='messages'){document.getElementById('messages').scrollTop=0}else{document.querySelector('.app').scrollTop=0;window.scrollTo(0,0)}}}
 async function restoreUI(){let page=localStorage.getItem(uiKey('page'))||'home';await go(page,{skipSave:true});if(page==='messages'){try{const saved=JSON.parse(localStorage.getItem(uiKey('chat'))||'null');if(saved?.id)await openConversation(saved.id,saved.title||'チャット',{skipSave:true})}catch(e){clearChatState()}}}
 async function init(){if(!configured){cloudStatus.textContent='設定待ち';return}sb=window.supabase.createClient(cfg.SUPABASE_URL,cfg.SUPABASE_PUBLISHABLE_KEY);cloudStatus.textContent='接続中';cloudStatus.classList.add('live');configNotice.classList.add('hide');const {data}=await sb.auth.getSession();currentUser=data.session?.user||null;await renderAuth();sb.auth.onAuthStateChange((_e,s)=>{currentUser=s?.user||null;renderAuth()})}
-async function renderAuth(){if(currentUser){authPage.classList.remove('on');nav.classList.remove('hide');bellBtn?.classList.remove('hide');cloudStatus.textContent='オンライン';await loadHome();loadJobBadge();loadMessageBadge();loadNotificationBadge();await restoreUI()}else{document.querySelectorAll('.page').forEach(p=>p.classList.remove('on'));authPage.classList.add('on');nav.classList.add('hide');bellBtn?.classList.add('hide');closeNotifications();cloudStatus.textContent=configured?'オンライン':'設定待ち'}}
+async function renderAuth(){if(currentUser){authPage.classList.remove('on');nav.classList.remove('hide');bellBtn?.classList.remove('hide');cloudStatus.textContent='オンライン';await loadHome();loadJobBadge();loadMessageBadge();loadNotificationBadge();await restoreUI()}else{document.querySelectorAll('.page').forEach(p=>p.classList.remove('on'));authPage.classList.add('on');nav.classList.add('hide');bellBtn?.classList.add('hide');closeNotifications();document.body.classList.remove('normal-mode','messages-mode','chat-mode');document.querySelector('.topbar')?.classList.remove('force-hide');cloudStatus.textContent=configured?'オンライン':'設定待ち'}}
 async function signUp(){if(!sb)return info('authMsg','まず接続設定が必要です','err');if(password.value.length<8)return info('authMsg','パスワードは8文字以上にしてください','err');const {error}=await sb.auth.signUp({email:email.value.trim(),password:password.value,userMetadata:{display_name:displayName.value.trim()||'ユーザー'},options:{data:{display_name:displayName.value.trim()||'ユーザー'}}});if(error)return info('authMsg',error.message,'err');info('authMsg','登録を受け付けました。メール確認が有効な場合は確認後にログインしてください。')}
 async function signIn(){if(!sb)return info('authMsg','まず接続設定が必要です','err');const {error}=await sb.auth.signInWithPassword({email:email.value.trim(),password:password.value});if(error)return info('authMsg',error.message,'err')}
-async function signOut(){document.body.classList.remove('chat-mode','messages-mode');await sb.auth.signOut()}
+async function signOut(){document.body.classList.remove('normal-mode','chat-mode','messages-mode');document.querySelector('.topbar')?.classList.remove('force-hide');document.getElementById('nav')?.classList.remove('force-hide');await sb.auth.signOut()}
 async function loadHome(){const [{count:lc},{count:jc}]=await Promise.all([sb.from('listings').select('*',{count:'exact',head:true}).eq('is_active',true),sb.from('jobs').select('*',{count:'exact',head:true}).eq('status','open')]);homeCounts.innerHTML=`公開中の声：<b>${lc??0}</b>件　／　募集中の仕事：<b>${jc??0}</b>件`}
 async function createListing(){if(!currentUser)return;let path=null;const f=sellAudio.files[0];if(f){const ext=(f.name.split('.').pop()||'').toLowerCase().replace(/[^a-z0-9]/g,'');const allowed=['m4a','mp3','wav','aac','mp4','mpeg','ogg','webm'];const mime=(f.type||'').toLowerCase();if(!allowed.includes(ext) && !mime.startsWith('audio/'))return info('sellMsg','音声ファイルを選択してください（m4a / mp3 / wav / aac / mp4 など）。','err');path=`${currentUser.id}/${crypto.randomUUID()}.${ext||'audio'}`;const contentType=mime||({m4a:'audio/mp4',mp4:'audio/mp4',mp3:'audio/mpeg',mpeg:'audio/mpeg',wav:'audio/wav',aac:'audio/aac',ogg:'audio/ogg',webm:'audio/webm'}[ext]||'application/octet-stream');const {error:ue}=await sb.storage.from('voice-samples').upload(path,f,{upsert:false,contentType});if(ue)return info('sellMsg','音声アップロード: '+ue.message,'err')}
 const {error}=await sb.from('listings').insert({seller_id:currentUser.id,title:sellTitle.value.trim(),category:sellCategory.value,description:sellDesc.value.trim(),price_jpy:+sellPrice.value,delivery_days:+sellDays.value,ai_use:sellAI.value,sample_path:path});if(error)return info('sellMsg',error.message,'err');info('sellMsg','クラウドへ出品しました。');sellTitle.value='';sellDesc.value='';sellAudio.value='';loadHome()}
@@ -128,7 +161,7 @@ async function openJobChat(jobId,buyerId,sellerId,title='仕事のチャット')
  const {data,error}=await ensureConversation(jobId,buyerId,sellerId);if(error)return alert(error.message);await go('messages');await openConversation(data.id,title)
 }
 async function loadConversations(){
- if(!sb||!currentUser)return;document.body.classList.remove('chat-mode');document.body.classList.add('messages-mode');chatBox.classList.remove('on');conversationList.style.display='grid';
+ if(!sb||!currentUser)return;setShellMode('messages');chatBox.classList.remove('on');conversationList.style.display='grid';
  const {data,error}=await sb.from('conversations').select('id,buyer_id,seller_id,job_id,created_at').or(`buyer_id.eq.${currentUser.id},seller_id.eq.${currentUser.id}`).order('created_at',{ascending:false});
  if(error){conversationList.innerHTML=`<div class="err">${esc(error.message)}</div>`;return}
  const cs=data||[];if(!cs.length){conversationList.innerHTML='<div class="card small">まだメッセージはありません。</div>';msgBadge?.classList.remove('show');return}
@@ -138,9 +171,9 @@ async function loadConversations(){
  conversationList.innerHTML=rows.join('');loadMessageBadge()
 }
 async function openConversation(id,title='チャット',opts={}){
- clearChatNotice();currentConversationId=id;const {data:c,error:ce}=await sb.from('conversations').select('id,buyer_id,seller_id,job_id,listing_id').eq('id',id).single();if(ce)return info('chatMsg',ce.message,'err');currentConversation=c;conversationList.style.display='none';chatBox.classList.add('on');document.body.classList.remove('messages-mode');document.body.classList.add('chat-mode');chatTitle.textContent=title;chatSub.textContent=currentUser.id===c.seller_id?'受注した仕事のチャット':'依頼した仕事のチャット';if(currentUser&&!opts.skipSave){localStorage.setItem(uiKey('page'),'messages');saveChatState(id,title)}markConversationSeen(id);await Promise.all([loadChatMessages(),loadDeliveries()]);loadMessageBadge()
+ clearChatNotice();currentConversationId=id;const {data:c,error:ce}=await sb.from('conversations').select('id,buyer_id,seller_id,job_id,listing_id,delivery_path,delivery_status,delivered_at,accepted_at').eq('id',id).single();if(ce)return info('chatMsg',ce.message,'err');currentConversation=c;conversationList.style.display='none';chatBox.classList.add('on');setShellMode('chat');chatTitle.textContent=title;chatSub.textContent=currentUser.id===c.seller_id?'受注した仕事のチャット':'依頼した仕事のチャット';if(currentUser&&!opts.skipSave){localStorage.setItem(uiKey('page'),'messages');saveChatState(id,title)}markConversationSeen(id);await Promise.all([loadChatMessages(),loadDeliveries()]);loadMessageBadge()
 }
-function closeChat(){clearChatNotice();clearChatState();currentConversationId=null;currentConversation=null;document.body.classList.remove('chat-mode');document.body.classList.add('messages-mode');chatBox.classList.remove('on');conversationList.style.display='grid';loadConversations()}
+function closeChat(){clearChatNotice();clearChatState();currentConversationId=null;currentConversation=null;setShellMode('messages');chatBox.classList.remove('on');conversationList.style.display='grid';loadConversations()}
 async function loadChatMessages(){
  if(!currentConversationId)return;const {data,error}=await sb.from('messages').select('id,sender_id,body,created_at').eq('conversation_id',currentConversationId).order('created_at',{ascending:true}).limit(200);if(error){chatMessages.innerHTML=`<div class="err">${esc(error.message)}</div>`;return}chatMessages.innerHTML=(data||[]).map(m=>`<div class="bubble ${m.sender_id===currentUser.id?'mine':'theirs'}">${esc(m.body)}</div>`).join('')||'<div class="small">まだメッセージはありません。最初のメッセージを送ってみましょう。</div>';markConversationSeen(currentConversationId);setTimeout(()=>chatMessages.scrollTop=chatMessages.scrollHeight,0)
 }
@@ -150,23 +183,37 @@ async function sendChatMessage(){
 async function loadDeliveries(){
  if(!currentConversationId||!currentConversation||!deliveryArea)return;
  const isSeller=currentUser.id===currentConversation.seller_id;
+ const isBuyer=currentUser.id===currentConversation.buyer_id;
  let html='';
- if(isSeller){html=`<div class="delivery-panel"><div class="row"><div><b style="font-size:12px">📦 音声を納品</b><div class="small">ここから送る音声は取引相手だけが確認できます。</div></div></div><input id="deliveryFile" type="file" accept="audio/*,.m4a,.mp3,.wav,.aac,.mp4"><button class="btn full" onclick="uploadDelivery()">納品する</button><div id="deliveryMsg"></div></div>`}
- const {data,error}=await sb.from('deliveries').select('id,conversation_id,sender_id,storage_path,original_name,mime_type,status,created_at,received_at').eq('conversation_id',currentConversationId).order('created_at',{ascending:true});
- if(error){deliveryArea.innerHTML=html+`<div class="err">納品機能の初期設定を確認してください：${esc(error.message)}</div>`;return}
- for(const d of data||[]){let player='';const {data:u,error:ue}=await sb.storage.from('deliveries').createSignedUrl(d.storage_path,3600);if(!ue&&u?.signedUrl)player=`<audio controls src="${u.signedUrl}"></audio>`;const canReceive=currentUser.id===currentConversation.buyer_id&&d.status!=='received';html+=`<div class="delivery-card"><div class="row"><div class="delivery-name">🎧 ${esc(d.original_name||'納品音声')}</div><span class="delivery-status ${d.status==='received'?'received':''}">${d.status==='received'?'受取済み':'納品済み'}</span></div>${player}${canReceive?`<button class="btn full" onclick="confirmDelivery('${d.id}')">受取確認</button>`:''}</div>`}
- deliveryArea.innerHTML=html||'<div class="small">まだ納品はありません。</div>'
+ if(isSeller&&currentConversation.delivery_status!=='accepted'){
+   html=`<div class="delivery-panel"><div class="row"><div><b style="font-size:12px">📦 音声を納品</b><div class="small">ここから送る音声は取引相手だけが確認できます。</div></div></div><input id="deliveryFile" type="file" accept="audio/*,.m4a,.mp3,.wav,.aac,.mp4"><button class="btn full" onclick="uploadDelivery()">納品する</button><div id="deliveryMsg"></div></div>`;
+ }
+ if(currentConversation.delivery_path){
+   let player='';
+   const {data:u,error:ue}=await sb.storage.from('deliveries').createSignedUrl(currentConversation.delivery_path,3600);
+   if(!ue&&u?.signedUrl)player=`<audio controls src="${u.signedUrl}"></audio>`;
+   else if(ue)player=`<div class="err">納品音声を開けません：${esc(ue.message)}</div>`;
+   const accepted=currentConversation.delivery_status==='accepted';
+   html+=`<div class="delivery-card"><div class="row"><div class="delivery-name">🎧 納品音声</div><span class="delivery-status ${accepted?'received':''}">${accepted?'受取済み':'納品済み'}</span></div>${player}${isBuyer&&!accepted?`<button class="btn full" onclick="confirmDelivery()">受取確認</button>`:''}</div>`;
+ }
+ deliveryArea.innerHTML=html||'<div class="small">まだ納品はありません。</div>';
 }
 async function uploadDelivery(){
  if(!currentConversationId||!currentConversation||currentUser.id!==currentConversation.seller_id)return;
  const f=document.getElementById('deliveryFile')?.files?.[0];if(!f)return info('deliveryMsg','納品する音声ファイルを選択してください。','err');
  const ext=(f.name.split('.').pop()||'').toLowerCase().replace(/[^a-z0-9]/g,'');const allowed=['m4a','mp3','wav','aac','mp4','mpeg','ogg','webm'];const mime=(f.type||'').toLowerCase();if(!allowed.includes(ext)&&!mime.startsWith('audio/'))return info('deliveryMsg','音声ファイルを選択してください。','err');
- const path=`${currentUser.id}/${currentConversationId}/${crypto.randomUUID()}.${ext||'audio'}`;info('deliveryMsg','アップロード中...');const {error:ue}=await sb.storage.from('deliveries').upload(path,f,{upsert:false,contentType:mime||undefined});if(ue)return info('deliveryMsg',ue.message,'err');
- const {error:de}=await sb.from('deliveries').insert({conversation_id:currentConversationId,sender_id:currentUser.id,storage_path:path,original_name:f.name,mime_type:mime||null,status:'delivered'});if(de){await sb.storage.from('deliveries').remove([path]);return info('deliveryMsg',de.message,'err')}
- await sb.from('messages').insert({conversation_id:currentConversationId,sender_id:currentUser.id,body:'📦 音声を納品しました。チャット内の納品欄から確認できます。'});info('deliveryMsg','納品しました。');await Promise.all([loadDeliveries(),loadChatMessages()]);loadMessageBadge();loadNotificationBadge()
+ const path=`${currentConversationId}/${crypto.randomUUID()}.${ext||'audio'}`;info('deliveryMsg','アップロード中...');
+ const {error:ue}=await sb.storage.from('deliveries').upload(path,f,{upsert:false,contentType:mime||undefined});if(ue)return info('deliveryMsg',ue.message,'err');
+ const {data:updated,error:ce}=await sb.from('conversations').update({delivery_path:path,delivery_status:'submitted',delivered_at:new Date().toISOString(),accepted_at:null}).eq('id',currentConversationId).select('id,buyer_id,seller_id,job_id,listing_id,delivery_path,delivery_status,delivered_at,accepted_at').single();
+ if(ce){await sb.storage.from('deliveries').remove([path]);return info('deliveryMsg',ce.message,'err')}
+ currentConversation=updated;
+ await sb.from('messages').insert({conversation_id:currentConversationId,sender_id:currentUser.id,body:'📦 音声を納品しました。チャット内の納品欄から確認できます。'});
+ info('deliveryMsg','納品しました。');await Promise.all([loadDeliveries(),loadChatMessages()]);loadMessageBadge();loadNotificationBadge();
 }
-async function confirmDelivery(id){
- if(!currentConversation||currentUser.id!==currentConversation.buyer_id)return;if(!confirm('この納品を受け取り済みにしますか？'))return;const {error}=await sb.from('deliveries').update({status:'received',received_at:new Date().toISOString()}).eq('id',id);if(error)return alert(error.message);await sb.from('messages').insert({conversation_id:currentConversationId,sender_id:currentUser.id,body:'✅ 納品を受け取りました。'});if(currentConversation.job_id)await sb.from('jobs').update({status:'closed'}).eq('id',currentConversation.job_id);await Promise.all([loadDeliveries(),loadChatMessages()]);loadHome();loadNotificationBadge()
+async function confirmDelivery(){
+ if(!currentConversation||currentUser.id!==currentConversation.buyer_id)return;if(!confirm('この納品を受け取り済みにしますか？'))return;
+ const now=new Date().toISOString();const {data:updated,error}=await sb.from('conversations').update({delivery_status:'accepted',accepted_at:now}).eq('id',currentConversationId).select('id,buyer_id,seller_id,job_id,listing_id,delivery_path,delivery_status,delivered_at,accepted_at').single();if(error)return alert(error.message);currentConversation=updated;
+ await sb.from('messages').insert({conversation_id:currentConversationId,sender_id:currentUser.id,body:'✅ 納品を受け取りました。'});if(currentConversation.job_id)await sb.from('jobs').update({status:'closed'}).eq('id',currentConversation.job_id);await Promise.all([loadDeliveries(),loadChatMessages()]);loadHome();loadNotificationBadge();
 }
 async function loadMessageBadge(){
  if(!sb||!currentUser||!msgBadge)return;const {data:cs}=await sb.from('conversations').select('id').or(`buyer_id.eq.${currentUser.id},seller_id.eq.${currentUser.id}`);let count=0;for(const c of cs||[]){const seen=localStorage.getItem(seenKey(c.id))||'1970-01-01T00:00:00.000Z';const {count:n}=await sb.from('messages').select('*',{count:'exact',head:true}).eq('conversation_id',c.id).neq('sender_id',currentUser.id).gt('created_at',seen);count+=n||0}msgBadge.textContent=count>99?'99+':String(count);msgBadge.classList.toggle('show',count>0);loadNotificationBadge()
