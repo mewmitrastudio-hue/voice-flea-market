@@ -537,7 +537,7 @@ async function openSafetyCenter(mode='support'){
 }
 async function getBlockRows(){
  if(!sb||!currentUser||!currentConversationPartner)return [];
- const {data,error}=await sb.from('blocks').select('id,blocker_id,blocked_user_id').or(`and(blocker_id.eq.${currentUser.id},blocked_user_id.eq.${currentConversationPartner}),and(blocker_id.eq.${currentConversationPartner},blocked_user_id.eq.${currentUser.id})`);
+ const {data,error}=await sb.from('user_blocks').select('id,blocker_id,blocked_user_id').or(`and(blocker_id.eq.${currentUser.id},blocked_user_id.eq.${currentConversationPartner}),and(blocker_id.eq.${currentConversationPartner},blocked_user_id.eq.${currentUser.id})`);
  if(error){console.warn('block check',error);return []}return data||[]
 }
 async function isCurrentConversationBlocked(){const rows=await getBlockRows();return rows.length>0}
@@ -547,8 +547,8 @@ async function refreshBlockButton(){
 async function toggleBlockCurrentPartner(){
  if(!currentConversationPartner)return;
  const rows=await getBlockRows();const mine=rows.find(x=>x.blocker_id===currentUser.id);
- if(mine){const {error}=await sb.from('blocks').delete().eq('id',mine.id);if(error)return info('safetyMsg',error.message,'err');info('safetyMsg','ブロックを解除しました。');}
- else{const {error}=await sb.from('blocks').insert({blocker_id:currentUser.id,blocked_user_id:currentConversationPartner});if(error)return info('safetyMsg',error.code==='23505'?'すでにブロックしています。':error.message,'err');info('safetyMsg','このユーザーをブロックしました。今後この取引ではメッセージを送受信できません。');}
+ if(mine){const {error}=await sb.from('user_blocks').delete().eq('id',mine.id);if(error)return info('safetyMsg',error.message,'err');info('safetyMsg','ブロックを解除しました。');}
+ else{const {error}=await sb.from('user_blocks').insert({blocker_id:currentUser.id,blocked_user_id:currentConversationPartner});if(error)return info('safetyMsg',error.code==='23505'?'すでにブロックしています。':error.message,'err');info('safetyMsg','このユーザーをブロックしました。今後この取引ではメッセージを送受信できません。');}
  await refreshBlockButton();await applyChatBlockState();
 }
 async function applyChatBlockState(){
@@ -559,10 +559,10 @@ async function applyChatBlockState(){
 async function submitSafetyRequest(){
  if(!sb||!currentUser)return;const cat=document.getElementById('safetyCategory').value;const detail=document.getElementById('safetyDetail').value.trim();if(detail.length<5)return info('safetyMsg','詳細を5文字以上入力してください。','err');
  if(safetyMode==='chat'&&currentConversationPartner&&cat!=='support'){
-   const {error}=await sb.from('reports').insert({reporter_id:currentUser.id,target_user_id:currentConversationPartner,conversation_id:currentConversationId,reason:cat,detail});
+   const {error}=await sb.from('reports').insert({reporter_id:currentUser.id,target_user_id:currentConversationPartner,conversation_id:currentConversationId,reason:cat,details:detail});
    if(error)return info('safetyMsg',error.message,'err');info('safetyMsg','通報を受け付けました。運営で確認します。');
  }else{
-   const {error}=await sb.from('support_requests').insert({user_id:currentUser.id,category:cat,message:detail,conversation_id:safetyMode==='chat'?currentConversationId:null});
+   const {error}=await sb.from('support_inquiries').insert({user_id:currentUser.id,category:cat,subject:(cat==='support'?'使い方・不具合・問い合わせ':'安全・サポート問い合わせ'),message:detail});
    if(error)return info('safetyMsg',error.message,'err');info('safetyMsg','問い合わせを受け付けました。');
  }
  document.getElementById('safetyDetail').value='';
