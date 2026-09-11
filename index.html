@@ -188,6 +188,10 @@ body.normal-mode #nav button{height:46px!important;min-height:46px!important;bor
 <script>
 if(window.navigator.standalone===true){document.body.classList.add('standalone')}
 window.VOICE_FLEA_CONFIG={SUPABASE_URL:"https://tyulybijubckitybgubc.supabase.co",SUPABASE_PUBLISHABLE_KEY:"sb_publishable_pcKCEYNbn8OtCEzfIERPDA_QAKWFF49"};</script>
+
+<style id="review-feature-20260911">
+.review-panel{margin-top:12px;background:linear-gradient(135deg,#fff,#faf7ff);border:1px solid #e4defb;border-radius:16px;padding:13px}.review-title{font-weight:900;font-size:13px}.review-stars{display:flex;gap:6px;margin:10px 0 8px}.review-star{border:0;background:transparent;font-size:28px;line-height:1;padding:2px;filter:grayscale(1);opacity:.42}.review-star.on{filter:none;opacity:1}.review-panel textarea{width:100%;min-height:74px;border:1px solid var(--line);border-radius:12px;padding:10px;font-size:13px;background:#fff;resize:vertical}.review-done{background:#ecfdf3;color:#087443;border-radius:12px;padding:10px;font-size:12px;font-weight:800;margin-top:9px}.review-received{margin-top:9px;border-top:1px solid #ece8f8;padding-top:9px}.review-score{font-size:18px;letter-spacing:1px;color:#f4a000;font-weight:900}.profile-rating{margin-top:4px;font-weight:800;color:#6558ef}
+</style>
 </head><body><div id="pullRefreshIndicator" class="pull-refresh-indicator">↓ 引っ張って更新</div><div class="app">
 <div class="topbar"><div class="brandwrap"><div class="brandicon">🎙️</div><div class="brandtext"><div class="brand">声のフリマ</div><div class="tag"><span class="line1">世界に、あなたの声を売る。</span><span class="line2">あなたの声を、世界が買う。</span></div></div></div><div class="topactions"><button id="refreshBtn" class="refreshbtn hide" onclick="refreshAllData()" aria-label="最新情報に更新" title="最新情報に更新">↻</button><button id="bellBtn" class="bellbtn hide" onclick="openNotifications()" aria-label="お知らせ">🔔<span id="bellBadge" class="bellbadge"></span></button><span id="cloudStatus" class="status">確認中</span></div></div>
 
@@ -331,10 +335,61 @@ async function loadDeliveries(){
    const accepted=currentConversation.delivery_status==='accepted';
    html+=`<div class="delivery-card"><div class="row"><div class="delivery-name">🎧 納品音声</div><span class="delivery-status ${accepted?'received':''}">${accepted?'受取済み':'納品済み'}</span></div>${player}${isBuyer&&!accepted?`<button class="btn full" onclick="confirmDelivery()">受取確認</button>`:''}</div>`;
  }
+ if(currentConversation.delivery_status==='accepted')html+=`<div id="reviewArea"></div>`;
  deliveryArea.innerHTML=html||'<div class="small">まだ納品はありません。</div>';
  const kept=selectedDeliveryFiles.get(currentConversationId);
  const keptName=document.getElementById('deliverySelectedName');
  if(kept&&keptName)keptName.textContent=`選択中：${kept.name}`;
+ if(currentConversation.delivery_status==='accepted')await loadReviewPanel();
+}
+let selectedReviewRating=0;
+function setReviewRating(n){
+ selectedReviewRating=Number(n)||0;
+ document.querySelectorAll('#reviewArea .review-star').forEach((b,i)=>b.classList.toggle('on',i<selectedReviewRating));
+ const label=document.getElementById('reviewRatingLabel');
+ if(label)label.textContent=selectedReviewRating?`${selectedReviewRating}/5`:'未選択';
+}
+async function loadReviewPanel(){
+ const area=document.getElementById('reviewArea');
+ if(!area||!currentConversation||currentConversation.delivery_status!=='accepted')return;
+ selectedReviewRating=0;
+ const {data:rows,error}=await sb.from('reviews').select('id,conversation_id,reviewer_id,target_user_id,rating,comment,created_at').eq('conversation_id',currentConversationId).order('created_at',{ascending:true});
+ if(error){area.innerHTML=`<div class="review-panel"><div class="err">評価を読み込めません：${esc(error.message)}</div></div>`;return}
+ const reviews=rows||[];
+ const mine=reviews.find(r=>r.reviewer_id===currentUser.id);
+ const theirs=reviews.find(r=>r.reviewer_id!==currentUser.id);
+ let html='<div class="review-panel"><div class="review-title">⭐ 取引相手を評価</div><div class="small" style="margin-top:4px">受取完了後、双方が1回ずつ評価できます。</div>';
+ if(mine){
+   html+=`<div class="review-done">評価を送信済み　<span class="review-score">${'★'.repeat(mine.rating)}${'☆'.repeat(5-mine.rating)}</span></div>`;
+   if(mine.comment)html+=`<div class="small" style="margin-top:7px">あなたのコメント：${esc(mine.comment)}</div>`;
+ }else{
+   html+=`<div class="review-stars">${[1,2,3,4,5].map(n=>`<button type="button" class="review-star" onclick="setReviewRating(${n})" aria-label="${n}点">★</button>`).join('')}</div><div class="small" id="reviewRatingLabel">未選択</div><textarea id="reviewComment" maxlength="200" placeholder="コメント（任意・200文字以内）"></textarea><button class="btn full" onclick="submitReview()">評価を送る</button><div id="reviewMsg"></div>`;
+ }
+ if(theirs&&mine){
+   html+=`<div class="review-received"><div class="small">相手からの評価</div><div class="review-score">${'★'.repeat(theirs.rating)}${'☆'.repeat(5-theirs.rating)}</div>${theirs.comment?`<div class="small" style="margin-top:5px">${esc(theirs.comment)}</div>`:''}</div>`;
+ }else if(mine&&!theirs){
+   html+=`<div class="small review-received">相手の評価は、相手も評価を送った後に表示されます。</div>`;
+ }else if(!mine&&theirs){
+   html+=`<div class="small review-received">相手は評価済みです。内容はあなたが評価を送った後に表示されます。</div>`;
+ }
+ html+='</div>';area.innerHTML=html;
+}
+async function submitReview(){
+ if(!currentConversation||currentConversation.delivery_status!=='accepted')return;
+ if(!selectedReviewRating||selectedReviewRating<1||selectedReviewRating>5)return info('reviewMsg','1〜5の星を選んでください。','err');
+ const comment=(document.getElementById('reviewComment')?.value||'').trim();
+ if(comment.length>200)return info('reviewMsg','コメントは200文字以内にしてください。','err');
+ const target=currentUser.id===currentConversation.seller_id?currentConversation.buyer_id:currentConversation.seller_id;
+ if(!target||target===currentUser.id)return info('reviewMsg','評価相手を確認できませんでした。','err');
+ if(!confirm(`${selectedReviewRating}点で評価を送りますか？送信後は変更できません。`))return;
+ const {error}=await sb.from('reviews').insert({conversation_id:currentConversationId,reviewer_id:currentUser.id,target_user_id:target,rating:selectedReviewRating,comment:comment||null});
+ if(error){
+   if(String(error.code)==='23505')return info('reviewMsg','この取引はすでに評価済みです。','err');
+   return info('reviewMsg',error.message,'err');
+ }
+ await sb.from('messages').insert({conversation_id:currentConversationId,sender_id:currentUser.id,body:'⭐ 取引評価を送信しました。'});
+ selectedReviewRating=0;
+ await Promise.all([loadReviewPanel(),loadChatMessages(),loadMe()]);
 }
 function rememberDeliveryFile(input){
  const f=input?.files?.[0]||null;
@@ -432,7 +487,10 @@ async function refreshAllData(){
 
 async function loadMe(){
   const {data:p}=await sb.from('profiles').select('*').eq('id',currentUser.id).maybeSingle();
-  meText.innerHTML=`<div class="profile-grid"><div class="profile-left"><b class="profile-name">${esc(p?.display_name||currentUser.email)}</b><div class="small profile-verify">本人確認：${p?.verified?'済':'未'}</div></div><div class="profile-right"><div class="small profile-email">${esc(currentUser.email||'')}</div><button class="btn ghost profile-logout" onclick="signOut()">ログアウト</button></div></div>`;
+  const {data:receivedReviews}=await sb.from('reviews').select('rating').eq('target_user_id',currentUser.id);
+  const ratings=(receivedReviews||[]).map(r=>Number(r.rating)).filter(n=>n>=1&&n<=5);
+  const avg=ratings.length?(ratings.reduce((a,b)=>a+b,0)/ratings.length).toFixed(1):null;
+  meText.innerHTML=`<div class="profile-grid"><div class="profile-left"><b class="profile-name">${esc(p?.display_name||currentUser.email)}</b><div class="small profile-verify">本人確認：${p?.verified?'済':'未'}</div>${avg?`<div class="small profile-rating">★ ${avg}（${ratings.length}件）</div>`:''}</div><div class="profile-right"><div class="small profile-email">${esc(currentUser.email||'')}</div><button class="btn ghost profile-logout" onclick="signOut()">ログアウト</button></div></div>`;
 
   const [{data:l},{data:sellerConvs,error:sellerErr},{data:buyerConvs,error:buyerErr}]=await Promise.all([
     sb.from('listings').select('*').eq('seller_id',currentUser.id).order('created_at',{ascending:false}),
