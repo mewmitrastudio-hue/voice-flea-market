@@ -207,7 +207,7 @@ window.VOICE_FLEA_CONFIG={SUPABASE_URL:"https://tyulybijubckitybgubc.supabase.co
 
 <section id="messages" class="page"><div class="messages-list-head"><button class="chatback" onclick="go('home')" aria-label="ホームへ戻る">‹</button><div class="messages-list-title"><b>メッセージ</b><span>取引相手とのやり取り</span></div></div><h2>メッセージ</h2><div id="conversationList" class="chatlist"></div><div id="chatBox" class="card chatbox"><div class="chatroom-head"><button class="chatback" onclick="closeChat()" aria-label="メッセージ一覧へ">‹</button><div class="chatroom-title"><b id="chatTitle">チャット</b><span id="chatSub">取引メッセージ</span></div></div><div id="chatMessages" class="chatmessages"></div><div id="deliveryArea" class="chatdelivery"></div><div class="chatdock"><div class="chatcomposer"><textarea id="chatInput" placeholder="メッセージを入力"></textarea><button class="btn" onclick="sendChatMessage()">送信</button></div><div id="chatMsg"></div></div></div></section>
 
-<section id="me" class="page"><h2>マイページ</h2><div class="card"><div id="meText">-</div><button class="btn ghost full" onclick="signOut()">ログアウト</button></div><div id="myListings"></div><div id="mySellerJobs"></div><div id="myBuyerJobs"></div></section>
+<section id="me" class="page"><h2>マイページ</h2><div class="card profile-compact"><div id="meText">-</div></div><div id="myListings"></div><div id="mySellerJobs"></div><div id="myBuyerJobs"></div></section>
 
 <div id="notifOverlay" class="notif-overlay" onclick="if(event.target===this)closeNotifications()"><aside class="notif-sheet"><div class="notif-head"><h2>お知らせ</h2><div class="notif-actions"><button class="notif-readall" onclick="markAllNotificationsRead()">すべて既読</button><button class="notif-close" onclick="closeNotifications()">×</button></div></div><div class="small">必要な連絡をまとめて確認できます。</div><div id="notifContent"><div class="notif-empty">読み込み中...</div></div></aside></div>
 <nav id="nav" class="nav hide"><button onclick="go('home')">ホーム</button><button onclick="go('voices')">声を探す</button><button onclick="go('sell')">出品</button><button onclick="go('jobs')">仕事<span id="jobBadge" class="badge"></span></button><button onclick="go('messages')">メッセージ<span id="msgBadge" class="badge"></span></button><button onclick="go('me')">マイページ</button></nav>
@@ -432,7 +432,7 @@ async function refreshAllData(){
 
 async function loadMe(){
   const {data:p}=await sb.from('profiles').select('*').eq('id',currentUser.id).maybeSingle();
-  meText.innerHTML=`<b>${esc(p?.display_name||currentUser.email)}</b><div class="small">${esc(currentUser.email||'')}</div><div class="small">本人確認：${p?.verified?'済':'未'}</div>`;
+  meText.innerHTML=`<div class="profile-grid"><div class="profile-left"><b class="profile-name">${esc(p?.display_name||currentUser.email)}</b><div class="small profile-verify">本人確認：${p?.verified?'済':'未'}</div></div><div class="profile-right"><div class="small profile-email">${esc(currentUser.email||'')}</div><button class="btn ghost profile-logout" onclick="signOut()">ログアウト</button></div></div>`;
 
   const [{data:l},{data:sellerConvs,error:sellerErr},{data:buyerConvs,error:buyerErr}]=await Promise.all([
     sb.from('listings').select('*').eq('seller_id',currentUser.id).order('created_at',{ascending:false}),
@@ -716,4 +716,61 @@ body.normal-mode #nav button{font-size:13px!important}
 #me h3{margin:18px 2px 8px;font-size:18px}
 .trade-history-card{margin:8px 0}
 .trade-history-card .delivery-status{flex:0 0 auto}
+</style>
+
+<style id="mypage-profile-compact-20260911">
+#me .profile-compact{
+  padding:14px 16px!important;
+  margin-top:10px!important;
+  margin-bottom:12px!important;
+}
+#me .profile-grid{
+  display:grid;
+  grid-template-columns:minmax(0,.9fr) minmax(0,1.35fr);
+  gap:12px;
+  align-items:start;
+}
+#me .profile-left,
+#me .profile-right{
+  min-width:0;
+}
+#me .profile-name{
+  display:block;
+  font-size:18px;
+  line-height:1.2;
+  margin-bottom:5px;
+}
+#me .profile-verify{
+  font-size:10px;
+}
+#me .profile-right{
+  display:flex;
+  flex-direction:column;
+  align-items:stretch;
+  gap:7px;
+}
+#me .profile-email{
+  font-size:10.5px;
+  line-height:1.25;
+  text-align:left;
+  overflow-wrap:anywhere;
+}
+#me .profile-logout{
+  width:112px;
+  max-width:100%;
+  align-self:flex-start;
+  padding:8px 10px;
+  margin:0;
+  font-size:11px;
+  border-radius:10px;
+}
+#me h3{
+  margin-top:14px!important;
+}
+@media (max-width:360px){
+  #me .profile-grid{grid-template-columns:minmax(0,.8fr) minmax(0,1.4fr);gap:9px}
+  #me .profile-name{font-size:16px}
+  #me .profile-email{font-size:9.5px}
+  #me .profile-logout{width:100px;font-size:10.5px}
+}
 </style>
