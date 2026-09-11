@@ -125,7 +125,7 @@ body.messages-mode #messages>h2,body.chat-mode #messages>h2{display:none!importa
 if(window.navigator.standalone===true){document.body.classList.add('standalone')}
 window.VOICE_FLEA_CONFIG={SUPABASE_URL:"https://tyulybijubckitybgubc.supabase.co",SUPABASE_PUBLISHABLE_KEY:"sb_publishable_pcKCEYNbn8OtCEzfIERPDA_QAKWFF49"};</script>
 </head><body><div class="app">
-<div class="topbar"><div class="brandwrap"><div class="brandicon">🎙️</div><div class="brandtext"><div class="brand">声のフリマ</div><div class="tag">世界に、あなたの声を売る。あなたの声を、世界が買う。</div><div class="brandmini">声でつながるマーケット</div></div></div><div class="topactions"><button id="bellBtn" class="bellbtn hide" onclick="openNotifications()" aria-label="お知らせ">🔔<span id="bellBadge" class="bellbadge"></span></button><span id="cloudStatus" class="status">確認中</span></div></div>
+<div class="topbar"><div class="brandwrap"><div class="brandicon">🎙️</div><div class="brandtext"><div class="brand">声のフリマ</div><div class="tag">世界に、あなたの声を売る。あなたの声を、世界が買う。</div><div class="brandmini">あなたの声を、必要な人へ。</div></div></div><div class="topactions"><button id="bellBtn" class="bellbtn hide" onclick="openNotifications()" aria-label="お知らせ">🔔<span id="bellBadge" class="bellbadge"></span></button><span id="cloudStatus" class="status">確認中</span></div></div>
 
 <section id="authPage" class="page on">
 <div class="hero"><h1>話す・読む・歌う。<br>あなたの声が仕事になる。</h1><p>声を売る・探す・頼む。すべてここから。</p></div>
@@ -133,7 +133,7 @@ window.VOICE_FLEA_CONFIG={SUPABASE_URL:"https://tyulybijubckitybgubc.supabase.co
 <div id="configNotice" class="notice">現在サービスへ接続できません。時間をおいて再度お試しください。</div>
 </section>
 
-<section id="home" class="page"><div class="hero"><h1>あなたの声を、必要な人へ。</h1><p>外国語・方言・動画・学習・歌・メッセージ。</p></div><div class="home-note"><span>🎧 声でつながる</span><span>🌍 海外にも届ける</span><span>💬 直接やり取り</span></div><div class="quickgrid"><button class="quickcard" onclick="go('sell')"><span class="qi">🎙️</span>声を出品<small>自分の声を商品にする</small></button><button class="quickcard" onclick="go('voices')"><span class="qi">🔎</span>声を探す<small>ぴったりの声を見つける</small></button><button class="quickcard wide" onclick="go('jobs')"><span class="qi">💬</span>声の仕事を募集<small>欲しい声が見つからなければ募集できます</small></button></div><div id="homeCounts" class="card small home-stats">読み込み中...</div></section>
+<section id="home" class="page"><div class="home-note"><span>🎧 声でつながる</span><span>🌍 海外にも届ける</span><span>💬 直接やり取り</span></div><div class="quickgrid"><button class="quickcard" onclick="go('sell')"><span class="qi">🎙️</span>声を出品<small>自分の声を商品にする</small></button><button class="quickcard" onclick="go('voices')"><span class="qi">🔎</span>声を探す<small>ぴったりの声を見つける</small></button><button class="quickcard wide" onclick="go('jobs')"><span class="qi">💬</span>声の仕事を募集<small>欲しい声が見つからなければ募集できます</small></button></div><div id="homeCounts" class="card small home-stats">読み込み中...</div></section>
 
 <section id="voices" class="page"><h2>声を探す</h2><div class="field"><input id="voiceSearch" placeholder="英語、方言、歌..." oninput="loadListings()"></div><div id="listingList"></div></section>
 
