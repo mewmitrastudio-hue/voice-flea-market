@@ -459,3 +459,54 @@ async function loadMe(){const {data:p}=await sb.from('profiles').select('*').eq(
 window.addEventListener('pageshow',async()=>{if(currentUser){const page=localStorage.getItem(uiKey('page'));if(page&&document.visibilityState!=='hidden')await restoreUI()}});
 init();
 </script></body></html>
+<style id="width-tidy-20260911">
+/* Final home width tidy: keep every home element inside the iPhone viewport. */
+body.normal-mode .app{
+  padding-left:16px!important;
+  padding-right:16px!important;
+}
+body.normal-mode .topbar{
+  width:100%!important;
+  grid-template-columns:minmax(0,1fr) auto!important;
+  gap:6px!important;
+}
+body.normal-mode .brandwrap{gap:7px!important;min-width:0!important}
+body.normal-mode .brandicon{width:36px!important;height:36px!important;flex-basis:36px!important;font-size:19px!important}
+body.normal-mode .brand{font-size:25px!important}
+body.normal-mode .tag .line1,
+body.normal-mode .tag .line2{font-size:clamp(9.4px,2.45vw,10.6px)!important}
+body.normal-mode .topactions{gap:4px!important;min-width:0!important}
+body.normal-mode .refreshbtn,
+body.normal-mode .bellbtn{width:30px!important;height:30px!important;flex:0 0 30px!important}
+body.normal-mode .status{font-size:8.5px!important;padding:4px 6px!important;white-space:nowrap!important}
+#home .home-note{width:100%!important;gap:4px!important}
+#home .home-note span{font-size:8.4px!important;padding:5px 2px!important}
+#home .quickgrid{width:100%!important;gap:8px!important}
+#home .quickcard{width:100%!important;max-width:100%!important;padding-left:11px!important;padding-right:11px!important}
+#home .home-stats{width:100%!important}
+/* Narrower six-button navigation, centered and fully inside the screen. */
+body.normal-mode #nav{
+  width:calc(100% - 20px)!important;
+  margin:6px 10px 0!important;
+  padding:6px 0 calc(6px + env(safe-area-inset-bottom))!important;
+  gap:6px!important;
+  background:rgba(255,255,255,.96)!important;
+  border-radius:16px 16px 0 0!important;
+}
+body.normal-mode #nav button{
+  width:100%!important;
+  height:44px!important;
+  min-height:44px!important;
+  font-size:13.5px!important;
+  border-radius:12px!important;
+}
+@media (max-width:390px){
+  body.normal-mode .app{padding-left:14px!important;padding-right:14px!important}
+  body.normal-mode .brand{font-size:23px!important}
+  body.normal-mode .brandicon{width:34px!important;height:34px!important;flex-basis:34px!important;font-size:18px!important}
+  body.normal-mode .tag .line1,body.normal-mode .tag .line2{font-size:9.2px!important}
+  body.normal-mode .status{font-size:8px!important;padding:4px 5px!important}
+  #home .home-note span{font-size:8px!important}
+  body.normal-mode #nav{width:calc(100% - 18px)!important;margin-left:9px!important;margin-right:9px!important}
+}
+</style>
