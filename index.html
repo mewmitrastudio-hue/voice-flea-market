@@ -389,7 +389,9 @@ async function loadReviewPanel(){
        e.preventDefault();
        e.stopPropagation();
        const rating=Number(btn.dataset.rating||0);
-       setReviewRating(rating);
+       // 同じ評価の最後の星をもう一度押したら1段階下げる。
+       // 例: 5/5で5個目→4/5、1/5で1個目→未選択。
+       setReviewRating(selectedReviewRating===rating ? rating-1 : rating);
      },{passive:false});
    });
  }
