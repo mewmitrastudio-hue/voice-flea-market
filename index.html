@@ -320,7 +320,7 @@ async function loadDeliveries(){
  const isSeller=currentUser.id===currentConversation.seller_id;
  const isBuyer=currentUser.id===currentConversation.buyer_id;
  let html='';
- if(isSeller&&currentConversation.delivery_status!=='accepted'){
+ if(isSeller&&currentConversation.delivery_status==='none'&&!currentConversation.delivery_path){
    html=`<div class="delivery-panel"><div class="row"><div><b style="font-size:12px">📦 音声を納品</b><div class="small">ここから送る音声は取引相手だけが確認できます。</div></div></div><input id="deliveryFile" type="file" accept="audio/*,.m4a,.mp3,.wav,.aac,.mp4" onchange="rememberDeliveryFile(this)"><div id="deliverySelectedName" class="small" style="margin-top:6px;font-weight:700"></div><button class="btn full" onclick="uploadDelivery()">納品する</button><div id="deliveryMsg"></div></div>`;
  }
  if(currentConversation.delivery_path){
