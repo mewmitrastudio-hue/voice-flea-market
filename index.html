@@ -207,7 +207,7 @@ window.VOICE_FLEA_CONFIG={SUPABASE_URL:"https://tyulybijubckitybgubc.supabase.co
 
 <section id="messages" class="page"><div class="messages-list-head"><button class="chatback" onclick="go('home')" aria-label="ホームへ戻る">‹</button><div class="messages-list-title"><b>メッセージ</b><span>取引相手とのやり取り</span></div></div><h2>メッセージ</h2><div id="conversationList" class="chatlist"></div><div id="chatBox" class="card chatbox"><div class="chatroom-head"><button class="chatback" onclick="closeChat()" aria-label="メッセージ一覧へ">‹</button><div class="chatroom-title"><b id="chatTitle">チャット</b><span id="chatSub">取引メッセージ</span></div></div><div id="chatMessages" class="chatmessages"></div><div id="deliveryArea" class="chatdelivery"></div><div class="chatdock"><div class="chatcomposer"><textarea id="chatInput" placeholder="メッセージを入力"></textarea><button class="btn" onclick="sendChatMessage()">送信</button></div><div id="chatMsg"></div></div></div></section>
 
-<section id="me" class="page"><h2>マイページ</h2><div class="card"><div id="meText">-</div><button class="btn ghost full" onclick="signOut()">ログアウト</button></div><div id="myListings"></div></section>
+<section id="me" class="page"><h2>マイページ</h2><div class="card"><div id="meText">-</div><button class="btn ghost full" onclick="signOut()">ログアウト</button></div><div id="myListings"></div><div id="mySellerJobs"></div><div id="myBuyerJobs"></div></section>
 
 <div id="notifOverlay" class="notif-overlay" onclick="if(event.target===this)closeNotifications()"><aside class="notif-sheet"><div class="notif-head"><h2>お知らせ</h2><div class="notif-actions"><button class="notif-readall" onclick="markAllNotificationsRead()">すべて既読</button><button class="notif-close" onclick="closeNotifications()">×</button></div></div><div class="small">必要な連絡をまとめて確認できます。</div><div id="notifContent"><div class="notif-empty">読み込み中...</div></div></aside></div>
 <nav id="nav" class="nav hide"><button onclick="go('home')">ホーム</button><button onclick="go('voices')">声を探す</button><button onclick="go('sell')">出品</button><button onclick="go('jobs')">仕事<span id="jobBadge" class="badge"></span></button><button onclick="go('messages')">メッセージ<span id="msgBadge" class="badge"></span></button><button onclick="go('me')">マイページ</button></nav>
@@ -430,7 +430,67 @@ async function refreshAllData(){
  }
 }
 
-async function loadMe(){const {data:p}=await sb.from('profiles').select('*').eq('id',currentUser.id).maybeSingle();meText.innerHTML=`<b>${esc(p?.display_name||currentUser.email)}</b><div class="small">${esc(currentUser.email||'')}</div><div class="small">本人確認：${p?.verified?'済':'未'}</div>`;const {data:l}=await sb.from('listings').select('*').eq('seller_id',currentUser.id).order('created_at',{ascending:false});myListings.innerHTML=`<h3>自分の出品</h3>${(l||[]).map(x=>`<div class="card"><b>${esc(x.title)}</b><div class="small">¥${Number(x.price_jpy).toLocaleString()}</div></div>`).join('')||'<div class="card small">まだ出品がありません。</div>'}`}
+async function loadMe(){
+  const {data:p}=await sb.from('profiles').select('*').eq('id',currentUser.id).maybeSingle();
+  meText.innerHTML=`<b>${esc(p?.display_name||currentUser.email)}</b><div class="small">${esc(currentUser.email||'')}</div><div class="small">本人確認：${p?.verified?'済':'未'}</div>`;
+
+  const [{data:l},{data:sellerConvs,error:sellerErr},{data:buyerConvs,error:buyerErr}]=await Promise.all([
+    sb.from('listings').select('*').eq('seller_id',currentUser.id).order('created_at',{ascending:false}),
+    sb.from('conversations').select('id,job_id,listing_id,buyer_id,seller_id,delivery_status,delivered_at,accepted_at,created_at').eq('seller_id',currentUser.id).order('created_at',{ascending:false}),
+    sb.from('conversations').select('id,job_id,listing_id,buyer_id,seller_id,delivery_status,delivered_at,accepted_at,created_at').eq('buyer_id',currentUser.id).order('created_at',{ascending:false})
+  ]);
+
+  myListings.innerHTML=`<h3>出品したもの</h3>${(l||[]).map(x=>`<div class="card"><b>${esc(x.title)}</b><div class="small">¥${Number(x.price_jpy||0).toLocaleString()}</div></div>`).join('')||'<div class="card small">まだ出品がありません。</div>'}`;
+
+  const allConvs=[...(sellerConvs||[]),...(buyerConvs||[])];
+  const jobIds=[...new Set(allConvs.map(x=>x.job_id).filter(Boolean))];
+  const listingIds=[...new Set(allConvs.map(x=>x.listing_id).filter(Boolean))];
+
+  let jobs=[],listings=[];
+  if(jobIds.length){
+    const {data}=await sb.from('jobs').select('id,title,budget_jpy,status').in('id',jobIds);
+    jobs=data||[];
+  }
+  if(listingIds.length){
+    const {data}=await sb.from('listings').select('id,title,price_jpy').in('id',listingIds);
+    listings=data||[];
+  }
+  const jobMap=new Map(jobs.map(x=>[x.id,x]));
+  const listingMap=new Map(listings.map(x=>[x.id,x]));
+
+  const statusText=(c)=>{
+    if(c.delivery_status==='accepted')return '受取済み';
+    if(c.delivery_status==='submitted')return '納品済み';
+    return '進行中';
+  };
+  const statusClass=(c)=>c.delivery_status==='accepted'?'received':'';
+  const titleOf=(c)=>{
+    if(c.job_id)return jobMap.get(c.job_id)?.title||'仕事';
+    if(c.listing_id)return listingMap.get(c.listing_id)?.title||'出品取引';
+    return '取引';
+  };
+  const amountOf=(c)=>{
+    if(c.job_id)return jobMap.get(c.job_id)?.budget_jpy;
+    if(c.listing_id)return listingMap.get(c.listing_id)?.price_jpy;
+    return null;
+  };
+  const historyCard=(c,role)=>{
+    const amount=amountOf(c);
+    return `<div class="card trade-history-card"><div class="row"><div><b>${esc(titleOf(c))}</b><div class="small">${role}${amount!=null?`　¥${Number(amount).toLocaleString()}`:''}</div></div><span class="delivery-status ${statusClass(c)}">${statusText(c)}</span></div></div>`;
+  };
+
+  if(sellerErr){
+    mySellerJobs.innerHTML=`<h3>受注した仕事</h3><div class="card err">${esc(sellerErr.message)}</div>`;
+  }else{
+    mySellerJobs.innerHTML=`<h3>受注した仕事</h3>${(sellerConvs||[]).map(c=>historyCard(c,'受注')).join('')||'<div class="card small">まだ受注した仕事はありません。</div>'}`;
+  }
+
+  if(buyerErr){
+    myBuyerJobs.innerHTML=`<h3>依頼した仕事</h3><div class="card err">${esc(buyerErr.message)}</div>`;
+  }else{
+    myBuyerJobs.innerHTML=`<h3>依頼した仕事</h3>${(buyerConvs||[]).map(c=>historyCard(c,'依頼')).join('')||'<div class="card small">まだ依頼した仕事はありません。</div>'}`;
+  }
+}
 
 // iPhone / Android: pull down from the top of the current normal page to refresh all cloud data.
 (function setupPullToRefresh(){
@@ -650,4 +710,10 @@ body.normal-mode #nav button{font-size:13px!important}
   body.normal-mode .app{padding-left:9px!important;padding-right:9px!important}
   body.normal-mode #nav{width:min(calc(100vw - 14px),424px)!important}
 }
+</style>
+
+<style id="mypage-history-20260911">
+#me h3{margin:18px 2px 8px;font-size:18px}
+.trade-history-card{margin:8px 0}
+.trade-history-card .delivery-status{flex:0 0 auto}
 </style>
