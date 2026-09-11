@@ -192,6 +192,30 @@ window.VOICE_FLEA_CONFIG={SUPABASE_URL:"https://tyulybijubckitybgubc.supabase.co
 <style id="review-feature-20260911">
 .review-panel{margin-top:12px;background:linear-gradient(135deg,#fff,#faf7ff);border:1px solid #e4defb;border-radius:16px;padding:13px}.review-title{font-weight:900;font-size:13px}.review-stars{display:flex;gap:6px;margin:10px 0 8px}.review-star-actions{display:flex;align-items:center;gap:10px;margin-top:6px}.review-clear{border:1px solid #d9d4ef;background:#fff;color:#6b6780;border-radius:10px;padding:7px 10px;font-size:12px;font-weight:800}.review-clear:disabled{opacity:.45}.review-star{border:0;background:transparent;font-size:28px;line-height:1;padding:6px 4px;filter:grayscale(1);opacity:.42;touch-action:manipulation;-webkit-tap-highlight-color:transparent}.review-star.on{filter:none;opacity:1}.review-panel textarea{width:100%;min-height:74px;border:1px solid var(--line);border-radius:12px;padding:10px;font-size:13px;background:#fff;resize:vertical}.review-done{background:#ecfdf3;color:#087443;border-radius:12px;padding:10px;font-size:12px;font-weight:800;margin-top:9px}.review-received{margin-top:9px;border-top:1px solid #ece8f8;padding-top:9px}.review-score{font-size:18px;letter-spacing:1px;color:#f4a000;font-weight:900}.profile-rating{margin-top:4px;font-weight:800;color:#6558ef}
 </style>
+
+<style id="review-confirm-jp-20260911">
+.review-confirm-overlay{
+  position:fixed;inset:0;z-index:20000;
+  display:flex;align-items:center;justify-content:center;
+  padding:24px;background:rgba(20,24,42,.42);
+  backdrop-filter:blur(2px);-webkit-backdrop-filter:blur(2px);
+}
+.review-confirm-box{
+  width:min(100%,340px);background:#fff;border-radius:24px;
+  padding:24px 20px 18px;box-shadow:0 24px 70px rgba(28,25,60,.28);
+  border:1px solid #ece9fb;text-align:center;
+}
+.review-confirm-title{font-size:20px;font-weight:800;line-height:1.35;color:#15192a}
+.review-confirm-text{margin-top:8px;font-size:14px;line-height:1.6;color:#66708c}
+.review-confirm-actions{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:20px}
+.review-confirm-actions button{
+  min-height:48px;border-radius:14px;font-size:16px;font-weight:800;border:0;
+  -webkit-tap-highlight-color:transparent;
+}
+.review-confirm-cancel{background:#f0f1f7;color:#343a52}
+.review-confirm-send{background:linear-gradient(135deg,#5f5ce8,#7151f4);color:#fff}
+.review-confirm-actions button:active{transform:scale(.985)}
+</style>
 </head><body><div id="pullRefreshIndicator" class="pull-refresh-indicator">↓ 引っ張って更新</div><div class="app">
 <div class="topbar"><div class="brandwrap"><div class="brandicon">🎙️</div><div class="brandtext"><div class="brand">声のフリマ</div><div class="tag"><span class="line1">世界に、あなたの声を売る。</span><span class="line2">あなたの声を、世界が買う。</span></div></div></div><div class="topactions"><button id="refreshBtn" class="refreshbtn hide" onclick="refreshAllData()" aria-label="最新情報に更新" title="最新情報に更新">↻</button><button id="bellBtn" class="bellbtn hide" onclick="openNotifications()" aria-label="お知らせ">🔔<span id="bellBadge" class="bellbadge"></span></button><span id="cloudStatus" class="status">確認中</span></div></div>
 
@@ -398,6 +422,29 @@ async function loadReviewPanel(){
    });
  }
 }
+function showReviewConfirm(rating){
+ return new Promise(resolve=>{
+   const old=document.getElementById('reviewConfirmOverlay');
+   if(old)old.remove();
+   const overlay=document.createElement('div');
+   overlay.id='reviewConfirmOverlay';
+   overlay.className='review-confirm-overlay';
+   overlay.innerHTML=`<div class="review-confirm-box" role="dialog" aria-modal="true" aria-labelledby="reviewConfirmTitle">
+     <div id="reviewConfirmTitle" class="review-confirm-title">${rating}点で評価を送りますか？</div>
+     <div class="review-confirm-text">送信後は変更できません。</div>
+     <div class="review-confirm-actions">
+       <button type="button" class="review-confirm-cancel">戻る</button>
+       <button type="button" class="review-confirm-send">送信する</button>
+     </div>
+   </div>`;
+   const done=(v)=>{overlay.remove();resolve(v)};
+   overlay.querySelector('.review-confirm-cancel').addEventListener('click',()=>done(false));
+   overlay.querySelector('.review-confirm-send').addEventListener('click',()=>done(true));
+   overlay.addEventListener('click',(e)=>{if(e.target===overlay)done(false)});
+   document.body.appendChild(overlay);
+   setTimeout(()=>overlay.querySelector('.review-confirm-send')?.focus(),0);
+ });
+}
 async function submitReview(){
  if(!currentConversation||currentConversation.delivery_status!=='accepted')return;
  if(!selectedReviewRating||selectedReviewRating<1||selectedReviewRating>5)return info('reviewMsg','1〜5の星を選んでください。','err');
@@ -405,7 +452,8 @@ async function submitReview(){
  if(comment.length>200)return info('reviewMsg','コメントは200文字以内にしてください。','err');
  const target=currentUser.id===currentConversation.seller_id?currentConversation.buyer_id:currentConversation.seller_id;
  if(!target||target===currentUser.id)return info('reviewMsg','評価相手を確認できませんでした。','err');
- if(!confirm(`${selectedReviewRating}点で評価を送りますか？送信後は変更できません。`))return;
+ const ok=await showReviewConfirm(selectedReviewRating);
+ if(!ok)return;
  const {error}=await sb.from('reviews').insert({conversation_id:currentConversationId,reviewer_id:currentUser.id,target_user_id:target,rating:selectedReviewRating,comment:comment||null});
  if(error){
    if(String(error.code)==='23505')return info('reviewMsg','この取引はすでに評価済みです。','err');
@@ -540,10 +588,19 @@ async function loadMe(){
   const jobMap=new Map(jobs.map(x=>[x.id,x]));
   const listingMap=new Map(listings.map(x=>[x.id,x]));
 
+  // 取引状態はユーザーが流れを追いやすい言葉に統一する。
+  // 受取後に双方のレビューが完了した取引だけ「完了」と表示する。
+  const convIds=allConvs.map(x=>x.id).filter(Boolean);
+  const reviewCountByConversation=new Map();
+  if(convIds.length){
+    const {data:reviewRows}=await sb.from('reviews').select('conversation_id').in('conversation_id',convIds);
+    (reviewRows||[]).forEach(r=>reviewCountByConversation.set(r.conversation_id,(reviewCountByConversation.get(r.conversation_id)||0)+1));
+  }
   const statusText=(c)=>{
+    if(c.delivery_status==='accepted' && (reviewCountByConversation.get(c.id)||0)>=2)return '完了';
     if(c.delivery_status==='accepted')return '受取済み';
     if(c.delivery_status==='submitted')return '納品済み';
-    return '進行中';
+    return '取引中';
   };
   const statusClass=(c)=>c.delivery_status==='accepted'?'received':'';
   const titleOf=(c)=>{
