@@ -562,7 +562,8 @@ async function loadMe(){
   const {data:receivedReviews}=await sb.from('reviews').select('rating').eq('target_user_id',currentUser.id);
   const ratings=(receivedReviews||[]).map(r=>Number(r.rating)).filter(n=>n>=1&&n<=5);
   const avg=ratings.length?(ratings.reduce((a,b)=>a+b,0)/ratings.length).toFixed(1):null;
-  meText.innerHTML=`<div class="profile-grid"><div class="profile-left"><b class="profile-name">${esc(p?.display_name||currentUser.email)}</b><div class="small profile-verify">本人確認：${p?.verified?'済':'未'}</div>${avg?`<div class="small profile-rating">★ ${avg}（${ratings.length}件）</div>`:''}</div><div class="profile-right"><div class="small profile-email">${esc(currentUser.email||'')}</div><button class="btn ghost profile-logout" onclick="signOut()">ログアウト</button></div></div>`;
+  const verified=!!p?.verified;
+  meText.innerHTML=`<div class="profile-grid"><div class="profile-left"><b class="profile-name">${esc(p?.display_name||currentUser.email)}</b><div class="profile-badges"><span class="identity-badge ${verified?'verified':'unverified'}">${verified?'✓ 本人確認済み':'本人確認 未完了'}</span>${avg?`<span class="rating-badge">★ ${avg}（${ratings.length}件）</span>`:'<span class="rating-badge muted">まだ評価はありません</span>'}</div>${!verified?'<div class="identity-note">本人確認機能は正式公開前に追加予定です。</div>':''}</div><div class="profile-right"><div class="small profile-email">${esc(currentUser.email||'')}</div><button class="btn ghost profile-logout" onclick="signOut()">ログアウト</button></div></div>`;
 
   const [{data:l},{data:sellerConvs,error:sellerErr},{data:buyerConvs,error:buyerErr}]=await Promise.all([
     sb.from('listings').select('*').eq('seller_id',currentUser.id).order('created_at',{ascending:false}),
@@ -898,9 +899,13 @@ body.normal-mode #nav button{font-size:13px!important}
   line-height:1.2;
   margin-bottom:5px;
 }
-#me .profile-verify{
-  font-size:10px;
-}
+#me .profile-badges{display:flex;flex-wrap:wrap;gap:6px;align-items:center;margin-top:4px}
+#me .identity-badge,#me .rating-badge{display:inline-flex;align-items:center;min-height:25px;padding:4px 9px;border-radius:999px;font-size:10px;font-weight:800;line-height:1.1;white-space:nowrap}
+#me .identity-badge.verified{background:#e9fbf0;color:#138049;border:1px solid #c9f0d8}
+#me .identity-badge.unverified{background:#f3f4f7;color:#60697c;border:1px solid #e0e3ea}
+#me .rating-badge{background:#f4f1ff;color:#6558ef;border:1px solid #e3dcff}
+#me .rating-badge.muted{background:#f7f7f9;color:#8a8fa1;border-color:#eceef2}
+#me .identity-note{margin-top:7px;font-size:9.5px;line-height:1.35;color:#7f879b}
 #me .profile-right{
   display:flex;
   flex-direction:column;
@@ -929,6 +934,7 @@ body.normal-mode #nav button{font-size:13px!important}
   #me .profile-grid{grid-template-columns:minmax(0,.8fr) minmax(0,1.4fr);gap:9px}
   #me .profile-name{font-size:16px}
   #me .profile-email{font-size:9.5px}
+  #me .identity-badge,#me .rating-badge{font-size:9.5px;padding:4px 8px}
   #me .profile-logout{width:100px;font-size:10.5px}
 }
 </style>
