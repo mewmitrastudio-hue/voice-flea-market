@@ -61,6 +61,64 @@ body.messages-mode #messages.page.on,body.chat-mode #messages.page.on{display:bl
 body.messages-mode #messages.page.on{padding:0 14px calc(24px + env(safe-area-inset-bottom))!important;overflow:auto!important}
 body.chat-mode #messages.page.on{padding:0!important;overflow:hidden!important;background:#fff!important}
 
+
+/* === 2026-09-11 hard layout fix: fixed bottom navigation without overlap === */
+body.normal-mode{overflow:hidden!important;height:100dvh!important}
+body.normal-mode .app{
+  height:100dvh!important;
+  min-height:0!important;
+  max-height:100dvh!important;
+  overflow:hidden!important;
+  display:flex!important;
+  flex-direction:column!important;
+  padding:12px 12px 0!important;
+}
+body.normal-mode .topbar{flex:0 0 auto!important}
+body.normal-mode .page.on{
+  flex:1 1 auto!important;
+  min-height:0!important;
+  overflow-y:auto!important;
+  -webkit-overflow-scrolling:touch!important;
+  overscroll-behavior:contain!important;
+  padding-bottom:18px!important;
+}
+body.normal-mode #nav{
+  position:relative!important;
+  left:auto!important;
+  right:auto!important;
+  bottom:auto!important;
+  transform:none!important;
+  flex:0 0 auto!important;
+  width:calc(100% + 24px)!important;
+  margin:8px -12px 0!important;
+  padding:8px 10px calc(8px + env(safe-area-inset-bottom))!important;
+  z-index:30!important;
+  box-shadow:0 -8px 24px rgba(24,32,51,.08)!important;
+}
+body.normal-mode #nav button{min-height:48px!important;height:48px!important}
+@supports (-webkit-touch-callout:none){
+  body.normal-mode .app{height:100dvh!important;max-height:100dvh!important;padding-bottom:0!important}
+  body.normal-mode #nav{bottom:auto!important;margin-top:8px!important}
+}
+/* Dedicated message surfaces: no marketplace header and no global nav. */
+body.messages-mode,body.chat-mode{overflow:hidden!important;height:100dvh!important;background:#fff!important}
+body.messages-mode .app,body.chat-mode .app{
+  height:100dvh!important;min-height:100dvh!important;max-height:100dvh!important;
+  padding:0!important;margin:0 auto!important;overflow:hidden!important;display:block!important;
+}
+body.messages-mode .topbar,body.messages-mode #nav,
+body.chat-mode .topbar,body.chat-mode #nav{display:none!important;visibility:hidden!important;pointer-events:none!important}
+body.messages-mode #messages.page.on,
+body.chat-mode #messages.page.on,
+#messages.message-fullscreen{
+  display:block!important;position:fixed!important;inset:0!important;z-index:9999!important;
+  width:100vw!important;max-width:none!important;height:100dvh!important;min-height:100dvh!important;
+  margin:0!important;background:linear-gradient(180deg,#f7f4ff,#fff 34%)!important;
+}
+body.messages-mode #messages.page.on{padding:0 14px calc(16px + env(safe-area-inset-bottom))!important;overflow-y:auto!important}
+body.chat-mode #messages.page.on{padding:0!important;overflow:hidden!important;background:#fff!important}
+body.messages-mode #messages>h2,body.chat-mode #messages>h2{display:none!important}
+
 </style>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script>
@@ -101,12 +159,24 @@ function clearChatNotice(){if(window.chatMsg)chatMsg.innerHTML=''}
 function saveChatState(id,title){if(!currentUser)return;localStorage.setItem(uiKey('chat'),JSON.stringify({id,title}))}
 function clearChatState(){if(currentUser)localStorage.removeItem(uiKey('chat'))}
 function setShellMode(mode){
- const top=document.querySelector('.topbar'),navEl=document.getElementById('nav'),msgPage=document.getElementById('messages');
+ const top=document.querySelector('.topbar'),navEl=document.getElementById('nav'),msgPage=document.getElementById('messages'),appEl=document.querySelector('.app');
  document.body.classList.remove('normal-mode','messages-mode','chat-mode');
- top?.classList.remove('force-hide'); navEl?.classList.remove('force-hide');
- if(mode==='messages'){document.body.classList.add('messages-mode');top?.classList.add('force-hide');navEl?.classList.add('force-hide');msgPage?.classList.add('message-fullscreen')}
- else if(mode==='chat'){document.body.classList.add('chat-mode');top?.classList.add('force-hide');navEl?.classList.add('force-hide');msgPage?.classList.add('message-fullscreen')}
- else {document.body.classList.add('normal-mode');msgPage?.classList.remove('message-fullscreen')}
+ top?.classList.remove('force-hide'); navEl?.classList.remove('force-hide'); msgPage?.classList.remove('message-fullscreen');
+ if(top) top.style.display=''; if(navEl) navEl.style.display='';
+ if(mode==='messages'||mode==='chat'){
+   document.body.classList.add(mode==='chat'?'chat-mode':'messages-mode');
+   top?.classList.add('force-hide'); navEl?.classList.add('force-hide'); msgPage?.classList.add('message-fullscreen');
+   if(top){top.style.setProperty('display','none','important');top.style.setProperty('visibility','hidden','important')}
+   if(navEl){navEl.style.setProperty('display','none','important');navEl.style.setProperty('visibility','hidden','important')}
+   if(appEl){appEl.style.setProperty('padding','0','important');appEl.style.setProperty('overflow','hidden','important')}
+   if(msgPage){msgPage.style.setProperty('display','block','important');msgPage.style.setProperty('position','fixed','important');msgPage.style.setProperty('inset','0','important');msgPage.style.setProperty('z-index','9999','important');msgPage.style.setProperty('height','100dvh','important')}
+ }else{
+   document.body.classList.add('normal-mode');
+   if(top){top.style.removeProperty('display');top.style.removeProperty('visibility')}
+   if(navEl){navEl.style.removeProperty('display');navEl.style.removeProperty('visibility')}
+   if(appEl){appEl.style.removeProperty('padding');appEl.style.removeProperty('overflow')}
+   if(msgPage){['display','position','inset','z-index','height'].forEach(x=>msgPage.style.removeProperty(x))}
+ }
 }
 async function go(id,opts={}){const allowed=['home','voices','sell','jobs','messages','me'];if(!allowed.includes(id))id='home';setShellMode(id==='messages'?'messages':'normal');document.querySelectorAll('.page').forEach(p=>p.classList.remove('on'));document.getElementById(id).classList.add('on');document.querySelectorAll('#nav button').forEach((b,i)=>b.classList.toggle('on',allowed[i]===id));if(currentUser&&!opts.skipSave)localStorage.setItem(uiKey('page'),id);if(id==='voices')await loadListings();if(id==='jobs')await loadJobs();if(id==='messages')await loadConversations();if(id==='me')await loadMe();if(!opts.keepScroll){if(id==='messages'){document.getElementById('messages').scrollTop=0}else{document.querySelector('.app').scrollTop=0;window.scrollTo(0,0)}}}
 async function restoreUI(){let page=localStorage.getItem(uiKey('page'))||'home';await go(page,{skipSave:true});if(page==='messages'){try{const saved=JSON.parse(localStorage.getItem(uiKey('chat'))||'null');if(saved?.id)await openConversation(saved.id,saved.title||'チャット',{skipSave:true})}catch(e){clearChatState()}}}
