@@ -253,7 +253,7 @@ async function signOut(){document.body.classList.remove('normal-mode','chat-mode
 async function loadHome(){const [{count:lc},{count:jc}]=await Promise.all([sb.from('listings').select('*',{count:'exact',head:true}).eq('is_active',true),sb.from('jobs').select('*',{count:'exact',head:true}).eq('status','open')]);homeCounts.innerHTML=`公開中の声：<b>${lc??0}</b>件　／　募集中の仕事：<b>${jc??0}</b>件`}
 async function createListing(){if(!currentUser)return;let path=null;const f=sellAudio.files[0];if(f){const ext=(f.name.split('.').pop()||'').toLowerCase().replace(/[^a-z0-9]/g,'');const allowed=['m4a','mp3','wav','aac','mp4','mpeg','ogg','webm'];const mime=(f.type||'').toLowerCase();if(!allowed.includes(ext) && !mime.startsWith('audio/'))return info('sellMsg','音声ファイルを選択してください（m4a / mp3 / wav / aac / mp4 など）。','err');path=`${currentUser.id}/${crypto.randomUUID()}.${ext||'audio'}`;const contentType=mime||({m4a:'audio/mp4',mp4:'audio/mp4',mp3:'audio/mpeg',mpeg:'audio/mpeg',wav:'audio/wav',aac:'audio/aac',ogg:'audio/ogg',webm:'audio/webm'}[ext]||'application/octet-stream');const {error:ue}=await sb.storage.from('voice-samples').upload(path,f,{upsert:false,contentType});if(ue)return info('sellMsg','音声アップロード: '+ue.message,'err')}
 const {error}=await sb.from('listings').insert({seller_id:currentUser.id,title:sellTitle.value.trim(),category:sellCategory.value,description:sellDesc.value.trim(),price_jpy:+sellPrice.value,delivery_days:+sellDays.value,ai_use:sellAI.value,sample_path:path});if(error)return info('sellMsg',error.message,'err');info('sellMsg','クラウドへ出品しました。');sellTitle.value='';sellDesc.value='';sellAudio.value='';loadHome()}
-async function loadListings(){if(!sb)return;let q=voiceSearch.value.trim();let query=sb.from('listings').select('id,title,category,price_jpy,delivery_days,ai_use,sample_path,seller_id,profiles!listings_seller_id_fkey(display_name)').eq('is_active',true).order('created_at',{ascending:false}).limit(50);if(q)query=query.or(`title.ilike.%${q}%,category.ilike.%${q}%`);const {data,error}=await query;if(error){listingList.innerHTML=`<div class="err">${esc(error.message)}</div>`;return}listingList.innerHTML=(data||[]).map(v=>{let audio='';if(v.sample_path){const {data:u}=sb.storage.from('voice-samples').getPublicUrl(v.sample_path);audio=`<audio controls src="${u.publicUrl}"></audio>`}return `<div class="card voice"><div class="row"><div><b>${esc(v.title)}</b><div class="small">${esc(v.profiles?.display_name||'出品者')}</div></div><div class="price">¥${Number(v.price_jpy).toLocaleString()}</div></div><span class="pill">${esc(v.category)}</span><span class="pill">${v.delivery_days}日</span><span class="pill">AI:${esc(v.ai_use)}</span>${audio}</div>`}).join('')||'<div class="card small">まだ出品がありません。</div>'}
+async function loadListings(){if(!sb)return;let q=voiceSearch.value.trim();let query=sb.from('listings').select('id,title,category,price_jpy,delivery_days,ai_use,sample_path,seller_id,profiles!listings_seller_id_fkey(display_name)').eq('is_active',true).order('created_at',{ascending:false}).limit(50);if(q)query=query.or(`title.ilike.%${q}%,category.ilike.%${q}%`);const {data,error}=await query;if(error){listingList.innerHTML=`<div class="err">${esc(error.message)}</div>`;return}listingList.innerHTML=(data||[]).map(v=>{let audio='';if(v.sample_path){const {data:u}=sb.storage.from('voice-samples').getPublicUrl(v.sample_path);audio=`<audio controls src="${u.publicUrl}"></audio>`}return `<div class="card voice"><div class="row"><div><b>${esc(v.title)}</b><div class="small">${esc(v.profiles?.display_name||'出品者')}</div></div><div class="price">¥${Number(v.price_jpy).toLocaleString()}</div></div><span class="pill">${esc(v.category)}</span><span class="pill">${v.delivery_days}日</span><span class="pill">AI:${esc(v.ai_use)}</span>${audio}</div>`}).join('')||'<div class="card small mypage-item-card mypage-empty-card">まだ出品がありません。</div>'}
 async function createJob(){if(!currentUser)return;const {error}=await sb.from('jobs').insert({buyer_id:currentUser.id,title:jobTitle.value.trim(),description:jobDesc.value.trim(),budget_jpy:+jobBudget.value,ai_use:jobAI.value});if(error)return info('jobMsg',error.message,'err');info('jobMsg','募集をクラウドへ公開しました。');jobTitle.value='';jobDesc.value='';loadJobs();loadHome();loadJobBadge()}
 async function loadJobs(){
 if(!sb)return;
@@ -440,7 +440,7 @@ async function loadMe(){
     sb.from('conversations').select('id,job_id,listing_id,buyer_id,seller_id,delivery_status,delivered_at,accepted_at,created_at').eq('buyer_id',currentUser.id).order('created_at',{ascending:false})
   ]);
 
-  myListings.innerHTML=`<h3>出品したもの</h3>${(l||[]).map(x=>`<div class="card"><b>${esc(x.title)}</b><div class="small">¥${Number(x.price_jpy||0).toLocaleString()}</div></div>`).join('')||'<div class="card small">まだ出品がありません。</div>'}`;
+  myListings.innerHTML=`<h3>出品したもの</h3>${(l||[]).map(x=>`<div class="card mypage-item-card"><b>${esc(x.title)}</b><div class="small">¥${Number(x.price_jpy||0).toLocaleString()}</div></div>`).join('')||'<div class="card small mypage-item-card mypage-empty-card">まだ出品がありません。</div>'}`;
 
   const allConvs=[...(sellerConvs||[]),...(buyerConvs||[])];
   const jobIds=[...new Set(allConvs.map(x=>x.job_id).filter(Boolean))];
@@ -476,19 +476,19 @@ async function loadMe(){
   };
   const historyCard=(c,role)=>{
     const amount=amountOf(c);
-    return `<div class="card trade-history-card"><div class="row"><div><b>${esc(titleOf(c))}</b><div class="small">${role}${amount!=null?`　¥${Number(amount).toLocaleString()}`:''}</div></div><span class="delivery-status ${statusClass(c)}">${statusText(c)}</span></div></div>`;
+    return `<div class="card trade-history-card mypage-item-card"><div class="row"><div><b>${esc(titleOf(c))}</b><div class="small">${role}${amount!=null?`　¥${Number(amount).toLocaleString()}`:''}</div></div><span class="delivery-status ${statusClass(c)}">${statusText(c)}</span></div></div>`;
   };
 
   if(sellerErr){
     mySellerJobs.innerHTML=`<h3>受注した仕事</h3><div class="card err">${esc(sellerErr.message)}</div>`;
   }else{
-    mySellerJobs.innerHTML=`<h3>受注した仕事</h3>${(sellerConvs||[]).map(c=>historyCard(c,'受注')).join('')||'<div class="card small">まだ受注した仕事はありません。</div>'}`;
+    mySellerJobs.innerHTML=`<h3>受注した仕事</h3>${(sellerConvs||[]).map(c=>historyCard(c,'受注')).join('')||'<div class="card small mypage-item-card mypage-empty-card">まだ受注した仕事はありません。</div>'}`;
   }
 
   if(buyerErr){
     myBuyerJobs.innerHTML=`<h3>依頼した仕事</h3><div class="card err">${esc(buyerErr.message)}</div>`;
   }else{
-    myBuyerJobs.innerHTML=`<h3>依頼した仕事</h3>${(buyerConvs||[]).map(c=>historyCard(c,'依頼')).join('')||'<div class="card small">まだ依頼した仕事はありません。</div>'}`;
+    myBuyerJobs.innerHTML=`<h3>依頼した仕事</h3>${(buyerConvs||[]).map(c=>historyCard(c,'依頼')).join('')||'<div class="card small mypage-item-card mypage-empty-card">まだ依頼した仕事はありません。</div>'}`;
   }
 }
 
@@ -718,6 +718,18 @@ body.normal-mode #nav button{font-size:13px!important}
 .trade-history-card .delivery-status{flex:0 0 auto}
 </style>
 
+<style id="mypage-card-height-fix-20260911">
+/* マイページ3項目のカード高を揃える。ほかの画面のカードには影響させない。 */
+#me .mypage-item-card{
+  min-height:66px;
+  display:flex;
+  flex-direction:column;
+  justify-content:center;
+}
+#me .mypage-item-card > .row{width:100%}
+#me .mypage-empty-card{align-items:flex-start}
+</style>
+
 <style id="mypage-profile-compact-20260911">
 #me .profile-compact{
   padding:14px 16px!important;
@@ -772,40 +784,5 @@ body.normal-mode #nav button{font-size:13px!important}
   #me .profile-name{font-size:16px}
   #me .profile-email{font-size:9.5px}
   #me .profile-logout{width:100px;font-size:10.5px}
-}
-</style>
-
-<style id="mypage-card-height-fix-20260911">
-/* Tighten My Page history sections so all three white cards align and stay clear of the fixed nav. */
-#me h3{
-  margin:12px 2px 6px!important;
-  font-size:17px!important;
-  line-height:1.2!important;
-}
-#me #myListings .card,
-#me #mySellerJobs .card,
-#me #myBuyerJobs .card{
-  min-height:82px!important;
-  height:82px!important;
-  margin:6px 0!important;
-  padding:12px 16px!important;
-  border-radius:18px!important;
-  display:flex!important;
-  flex-direction:column!important;
-  justify-content:center!important;
-}
-#me #myListings .card.small,
-#me #mySellerJobs .card.small,
-#me #myBuyerJobs .card.small{
-  justify-content:center!important;
-}
-#me #mySellerJobs .trade-history-card .row{
-  width:100%!important;
-}
-#me #myBuyerJobs .trade-history-card .row{
-  width:100%!important;
-}
-#me{
-  padding-bottom:190px!important;
 }
 </style>
