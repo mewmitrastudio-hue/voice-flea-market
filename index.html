@@ -434,6 +434,15 @@ body.normal-mode #nav button{height:46px!important;min-height:46px!important;bor
   background:linear-gradient(135deg,#6f62f4,#d56ab9);color:#fff;font-size:30px;font-weight:900
 }
 
+
+.voice-filter-row{display:flex;gap:8px;flex-wrap:wrap;margin:0 2px 10px}
+.voice-filter-row label{
+  display:flex;align-items:center;gap:6px;
+  padding:8px 10px;border:1px solid #dedaff;border-radius:999px;
+  background:#fff;font-size:12px;font-weight:700;color:#5148c9
+}
+.voice-filter-row input{width:auto;margin:0}
+
 </style>
 <script>
 if(window.navigator.standalone===true){document.body.classList.add('standalone')}
@@ -520,7 +529,7 @@ window.__loadSupabaseSDK=async function(){
 
 <section id="home" class="page"><div class="quickgrid"><button class="quickcard" onclick="go('sell')"><span class="qi">🎙️</span>声を出品<small>自分の声を商品にする</small></button><button class="quickcard" onclick="go('voices')"><span class="qi">🔎</span>声を探す<small>ぴったりの声を見つける</small></button><button class="quickcard" onclick="go('jobs')"><span class="qi">📣</span>仕事を募集<small>欲しい声を依頼する</small></button><button class="quickcard" onclick="go('messages')"><span class="qi">💬</span>メッセージ<small>取引相手とやり取りする</small></button></div><div id="homeCounts" class="card small home-stats">読み込み中...</div></section>
 
-<section id="voices" class="page"><h2>声を探す</h2><div class="field"><input id="voiceSearch" placeholder="英語、関西弁、YouTube、出品者名..." oninput="scheduleListingSearch()"></div><div class="small" style="margin:-4px 2px 10px">タイトル・カテゴリー・説明・AI条件・出品者名から検索できます。</div><div id="listingSearchMeta" class="small" style="margin:0 2px 10px"></div><div id="listingList"></div><button id="listingLoadMoreBtn" class="btn secondary full hide" type="button" style="margin-top:12px" onclick="loadMoreListings()">さらに表示</button></section>
+<section id="voices" class="page"><h2>声を探す</h2><div class="field"><input id="voiceSearch" placeholder="英語、関西弁、YouTube、出品者名..." oninput="scheduleListingSearch()"></div><div class="small" style="margin:-4px 2px 10px">タイトル・カテゴリー・説明・AI条件・出品者名から検索できます。</div><div class="voice-filter-row"><label><input id="hidePurchasedToggle" type="checkbox" onchange="loadListings(true)"> 購入済みを非表示</label><label><input id="hideOwnToggle" type="checkbox" onchange="loadListings(true)"> 自分の出品を除外</label></div><div id="listingSearchMeta" class="small" style="margin:0 2px 10px"></div><div id="listingList"></div><button id="listingLoadMoreBtn" class="btn secondary full hide" type="button" style="margin-top:12px" onclick="loadMoreListings()">さらに表示</button></section>
 
 <section id="sell" class="page"><h2>声を出品する</h2><div class="card"><div class="field"><label>タイトル</label><input id="sellTitle" placeholder="例：自然な日本語を読みます"></div><div class="field"><label>カテゴリー</label><select id="sellCategory"><option>外国語・学習</option><option>日本語・方言</option><option>YouTube・SNS</option><option>ナレーション</option><option>歌</option><option>メッセージ</option><option>その他</option></select></div><div class="field"><label>説明</label><textarea id="sellDesc" placeholder="声の特徴、対応できる内容など"></textarea></div><div class="field"><label>価格（円）</label><input id="sellPrice" type="number" value="1000" min="0"></div><div class="field"><label>納期（日）</label><input id="sellDays" type="number" value="3" min="1"></div><div class="field"><label>AI利用</label><select id="sellAI"><option>禁止</option><option>案件ごとに相談</option><option>許可</option></select></div><div class="field"><label>公開用の声サンプル</label><input id="sellAudio" type="file"><div class="small">対応形式：m4a / mp3 / wav / aac / mp4 などの音声ファイル</div></div><div class="notice">ここへ登録する音声は「公開サンプル」として扱います。取引後の納品音声は別の非公開領域へ保存します。</div><button class="btn full" onclick="createListing()">出品する</button><div id="sellMsg"></div></div></section>
 
@@ -940,6 +949,24 @@ async function startStripeCheckout(listingId,btn){
   }
 }
 
+
+function hiddenPurchasedListingKey(id){
+  return currentUser ? `vf_hidden_purchased_listing_${currentUser.id}_${id}` : '';
+}
+function isPurchasedListingHidden(id){
+  return !!(currentUser && localStorage.getItem(hiddenPurchasedListingKey(id))==='1');
+}
+function hidePurchasedListingFromSearch(id){
+  if(!currentUser||!id)return;
+  localStorage.setItem(hiddenPurchasedListingKey(id),'1');
+  loadListings(true);
+}
+function restorePurchasedListingToSearch(id){
+  if(!currentUser||!id)return;
+  localStorage.removeItem(hiddenPurchasedListingKey(id));
+  loadListings(true);
+}
+
 const LISTING_PAGE_SIZE=24;
 let listingOffset=0;
 let listingSearchTimer=null;
@@ -966,6 +993,8 @@ async function loadListings(reset=true){
 
   const rawQ=(voiceSearch?.value||'').trim();
   const safeQ=rawQ.replace(/[(),]/g,' ').replace(/\s+/g,' ').trim();
+  const hidePurchased=!!document.getElementById('hidePurchasedToggle')?.checked;
+  const hideOwn=!!document.getElementById('hideOwnToggle')?.checked;
   const paidListingIds=new Set();
 
   if(currentUser?.id){
@@ -1030,7 +1059,12 @@ async function loadListings(reset=true){
     return;
   }
 
-  const rows=data||[];
+  const rows=(data||[]).filter(v=>{
+    if(hideOwn && v.seller_id===currentUser?.id)return false;
+    if(hidePurchased && paidListingIds.has(v.id))return false;
+    if(isPurchasedListingHidden(v.id))return false;
+    return true;
+  });
 
   const cards=rows.map(v=>{
     let audio='';
@@ -1048,7 +1082,7 @@ async function loadListings(reset=true){
     if(own){
       action=`<button class="btn full" type="button" disabled style="margin-top:14px;opacity:.62">購入テストは別アカウントで</button>`;
     }else if(purchased){
-      action=`<button class="btn full" type="button" disabled style="margin-top:14px;background:#e9fbef;color:#16844f;border:1px solid #bcebcf;opacity:1">✓ 購入済み・支払い完了</button><button class="btn full" type="button" style="margin-top:8px" onclick="openPurchasedListingChat('${esc(v.id)}','${esc(v.seller_id)}','${esc(v.title).replace(/'/g,'&#39;')}')">取引を開始する</button>`;
+      action=`<button class="btn full" type="button" disabled style="margin-top:14px;background:#e9fbef;color:#16844f;border:1px solid #bcebcf;opacity:1">✓ 購入済み・支払い完了</button><button class="btn full" type="button" style="margin-top:8px" onclick="openPurchasedListingChat('${esc(v.id)}','${esc(v.seller_id)}','${esc(v.title).replace(/'/g,'&#39;')}')">取引を開始する</button><button class="btn secondary full" type="button" style="margin-top:8px" onclick="hidePurchasedListingFromSearch('${esc(v.id)}')">検索一覧から非表示</button>`;
     }else{
       action=`<button class="btn full" type="button" style="margin-top:14px" onclick="startStripeCheckout('${esc(v.id)}',this)">購入する</button>`;
     }
@@ -1068,9 +1102,10 @@ async function loadListings(reset=true){
   listingOffset+=rows.length;
 
   const total=Number(count||0);
+  const filterNote=(hidePurchased||hideOwn)?'（絞り込み中）':'';
   listingSearchMeta.textContent=safeQ
-    ? `「${rawQ}」の検索結果：${total}件`
-    : `公開中の声：${total}件`;
+    ? `「${rawQ}」の検索結果：${total}件 ${filterNote}`.trim()
+    : `公開中の声：${total}件 ${filterNote}`.trim();
 
   if(rows.length===LISTING_PAGE_SIZE && listingOffset<total){
     listingLoadMoreBtn?.classList.remove('hide');
