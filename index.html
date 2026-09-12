@@ -377,6 +377,31 @@ body.normal-mode #nav button{height:46px!important;min-height:46px!important;bor
   margin-top:8px;
 }
 
+
+.manual-overlay{
+  position:fixed;inset:0;z-index:99999;display:none;
+  background:rgba(20,22,35,.42);backdrop-filter:blur(3px);
+  padding:18px;
+}
+.manual-overlay.show{display:flex;align-items:center;justify-content:center}
+.manual-box{
+  width:min(100%,620px);max-height:88dvh;overflow:auto;background:#fff;
+  border-radius:24px;padding:20px;box-shadow:0 22px 70px rgba(36,28,74,.24)
+}
+.manual-head{display:flex;justify-content:space-between;align-items:flex-start;gap:12px;margin-bottom:14px}
+.manual-head h3{margin:0;font-size:22px}
+.manual-close{
+  width:40px;height:40px;border:0;border-radius:13px;background:#f1efff;
+  color:#5148c9;font-size:22px;font-weight:900
+}
+.manual-section{
+  padding:14px 0;border-top:1px solid #ece9f7
+}
+.manual-section b{font-size:14px}
+.manual-section p{
+  margin:7px 0 0;color:#6f6a82;font-size:12px;line-height:1.7
+}
+
 </style>
 <script>
 if(window.navigator.standalone===true){document.body.classList.add('standalone')}
@@ -512,6 +537,7 @@ window.__loadSupabaseSDK=async function(){
 
     <div class="main-menu-section">
       <div class="main-menu-label">サポート</div>
+      <button onclick="closeMainMenu();openManualCenter()">📖 使い方・操作マニュアル</button>
       <button onclick="closeMainMenu();openRulesCenter()">📘 ルール・ポリシー</button>
       <button onclick="closeMainMenu();openSafetyCenter('support')">✉️ お問い合わせ</button>
       <div class="main-menu-account">
@@ -523,6 +549,68 @@ window.__loadSupabaseSDK=async function(){
       </div>
     </div>
   </aside>
+</div>
+
+<div id="manualOverlay" class="manual-overlay" onclick="if(event.target===this)closeManualCenter()">
+  <div class="manual-box">
+    <div class="manual-head">
+      <div>
+        <h3>使い方・操作マニュアル</h3>
+        <div class="small">声のフリマの基本操作</div>
+      </div>
+      <button class="manual-close" type="button" onclick="closeManualCenter()">×</button>
+    </div>
+
+    <div class="manual-section">
+      <b>🎧 声を探す</b>
+      <p>キーワードで検索し、気になる声を選びます。タイトル・カテゴリー・説明・AI条件・出品者名から探せます。</p>
+    </div>
+
+    <div class="manual-section">
+      <b>🛒 声を購入する</b>
+      <p>「購入する」からStripe決済へ進みます。支払い後は「購入済み・支払い完了」と表示されます。</p>
+    </div>
+
+    <div class="manual-section">
+      <b>💬 取引を始める</b>
+      <p>購入後の「取引を開始する」から、出品者との専用チャットへ進みます。</p>
+    </div>
+
+    <div class="manual-section">
+      <b>📦 納品・受け取り</b>
+      <p>出品者が音声を納品し、購入者が内容を確認して「受け取る」を押すと取引完了です。</p>
+    </div>
+
+    <div class="manual-section">
+      <b>🎙️ 声を出品する</b>
+      <p>「出品」からタイトル、カテゴリー、説明、価格、納期、AI利用条件、サンプル音声を登録します。</p>
+    </div>
+
+    <div class="manual-section">
+      <b>💼 仕事を募集する</b>
+      <p>欲しい声が見つからない場合は「仕事」から依頼を募集できます。応募者とのやり取りはメッセージで行います。</p>
+    </div>
+
+    <div class="manual-section">
+      <b>💰 売上を確認する</b>
+      <p>マイページまたは右上メニューの「売上・振込」から、売上総額・手数料・受取額を確認できます。</p>
+    </div>
+
+    <div class="manual-section">
+      <b>🙈 完了した取引を整理する</b>
+      <p>完了案件は「非表示」にできます。削除ではないため、あとから「非表示にした取引」から再表示できます。</p>
+    </div>
+
+    <div class="manual-section">
+      <b>🤖 AI利用条件</b>
+      <p>「AI学習・音声生成への利用」を許可するか禁止するか、出品者が指定できます。</p>
+    </div>
+
+    <div class="manual-section">
+      <b>🔔 お知らせ・未読</b>
+      <p>ベルやメニューの未読数字から、応募・承認・メッセージなどの新着を確認できます。</p>
+    </div>
+  </div>
 </div>
 <div id="financeOverlay" class="finance-overlay" onclick="if(event.target===this)closeFinanceCenter()"><div class="finance-box"><div class="finance-head"><h3>決済・売上</h3><button class="finance-close" onclick="closeFinanceCenter()">×</button></div><div class="finance-beta">Stripe Sandboxで決済連携を確認中です。ここにはSupabaseに保存された実際のテスト決済結果を表示します。</div><div class="finance-tabs"><button id="financeTabBuyer" class="finance-tab active" onclick="showFinancePanel('buyer')">支払い確認</button><button id="financeTabSeller" class="finance-tab" onclick="showFinancePanel('seller')">売上・振込</button></div><div id="financeBody"></div></div></div>
 <div id="notifOverlay" class="notif-overlay" onclick="if(event.target===this)closeNotifications()"><aside class="notif-sheet"><div class="notif-head"><h2>お知らせ</h2><div class="notif-actions"><button class="notif-readall" onclick="markAllNotificationsRead()">すべて既読</button><button class="notif-close" onclick="closeNotifications()">×</button></div></div><div class="small">必要な連絡をまとめて確認できます。</div><div id="notifContent"><div class="notif-empty">読み込み中...</div></div></aside></div>
@@ -649,6 +737,14 @@ function setShellMode(mode){
    if(appEl){appEl.style.removeProperty('padding');appEl.style.removeProperty('overflow')}
    if(msgPage){['display','position','inset','z-index','height'].forEach(x=>msgPage.style.removeProperty(x))}
  }
+}
+
+
+function openManualCenter(){
+  document.getElementById('manualOverlay')?.classList.add('show');
+}
+function closeManualCenter(){
+  document.getElementById('manualOverlay')?.classList.remove('show');
 }
 
 function openMainMenu(){
