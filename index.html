@@ -253,6 +253,26 @@ body.normal-mode #nav button{height:46px!important;min-height:46px!important;bor
   line-height:1.5;
 }
 
+
+.main-menu-overlay{
+  position:fixed;inset:0;z-index:99998;display:none;
+  background:rgba(20,22,35,.38);backdrop-filter:blur(3px);
+}
+.main-menu-overlay.show{display:block}
+.main-menu-sheet{
+  position:absolute;top:0;right:0;width:min(88vw,390px);height:100%;
+  background:#fff;padding:calc(env(safe-area-inset-top,0px) + 18px) 16px calc(env(safe-area-inset-bottom,0px) + 24px);
+  overflow:auto;box-shadow:-16px 0 48px rgba(33,26,64,.18)
+}
+.main-menu-head{display:flex;align-items:flex-start;justify-content:space-between;gap:12px;margin-bottom:14px}
+.main-menu-head h2{margin:0;font-size:24px}
+.main-menu-close{width:42px;height:42px;border:none;border-radius:14px;background:#f1efff;color:#5148c9;font-size:24px;font-weight:800}
+.main-menu-section{display:grid;gap:8px;padding:14px 0;border-top:1px solid #ece9f7}
+.main-menu-label{font-size:11px;font-weight:900;color:#8a849f;letter-spacing:.04em;margin-bottom:2px}
+.main-menu-section button{width:100%;border:1px solid #e5e0f6;background:#fff;color:#282a3d;border-radius:14px;padding:13px 14px;text-align:left;font-size:14px;font-weight:800}
+.main-menu-section button:active{background:#f7f5ff}
+.main-menu-section .danger-menu-btn{color:#b42318;border-color:#f2d0cc;background:#fffafa}
+
 </style>
 <script>
 if(window.navigator.standalone===true){document.body.classList.add('standalone')}
@@ -329,7 +349,7 @@ window.__loadSupabaseSDK=async function(){
 </style>
 
 </head><body><div id="pullRefreshIndicator" class="pull-refresh-indicator">↓ 引っ張って更新</div><div class="app">
-<div class="topbar"><div class="brandwrap"><div class="brandicon">🎙️</div><div class="brandtext"><div class="brand">声のフリマ</div><div class="tag"><span class="line1">世界に、あなたの声を売る。</span><span class="line2">あなたの声を、世界が買う。</span></div></div></div><div class="topactions"><button id="refreshBtn" class="refreshbtn hide" onclick="refreshAllData()" aria-label="最新情報に更新" title="最新情報に更新">↻</button><button id="bellBtn" class="bellbtn hide" onclick="openNotifications()" aria-label="お知らせ">🔔<span id="bellBadge" class="bellbadge"></span></button><span id="cloudStatus" class="status">確認中</span></div></div>
+<div class="topbar"><div class="brandwrap"><div class="brandicon">🎙️</div><div class="brandtext"><div class="brand">声のフリマ</div><div class="tag"><span class="line1">世界に、あなたの声を売る。</span><span class="line2">あなたの声を、世界が買う。</span></div></div></div><div class="topactions"><button id="refreshBtn" class="refreshbtn hide" onclick="refreshAllData()" aria-label="最新情報に更新" title="最新情報に更新">↻</button><button id="bellBtn" class="bellbtn hide" onclick="openNotifications()" aria-label="お知らせ">🔔<span id="bellBadge" class="bellbadge"></span></button><button id="menuBtn" class="bellbtn hide" onclick="openMainMenu()" aria-label="メニュー">☰</button><span id="cloudStatus" class="status">確認中</span></div></div>
 
 <section id="authPage" class="page on">
 <div class="hero"><h1>話す・読む・歌う。<br>あなたの声が仕事になる。</h1><p>声を売る・探す・頼む。すべてここから。</p></div>
@@ -349,6 +369,51 @@ window.__loadSupabaseSDK=async function(){
 
 <section id="me" class="page"><h2>マイページ</h2><div class="card profile-compact"><div id="meText">-</div></div><div id="myListings"></div><div id="mySoldVoices"></div><div id="myPurchasedVoices"></div><div id="mySellerJobs"></div><div id="myBuyerJobs"></div><div id="myHiddenTrades"></div><div class="card finance-card"><b>💳 決済・売上</b><div class="small" style="margin-top:5px">Stripeで確定した支払いと、出品者の売上を確認できます。</div><div id="sellerSalesSummary" style="margin-top:12px"></div><div class="finance-grid"><button class="btn secondary" onclick="openFinanceCenter('buyer')">支払い内訳</button><button class="btn secondary" onclick="openFinanceCenter('seller')">売上・振込</button></div><div class="stripe-connect-box"><div id="stripeConnectStatus" class="stripe-connect-status">Stripe受取アカウントの状態を確認中...</div><button id="stripeConnectBtn" class="btn full stripe-connect-btn" type="button" onclick="connectStripeSeller()">Stripe受取アカウントを設定</button></div></div><div class="card safety-card"><b>✉️ お問い合わせ</b><div class="small" style="margin-top:5px">使い方、不具合、その他のお問い合わせはこちらから。</div><button class="btn secondary full" onclick="openSafetyCenter('support')">お問い合わせを開く</button></div><div class="card rules-card"><b>📘 ルール・ポリシー</b><div class="small" style="margin-top:5px">利用規約、プライバシー、禁止事項、キャンセル・返金、音声・AI利用条件、特商法・運営者情報を確認できます。</div><button class="btn secondary full" onclick="openRulesCenter()">ルールを確認する</button></div></section>
 
+
+<div id="mainMenuOverlay" class="main-menu-overlay" onclick="if(event.target===this)closeMainMenu()">
+  <aside class="main-menu-sheet">
+    <div class="main-menu-head">
+      <div>
+        <h2>メニュー</h2>
+        <div class="small">声のフリマの機能一覧</div>
+      </div>
+      <button class="main-menu-close" type="button" onclick="closeMainMenu()">×</button>
+    </div>
+
+    <div class="main-menu-section">
+      <div class="main-menu-label">メイン</div>
+      <button onclick="menuGo('home')">🏠 ホーム</button>
+      <button onclick="menuGo('voices')">🎧 声を探す</button>
+      <button onclick="menuGo('sell')">➕ 出品</button>
+      <button onclick="menuGo('jobs')">💼 仕事</button>
+      <button onclick="menuGo('messages')">💬 メッセージ</button>
+      <button onclick="menuGo('me')">👤 マイページ</button>
+      <button onclick="closeMainMenu();openNotifications()">🔔 お知らせ</button>
+    </div>
+
+    <div class="main-menu-section">
+      <div class="main-menu-label">取引</div>
+      <button onclick="menuGoMySection('myPurchasedVoices')">🛒 購入した音声</button>
+      <button onclick="menuGoMySection('mySoldVoices')">🎙️ 販売した音声</button>
+      <button onclick="menuGoMySection('myBuyerJobs')">📨 依頼した仕事</button>
+      <button onclick="menuGoMySection('mySellerJobs')">📥 受注した仕事</button>
+      <button onclick="menuGoMySection('myHiddenTrades')">🙈 非表示にした取引</button>
+    </div>
+
+    <div class="main-menu-section">
+      <div class="main-menu-label">お金</div>
+      <button onclick="closeMainMenu();openFinanceCenter('buyer')">💳 支払い内訳</button>
+      <button onclick="closeMainMenu();openFinanceCenter('seller')">💰 売上・振込</button>
+    </div>
+
+    <div class="main-menu-section">
+      <div class="main-menu-label">サポート</div>
+      <button onclick="closeMainMenu();openRulesCenter()">📘 ルール・ポリシー</button>
+      <button onclick="closeMainMenu();openSafetyCenter('support')">✉️ お問い合わせ</button>
+      <button class="danger-menu-btn" onclick="closeMainMenu();signOut()">🚪 ログアウト</button>
+    </div>
+  </aside>
+</div>
 <div id="financeOverlay" class="finance-overlay" onclick="if(event.target===this)closeFinanceCenter()"><div class="finance-box"><div class="finance-head"><h3>決済・売上</h3><button class="finance-close" onclick="closeFinanceCenter()">×</button></div><div class="finance-beta">Stripe Sandboxで決済連携を確認中です。ここにはSupabaseに保存された実際のテスト決済結果を表示します。</div><div class="finance-tabs"><button id="financeTabBuyer" class="finance-tab active" onclick="showFinancePanel('buyer')">支払い確認</button><button id="financeTabSeller" class="finance-tab" onclick="showFinancePanel('seller')">売上・振込</button></div><div id="financeBody"></div></div></div>
 <div id="notifOverlay" class="notif-overlay" onclick="if(event.target===this)closeNotifications()"><aside class="notif-sheet"><div class="notif-head"><h2>お知らせ</h2><div class="notif-actions"><button class="notif-readall" onclick="markAllNotificationsRead()">すべて既読</button><button class="notif-close" onclick="closeNotifications()">×</button></div></div><div class="small">必要な連絡をまとめて確認できます。</div><div id="notifContent"><div class="notif-empty">読み込み中...</div></div></aside></div>
 <div id="rulesOverlay" class="rules-overlay" onclick="if(event.target===this)closeRulesCenter()"><div class="rules-box"><div class="rules-head"><h3>ルール・ポリシー</h3><button class="rules-close" onclick="closeRulesCenter()">×</button></div><div class="rules-beta">現在はWeb MVPのテスト段階です。決済・返金条件などは正式な決済機能を導入する前に確定・更新します。</div><div class="rules-tabs"><button id="ruleTabTerms" class="rules-tab active" onclick="showRuleDoc('terms')">利用規約</button><button id="ruleTabPrivacy" class="rules-tab" onclick="showRuleDoc('privacy')">プライバシーポリシー</button><button id="ruleTabProhibited" class="rules-tab" onclick="showRuleDoc('prohibited')">禁止事項</button><button id="ruleTabCancel" class="rules-tab" onclick="showRuleDoc('cancel')">キャンセル・返金</button><button id="ruleTabAi" class="rules-tab" onclick="showRuleDoc('ai')">音声・AI利用</button><button id="ruleTabCommerce" class="rules-tab" onclick="showRuleDoc('commerce')">特商法・運営者情報</button></div><div id="rulesBody" class="rules-body"></div></div></div>
@@ -475,6 +540,28 @@ function setShellMode(mode){
    if(msgPage){['display','position','inset','z-index','height'].forEach(x=>msgPage.style.removeProperty(x))}
  }
 }
+
+function openMainMenu(){
+  const el=document.getElementById('mainMenuOverlay');
+  if(el)el.classList.add('show');
+}
+function closeMainMenu(){
+  const el=document.getElementById('mainMenuOverlay');
+  if(el)el.classList.remove('show');
+}
+async function menuGo(id){
+  closeMainMenu();
+  await go(id);
+}
+async function menuGoMySection(sectionId){
+  closeMainMenu();
+  await go('me');
+  setTimeout(()=>{
+    const el=document.getElementById(sectionId);
+    if(el)el.scrollIntoView({behavior:'smooth',block:'start'});
+  },120);
+}
+
 async function go(id,opts={}){const allowed=['home','voices','sell','jobs','messages','me'];if(!allowed.includes(id))id='home';setShellMode(id==='messages'?'messages':'normal');document.querySelectorAll('.page').forEach(p=>p.classList.remove('on'));document.getElementById(id).classList.add('on');document.querySelectorAll('#nav button').forEach((b,i)=>b.classList.toggle('on',allowed[i]===id));if(currentUser&&!opts.skipSave)localStorage.setItem(uiKey('page'),id);if(id==='voices')await loadListings();if(id==='jobs')await loadJobs();if(id==='messages')await loadConversations();if(id==='me')await loadMe();if(!opts.keepScroll){if(id==='messages'){document.getElementById('messages').scrollTop=0}else{document.querySelector('.app').scrollTop=0;window.scrollTo(0,0)}}}
 async function restoreUI(){let page=localStorage.getItem(uiKey('page'))||'home';await go(page,{skipSave:true});if(page==='messages'){try{const saved=JSON.parse(localStorage.getItem(uiKey('chat'))||'null');if(saved?.id)await openConversation(saved.id,saved.title||'チャット',{skipSave:true})}catch(e){clearChatState()}}}
 async function init(){
@@ -501,7 +588,7 @@ async function init(){
     configNotice.textContent='サービス接続に失敗しました。右上の更新ボタンで再試行してください。';
   }
 }
-async function renderAuth(){if(currentUser){authPage.classList.remove('on');nav.classList.remove('hide');refreshBtn?.classList.remove('hide');bellBtn?.classList.remove('hide');cloudStatus.textContent='オンライン';await loadHome();loadJobBadge();loadMessageBadge();loadNotificationBadge();await restoreUI()}else{document.querySelectorAll('.page').forEach(p=>p.classList.remove('on'));authPage.classList.add('on');nav.classList.add('hide');refreshBtn?.classList.add('hide');bellBtn?.classList.add('hide');closeNotifications();document.body.classList.remove('normal-mode','messages-mode','chat-mode');document.querySelector('.topbar')?.classList.remove('force-hide');cloudStatus.textContent=configured?'オンライン':'設定待ち'}}
+async function renderAuth(){if(currentUser){authPage.classList.remove('on');nav.classList.remove('hide');refreshBtn?.classList.remove('hide');bellBtn?.classList.remove('hide');menuBtn?.classList.remove('hide');cloudStatus.textContent='オンライン';await loadHome();loadJobBadge();loadMessageBadge();loadNotificationBadge();await restoreUI()}else{document.querySelectorAll('.page').forEach(p=>p.classList.remove('on'));authPage.classList.add('on');nav.classList.add('hide');refreshBtn?.classList.add('hide');bellBtn?.classList.add('hide');menuBtn?.classList.add('hide');closeNotifications();closeMainMenu();document.body.classList.remove('normal-mode','messages-mode','chat-mode');document.querySelector('.topbar')?.classList.remove('force-hide');cloudStatus.textContent=configured?'オンライン':'設定待ち'}}
 async function signUp(){if(!sb)return info('authMsg','まず接続設定が必要です','err');if(password.value.length<8)return info('authMsg','パスワードは8文字以上にしてください','err');const {error}=await sb.auth.signUp({email:email.value.trim(),password:password.value,userMetadata:{display_name:displayName.value.trim()||'ユーザー'},options:{data:{display_name:displayName.value.trim()||'ユーザー'}}});if(error)return info('authMsg',error.message,'err');info('authMsg','登録を受け付けました。メール確認が有効な場合は確認後にログインしてください。')}
 function resetLoginZoom(){
   try{
