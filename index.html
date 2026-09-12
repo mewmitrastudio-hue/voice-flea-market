@@ -468,6 +468,27 @@ body.normal-mode #nav button{height:46px!important;min-height:46px!important;bor
 .public-profile-section{padding:14px 0;border-bottom:1px solid #f0edf8}.public-profile-section:last-child{border-bottom:0}.public-profile-section p{margin:7px 0 0;white-space:pre-wrap;line-height:1.7;color:#5f5a71;font-size:13px}
 .public-listings{display:grid;gap:8px;margin-top:9px}.public-listing-card{width:100%;display:flex;justify-content:space-between;align-items:center;gap:12px;border:1px solid #e5e0f7;background:#fff;border-radius:14px;padding:12px;text-align:left}.public-listing-card strong{color:#5148c9;white-space:nowrap}
 
+
+.avatar-preview-overlay{
+  position:fixed;inset:0;z-index:100010;display:none;align-items:center;justify-content:center;
+  padding:18px;background:rgba(8,10,18,.82);backdrop-filter:blur(5px)
+}
+.avatar-preview-overlay.show{display:flex}
+.avatar-preview-box{
+  position:relative;width:min(92vw,520px);max-height:88dvh;
+  display:flex;flex-direction:column;align-items:center;gap:10px
+}
+.avatar-preview-box img{
+  display:block;max-width:100%;max-height:76dvh;width:auto;height:auto;
+  object-fit:contain;border-radius:20px;background:#111;box-shadow:0 20px 70px rgba(0,0,0,.45)
+}
+.avatar-preview-close{
+  position:absolute;right:-4px;top:-46px;width:40px;height:40px;border:0;border-radius:50%;
+  background:#fff;color:#242033;font-size:24px;font-weight:900
+}
+.avatar-preview-name{color:#fff;font-size:14px;font-weight:800;text-align:center}
+.profile-avatar-preview.clickable-preview{cursor:pointer;box-shadow:0 0 0 3px #eeeaff}
+
 </style>
 <script>
 if(window.navigator.standalone===true){document.body.classList.add('standalone')}
@@ -588,6 +609,14 @@ window.__loadSupabaseSDK=async function(){
   </div>
 </div>
 
+
+<div id="avatarPreviewOverlay" class="avatar-preview-overlay" onclick="if(event.target===this)closeAvatarPreview()">
+  <div class="avatar-preview-box">
+    <button type="button" class="avatar-preview-close" onclick="closeAvatarPreview()">×</button>
+    <img id="avatarPreviewImage" src="" alt="プロフィール画像">
+    <div id="avatarPreviewName" class="avatar-preview-name"></div>
+  </div>
+</div>
 <div id="publicProfileOverlay" class="public-profile-overlay" onclick="if(event.target===this)closePublicProfile()">
   <div class="public-profile-box">
     <div class="public-profile-head">
@@ -1630,9 +1659,35 @@ function avatarMarkup(profile,size='md',clickId=''){
   const name=profile?.display_name||'ユーザー';
   const url=profileAvatarUrl(profile?.avatar_path);
   const inner=url?`<img src="${esc(url)}" alt="">`:`<span>${esc(String(name).trim().charAt(0).toUpperCase()||'U')}</span>`;
-  const click=clickId?` onclick="event.stopPropagation();openPublicProfile('${esc(clickId)}')"`:'';
-  return `<div class="user-avatar ${size} ${clickId?'clickable':''}"${click}>${inner}</div>`;
+  let click='';
+  let clickable=false;
+  if(url){
+    click=` onclick="event.stopPropagation();openAvatarPreview('${esc(url).replace(/'/g,'&#39;')}','${esc(name).replace(/'/g,'&#39;')}')"`;
+    clickable=true;
+  }else if(clickId){
+    click=` onclick="event.stopPropagation();openPublicProfile('${esc(clickId)}')"`;
+    clickable=true;
+  }
+  return `<div class="user-avatar ${size} ${clickable?'clickable':''}"${click}>${inner}</div>`;
 }
+
+function openAvatarPreview(url,name=''){
+  if(!url)return;
+  const ov=document.getElementById('avatarPreviewOverlay');
+  const img=document.getElementById('avatarPreviewImage');
+  const label=document.getElementById('avatarPreviewName');
+  if(!ov||!img)return;
+  img.src=url;
+  if(label)label.textContent=name||'';
+  ov.classList.add('show');
+}
+function closeAvatarPreview(){
+  const ov=document.getElementById('avatarPreviewOverlay');
+  const img=document.getElementById('avatarPreviewImage');
+  if(ov)ov.classList.remove('show');
+  if(img)img.src='';
+}
+
 async function openProfileEdit(name=''){
   const ov=document.getElementById('profileEditOverlay');
   const {data:p}=await sb.from('profiles').select('display_name,avatar_path,profile_tagline,profile_bio,profile_specialties,profile_languages').eq('id',currentUser.id).maybeSingle();
@@ -1645,6 +1700,8 @@ async function openProfileEdit(name=''){
   const avatar=document.getElementById('profileAvatarPreview');
   const url=profileAvatarUrl(p?.avatar_path);
   avatar.innerHTML=url?`<img src="${esc(url)}" alt="">`:`${esc(String(p?.display_name||name||'U').trim().charAt(0).toUpperCase()||'U')}`;
+  avatar.onclick=url?()=>openAvatarPreview(url,p?.display_name||name||''):null;
+  avatar.classList.toggle('clickable-preview',!!url);
   if(ov)ov.classList.add('show');
 }
 function previewProfileAvatar(input){
@@ -1652,7 +1709,10 @@ function previewProfileAvatar(input){
   if(!file.type.startsWith('image/'))return info('profileEditMsg','画像ファイルを選んでください。','err');
   if(file.size>5*1024*1024)return info('profileEditMsg','アイコン画像は5MB以下にしてください。','err');
   const url=URL.createObjectURL(file);
-  document.getElementById('profileAvatarPreview').innerHTML=`<img src="${url}" alt="">`;
+  const avatar=document.getElementById('profileAvatarPreview');
+  avatar.innerHTML=`<img src="${url}" alt="">`;
+  avatar.onclick=()=>openAvatarPreview(url,document.getElementById('profileDisplayName')?.value||'');
+  avatar.classList.add('clickable-preview');
 }
 
 async function removeProfileAvatar(){
@@ -1671,7 +1731,11 @@ async function removeProfileAvatar(){
 
   const name=p?.display_name||document.getElementById('profileDisplayName')?.value||'U';
   const avatar=document.getElementById('profileAvatarPreview');
-  if(avatar)avatar.innerHTML=esc(String(name).trim().charAt(0).toUpperCase()||'U');
+  if(avatar){
+    avatar.innerHTML=esc(String(name).trim().charAt(0).toUpperCase()||'U');
+    avatar.onclick=null;
+    avatar.classList.remove('clickable-preview');
+  }
   const input=document.getElementById('profileAvatarFile');
   if(input)input.value='';
 
