@@ -1634,12 +1634,12 @@ function avatarMarkup(profile,size='md',clickId=''){
 }
 async function openProfileEdit(name=''){
   const ov=document.getElementById('profileEditOverlay');
-  const {data:p}=await sb.from('profiles').select('display_name,avatar_path,tagline,bio,specialties,languages').eq('id',currentUser.id).maybeSingle();
+  const {data:p}=await sb.from('profiles').select('display_name,avatar_path,profile_tagline,profile_bio,profile_specialties,profile_languages').eq('id',currentUser.id).maybeSingle();
   document.getElementById('profileDisplayName').value=p?.display_name||name||'';
-  document.getElementById('profileTagline').value=p?.tagline||'';
-  document.getElementById('profileBio').value=p?.bio||'';
-  document.getElementById('profileSpecialties').value=p?.specialties||'';
-  document.getElementById('profileLanguages').value=p?.languages||'';
+  document.getElementById('profileTagline').value=p?.profile_tagline||'';
+  document.getElementById('profileBio').value=p?.profile_bio||'';
+  document.getElementById('profileSpecialties').value=p?.profile_specialties||'';
+  document.getElementById('profileLanguages').value=p?.profile_languages||'';
   document.getElementById('profileAvatarFile').value='';
   const avatar=document.getElementById('profileAvatarPreview');
   const url=profileAvatarUrl(p?.avatar_path);
@@ -1671,12 +1671,17 @@ async function saveBasicProfile(){
     const {error:upErr}=await sb.storage.from('profile-avatars').upload(avatarPath,file,{upsert:false,contentType:file.type||'image/jpeg'});
     if(upErr)return info('profileEditMsg','アイコン保存：'+upErr.message,'err');
   }
+  const tagline=(document.getElementById('profileTagline')?.value||'').trim();
+  const bio=(document.getElementById('profileBio')?.value||'').trim();
+  const specialties=(document.getElementById('profileSpecialties')?.value||'').trim();
+  const languages=(document.getElementById('profileLanguages')?.value||'').trim();
+
   const update={
     display_name:name,
-    tagline:(document.getElementById('profileTagline')?.value||'').trim(),
-    bio:(document.getElementById('profileBio')?.value||'').trim(),
-    specialties:(document.getElementById('profileSpecialties')?.value||'').trim(),
-    languages:(document.getElementById('profileLanguages')?.value||'').trim()
+    profile_tagline:tagline || null,
+    profile_bio:bio || null,
+    profile_specialties:specialties || null,
+    profile_languages:languages || null
   };
   if(avatarPath)update.avatar_path=avatarPath;
   const {error}=await sb.from('profiles').update(update).eq('id',currentUser.id);
@@ -1695,13 +1700,13 @@ async function openPublicProfile(userId){
   box.innerHTML='<div class="small">読み込み中...</div>';
   ov.classList.add('show');
   const [{data:p,error:pe},{data:listings,error:le}]=await Promise.all([
-    sb.from('profiles').select('id,display_name,avatar_path,tagline,bio,specialties,languages,verified').eq('id',userId).maybeSingle(),
+    sb.from('profiles').select('id,display_name,avatar_path,profile_tagline,profile_bio,profile_specialties,profile_languages,verified').eq('id',userId).maybeSingle(),
     sb.from('listings').select('id,title,category,price_jpy,ai_use').eq('seller_id',userId).eq('is_active',true).order('created_at',{ascending:false}).limit(12)
   ]);
   if(pe){box.innerHTML=`<div class="err">${esc(pe.message)}</div>`;return}
   const name=p?.display_name||'ユーザー';
   const listHtml=(listings||[]).map(v=>`<button class="public-listing-card" type="button" onclick="closePublicProfile();go('voices').then(()=>{voiceSearch.value='${esc(name).replace(/'/g,"&#39;")}';loadListings(true)})"><div><b>${esc(v.title)}</b><div class="small">${esc(v.category||'')}　AI:${esc(v.ai_use||'-')}</div></div><strong>¥${Number(v.price_jpy||0).toLocaleString()}</strong></button>`).join('')||'<div class="small">現在販売中の声はありません。</div>';
-  box.innerHTML=`<div class="public-profile-main">${avatarMarkup(p,'xl')}<div><h2>${esc(name)}</h2>${p?.verified?'<span class="identity-badge verified">✓ 本人確認済み</span>':''}${p?.tagline?`<div class="public-tagline">${esc(p.tagline)}</div>`:''}</div></div>${p?.bio?`<div class="public-profile-section"><b>自己紹介</b><p>${esc(p.bio)}</p></div>`:''}${p?.specialties?`<div class="public-profile-section"><b>得意ジャンル</b><p>${esc(p.specialties)}</p></div>`:''}${p?.languages?`<div class="public-profile-section"><b>対応言語・方言</b><p>${esc(p.languages)}</p></div>`:''}<div class="public-profile-section"><b>販売中の声</b><div class="public-listings">${listHtml}</div></div>`;
+  box.innerHTML=`<div class="public-profile-main">${avatarMarkup(p,'xl')}<div><h2>${esc(name)}</h2>${p?.verified?'<span class="identity-badge verified">✓ 本人確認済み</span>':''}${p?.profile_tagline?`<div class="public-tagline">${esc(p.profile_tagline)}</div>`:''}</div></div>${p?.profile_bio?`<div class="public-profile-section"><b>自己紹介</b><p>${esc(p.profile_bio)}</p></div>`:''}${p?.profile_specialties?`<div class="public-profile-section"><b>得意ジャンル</b><p>${esc(p.profile_specialties)}</p></div>`:''}${p?.profile_languages?`<div class="public-profile-section"><b>対応言語・方言</b><p>${esc(p.profile_languages)}</p></div>`:''}<div class="public-profile-section"><b>販売中の声</b><div class="public-listings">${listHtml}</div></div>`;
 }
 
 
@@ -1738,7 +1743,7 @@ async function loadMe(){
   }
 
   const displayName=p?.display_name||currentUser.email||'ユーザー';
-  meText.innerHTML=`<div class="profile-main-row">${avatarMarkup({...p,display_name:displayName},'lg')}<div class="profile-main-info"><b class="profile-name">${esc(displayName)}</b><div class="small profile-email">${esc(currentUser.email||'')}</div>${p?.tagline?`<div class="profile-tagline">${esc(p.tagline)}</div>`:''}<div class="profile-badges"><span class="identity-badge ${verified?'verified':'unverified'}">${verified?'✓ 本人確認済み':'本人確認 未完了'}</span>${avg?`<span class="rating-badge">★ ${avg}（${ratings.length}件）</span>`:'<span class="rating-badge muted">まだ評価はありません</span>'}</div></div><button class="btn secondary profile-edit-btn" type="button" onclick="openProfileEdit('${esc(displayName).replace(/'/g,'&#39;')}')">編集</button></div>`;
+  meText.innerHTML=`<div class="profile-main-row">${avatarMarkup({...p,display_name:displayName},'lg')}<div class="profile-main-info"><b class="profile-name">${esc(displayName)}</b><div class="small profile-email">${esc(currentUser.email||'')}</div>${p?.profile_tagline?`<div class="profile-tagline">${esc(p.profile_tagline)}</div>`:''}<div class="profile-badges"><span class="identity-badge ${verified?'verified':'unverified'}">${verified?'✓ 本人確認済み':'本人確認 未完了'}</span>${avg?`<span class="rating-badge">★ ${avg}（${ratings.length}件）</span>`:'<span class="rating-badge muted">まだ評価はありません</span>'}</div></div><button class="btn secondary profile-edit-btn" type="button" onclick="openProfileEdit('${esc(displayName).replace(/'/g,'&#39;')}')">編集</button></div>`;
 
   const [{data:l},{data:sellerConvs,error:sellerErr},{data:buyerConvs,error:buyerErr}]=await Promise.all([
     sb.from('listings').select('*').eq('seller_id',currentUser.id).order('created_at',{ascending:false}),
