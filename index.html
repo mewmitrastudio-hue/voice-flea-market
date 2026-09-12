@@ -294,9 +294,9 @@ window.__loadSupabaseSDK=async function(){
 
 <section id="messages" class="page"><div class="messages-list-head"><button class="chatback" onclick="go('home')" aria-label="ホームへ戻る">‹</button><div class="messages-list-title"><b>メッセージ</b><span>取引相手とのやり取り</span></div></div><h2>メッセージ</h2><div id="conversationList" class="chatlist"></div><div id="chatBox" class="card chatbox"><div class="chatroom-head"><button class="chatback" onclick="closeChat()" aria-label="メッセージ一覧へ">‹</button><div class="chatroom-title"><b id="chatTitle">チャット</b><span id="chatSub">取引メッセージ</span></div><button id="chatSafetyBtn" class="safety-chat-btn" onclick="openSafetyCenter('chat')">通報・ブロック</button></div><div id="chatMessages" class="chatmessages"></div><div id="deliveryArea" class="chatdelivery"></div><div class="chatdock"><div class="chatcomposer"><textarea id="chatInput" placeholder="メッセージを入力"></textarea><button class="btn" onclick="sendChatMessage()">送信</button></div><div id="chatMsg"></div></div></div></section>
 
-<section id="me" class="page"><h2>マイページ</h2><div class="card profile-compact"><div id="meText">-</div></div><div id="myListings"></div><div id="mySellerJobs"></div><div id="myBuyerJobs"></div><div class="card finance-card"><b>💳 決済・売上（準備中）</b><div class="small" style="margin-top:5px">購入時の金額内訳と、出品者の売上・振込イメージを確認できます。</div><div class="finance-grid"><button class="btn secondary" onclick="openFinanceCenter('buyer')">支払い内訳</button><button class="btn secondary" onclick="openFinanceCenter('seller')">売上・振込</button></div><div class="stripe-connect-box"><div id="stripeConnectStatus" class="stripe-connect-status">Stripe受取アカウントの状態を確認中...</div><button id="stripeConnectBtn" class="btn full stripe-connect-btn" type="button" onclick="connectStripeSeller()">Stripe受取アカウントを設定</button></div></div><div class="card safety-card"><b>✉️ お問い合わせ</b><div class="small" style="margin-top:5px">使い方、不具合、その他のお問い合わせはこちらから。</div><button class="btn secondary full" onclick="openSafetyCenter('support')">お問い合わせを開く</button></div><div class="card rules-card"><b>📘 ルール・ポリシー</b><div class="small" style="margin-top:5px">利用規約、プライバシー、禁止事項、キャンセル・返金、音声・AI利用条件、特商法・運営者情報を確認できます。</div><button class="btn secondary full" onclick="openRulesCenter()">ルールを確認する</button></div></section>
+<section id="me" class="page"><h2>マイページ</h2><div class="card profile-compact"><div id="meText">-</div></div><div id="myListings"></div><div id="mySellerJobs"></div><div id="myBuyerJobs"></div><div class="card finance-card"><b>💳 決済・売上</b><div class="small" style="margin-top:5px">Stripeで確定した支払いと、出品者の売上を確認できます。</div><div id="sellerSalesSummary" style="margin-top:12px"></div><div class="finance-grid"><button class="btn secondary" onclick="openFinanceCenter('buyer')">支払い内訳</button><button class="btn secondary" onclick="openFinanceCenter('seller')">売上・振込</button></div><div class="stripe-connect-box"><div id="stripeConnectStatus" class="stripe-connect-status">Stripe受取アカウントの状態を確認中...</div><button id="stripeConnectBtn" class="btn full stripe-connect-btn" type="button" onclick="connectStripeSeller()">Stripe受取アカウントを設定</button></div></div><div class="card safety-card"><b>✉️ お問い合わせ</b><div class="small" style="margin-top:5px">使い方、不具合、その他のお問い合わせはこちらから。</div><button class="btn secondary full" onclick="openSafetyCenter('support')">お問い合わせを開く</button></div><div class="card rules-card"><b>📘 ルール・ポリシー</b><div class="small" style="margin-top:5px">利用規約、プライバシー、禁止事項、キャンセル・返金、音声・AI利用条件、特商法・運営者情報を確認できます。</div><button class="btn secondary full" onclick="openRulesCenter()">ルールを確認する</button></div></section>
 
-<div id="financeOverlay" class="finance-overlay" onclick="if(event.target===this)closeFinanceCenter()"><div class="finance-box"><div class="finance-head"><h3>決済・売上</h3><button class="finance-close" onclick="closeFinanceCenter()">×</button></div><div class="finance-beta">現在は決済機能をまだ接続していないMVP段階です。表示金額は設計確認用で、実際の請求・入金は発生しません。</div><div class="finance-tabs"><button id="financeTabBuyer" class="finance-tab active" onclick="showFinancePanel('buyer')">支払い確認</button><button id="financeTabSeller" class="finance-tab" onclick="showFinancePanel('seller')">売上・振込</button></div><div id="financeBody"></div></div></div>
+<div id="financeOverlay" class="finance-overlay" onclick="if(event.target===this)closeFinanceCenter()"><div class="finance-box"><div class="finance-head"><h3>決済・売上</h3><button class="finance-close" onclick="closeFinanceCenter()">×</button></div><div class="finance-beta">Stripe Sandboxで決済連携を確認中です。ここにはSupabaseに保存された実際のテスト決済結果を表示します。</div><div class="finance-tabs"><button id="financeTabBuyer" class="finance-tab active" onclick="showFinancePanel('buyer')">支払い確認</button><button id="financeTabSeller" class="finance-tab" onclick="showFinancePanel('seller')">売上・振込</button></div><div id="financeBody"></div></div></div>
 <div id="notifOverlay" class="notif-overlay" onclick="if(event.target===this)closeNotifications()"><aside class="notif-sheet"><div class="notif-head"><h2>お知らせ</h2><div class="notif-actions"><button class="notif-readall" onclick="markAllNotificationsRead()">すべて既読</button><button class="notif-close" onclick="closeNotifications()">×</button></div></div><div class="small">必要な連絡をまとめて確認できます。</div><div id="notifContent"><div class="notif-empty">読み込み中...</div></div></aside></div>
 <div id="rulesOverlay" class="rules-overlay" onclick="if(event.target===this)closeRulesCenter()"><div class="rules-box"><div class="rules-head"><h3>ルール・ポリシー</h3><button class="rules-close" onclick="closeRulesCenter()">×</button></div><div class="rules-beta">現在はWeb MVPのテスト段階です。決済・返金条件などは正式な決済機能を導入する前に確定・更新します。</div><div class="rules-tabs"><button id="ruleTabTerms" class="rules-tab active" onclick="showRuleDoc('terms')">利用規約</button><button id="ruleTabPrivacy" class="rules-tab" onclick="showRuleDoc('privacy')">プライバシーポリシー</button><button id="ruleTabProhibited" class="rules-tab" onclick="showRuleDoc('prohibited')">禁止事項</button><button id="ruleTabCancel" class="rules-tab" onclick="showRuleDoc('cancel')">キャンセル・返金</button><button id="ruleTabAi" class="rules-tab" onclick="showRuleDoc('ai')">音声・AI利用</button><button id="ruleTabCommerce" class="rules-tab" onclick="showRuleDoc('commerce')">特商法・運営者情報</button></div><div id="rulesBody" class="rules-body"></div></div></div>
 <div id="safetyOverlay" class="safety-overlay" onclick="if(event.target===this)closeSafetyCenter()"><div class="safety-box"><div class="safety-head"><h3 id="safetyTitle">お問い合わせ</h3><button class="safety-close" onclick="closeSafetyCenter()">×</button></div><div id="safetyIntro" class="safety-note">使い方、不具合、その他のお問い合わせを運営へ送れます。</div><div id="safetyPartnerActions" class="safety-actions hide"><button id="blockUserBtn" class="safety-action danger" onclick="toggleBlockCurrentPartner()">このユーザーをブロック</button></div><div class="safety-section"><label>内容</label><select id="safetyCategory"><option value="harassment">迷惑行為・嫌がらせ</option><option value="fraud">詐欺・不審な取引</option><option value="rights">権利侵害・無断利用</option><option value="inappropriate">不適切な内容</option><option value="support">使い方・不具合・問い合わせ</option><option value="other">その他</option></select><label>詳細</label><textarea id="safetyDetail" placeholder="状況をできるだけ具体的に書いてください。"></textarea><button class="btn full" onclick="submitSafetyRequest()">運営へ送信</button><div id="safetyMsg" class="safety-msg"></div><div class="safety-note">緊急性のある危険がある場合は、このサービス内だけで対応せず、必要に応じて警察・緊急窓口等へ連絡してください。</div></div></div></div>
@@ -392,11 +392,11 @@ function showFinancePanel(mode='buyer'){
    const amount=Number(d.latestBuyerAmount||1500);const fee=Math.round(amount*FINANCE_FEE_RATE);const payout=Math.max(0,amount-fee);const title=esc(d.latestBuyerTitle||'取引例');
    body.innerHTML=`<div class="finance-summary"><div class="small">${title}</div><div class="finance-line"><span>購入者の支払予定</span><strong class="finance-total">${financeYen(amount)}</strong></div><div class="finance-line"><span>サービス手数料（15%）</span><strong>${financeYen(fee)}</strong></div><div class="finance-line"><span>出品者の受取予定</span><strong>${financeYen(payout)}</strong></div><span class="finance-status">Stripe Connect連携予定</span></div><div class="finance-muted">手数料は出品者売上から差し引く想定です。正式公開前にStripeの実費・返金時の扱い・税表示を再確認して確定します。</div><button class="btn full disabled-preview" type="button">正式決済導入後に利用できます</button>`;
  }else{
-   const gross=Number(d.sellerAcceptedGross||0);const fee=Math.round(gross*FINANCE_FEE_RATE);const payout=Math.max(0,gross-fee);const count=Number(d.sellerAcceptedCount||0);
+   const gross=Number(d.sellerAcceptedGross||0);const fee=Number(d.sellerAcceptedFee||0);const payout=Number(d.sellerAcceptedPayout||0);const count=Number(d.sellerAcceptedCount||0);
    const txs=Array.isArray(d.sellerAcceptedTransactions)?d.sellerAcceptedTransactions:[];
-   const txHtml=txs.length?`<div class="finance-history">${txs.map(t=>`<div class="finance-history-item"><div class="top"><div><b>${esc(t.title||'取引')}</b><div class="small">売上確定</div></div><div class="amt">${financeYen(t.payout||0)}</div></div><div class="finance-caption">正式決済導入後は、この取引ごとに振込処理状況を表示します。</div></div>`).join('')}</div>`:`<div class="finance-caption">現在、このアカウントには売上対象の受取済み取引がありません。</div>`;
+   const txHtml=txs.length?`<div class="finance-history">${txs.map(t=>`<div class="finance-history-item"><div class="top"><div><b>${esc(t.title||'取引')}</b><div class="small">支払い済み</div></div><div class="amt">${financeYen(t.payout||0)}</div></div><div class="finance-caption">売上 ${financeYen(t.gross||0)} / 手数料 −${financeYen(t.fee||0)}</div></div>`).join('')}</div>`:`<div class="finance-caption">現在、このアカウントには支払い済みの売上がありません。</div>`;
    const step1=count>0?'active':'future';const step2=count>0?'active':'future';
-   body.innerHTML=`<div class="finance-summary"><div class="small">受取済み取引 ${count}件をもとにしたMVP表示</div><div class="finance-line"><span>売上総額</span><strong>${financeYen(gross)}</strong></div><div class="finance-line"><span>サービス手数料（15%）</span><strong>− ${financeYen(fee)}</strong></div><div class="finance-line"><span>受取予定額</span><strong class="finance-total">${financeYen(payout)}</strong></div><div class="finance-line"><span>振込状況</span><strong>未接続</strong></div><span class="finance-status">本人確認・振込先登録はConnect予定</span></div><div class="finance-flow"><div class="finance-step ${step1}">① 支払い待ち</div><div class="finance-step ${step2}">② 売上確定</div><div class="finance-step future">③ 振込処理中</div><div class="finance-step future">④ 振込済み</div></div>${txHtml}<div class="finance-muted">現在は実際の売上残高ではありません。正式決済導入後は、取引ごとに「支払い待ち → 売上確定 → 振込処理中 → 振込済み」を表示します。</div>`;
+   body.innerHTML=`<div class="finance-summary"><div class="small">Stripe決済済み ${count}件</div><div class="finance-line"><span>売上総額</span><strong>${financeYen(gross)}</strong></div><div class="finance-line"><span>サービス手数料（15%）</span><strong>− ${financeYen(fee)}</strong></div><div class="finance-line"><span>出品者受取額</span><strong class="finance-total">${financeYen(payout)}</strong></div><div class="finance-line"><span>決済状況</span><strong>支払い済み</strong></div><span class="finance-status">Stripe Sandbox確認済み</span></div><div class="finance-flow"><div class="finance-step ${step1}">① 支払い</div><div class="finance-step ${step2}">② 売上記録</div><div class="finance-step future">③ 振込処理</div><div class="finance-step future">④ 振込完了</div></div>${txHtml}<div class="finance-muted">現在はSandbox決済の表示です。本番モード移行後に実際の振込状況表示まで接続します。</div>`;
  }
 }
 
@@ -952,6 +952,30 @@ async function loadMe(){
 
   myListings.innerHTML=`<h3>出品したもの</h3>${(l||[]).map(x=>`<button type="button" class="card mypage-item-card mypage-click-card" onclick="openMyListing('${x.id}')"><b>${esc(x.title)}</b><div class="small">¥${Number(x.price_jpy||0).toLocaleString()}</div><span class="mypage-card-arrow">›</span></button>`).join('')||'<button type="button" class="card small mypage-item-card mypage-empty-card mypage-click-card" onclick="go(\'sell\')">まだ出品がありません。<span class="mypage-card-arrow">›</span></button>'}`;
 
+  // Stripe Webhookで保存された実決済（Sandbox）から出品者売上を集計する。
+  const {data:sellerPayments,error:sellerPaymentsError}=await sb
+    .from('payments')
+    .select('listing_id,amount_jpy,platform_fee_jpy,seller_amount_jpy,status,paid_at')
+    .eq('seller_id',currentUser.id)
+    .eq('status','paid')
+    .order('paid_at',{ascending:false});
+
+  const paidSales=sellerPayments||[];
+  const paidGross=paidSales.reduce((sum,p)=>sum+Number(p.amount_jpy||0),0);
+  const paidFee=paidSales.reduce((sum,p)=>sum+Number(p.platform_fee_jpy||0),0);
+  const paidPayout=paidSales.reduce((sum,p)=>sum+Number(p.seller_amount_jpy||0),0);
+  const salesSummary=document.getElementById('sellerSalesSummary');
+
+  if(salesSummary){
+    if(sellerPaymentsError){
+      salesSummary.innerHTML=`<div class="small" style="color:#b42318">売上情報を取得できませんでした：${esc(sellerPaymentsError.message)}</div>`;
+    }else if(paidSales.length){
+      salesSummary.innerHTML=`<div class="finance-summary" style="margin:0"><div class="small">支払い済み ${paidSales.length}件</div><div class="finance-line"><span>売上総額</span><strong>${financeYen(paidGross)}</strong></div><div class="finance-line"><span>サービス手数料（15%）</span><strong>− ${financeYen(paidFee)}</strong></div><div class="finance-line"><span>出品者受取額</span><strong class="finance-total">${financeYen(paidPayout)}</strong></div><span class="finance-status">支払い済み</span></div>`;
+    }else{
+      salesSummary.innerHTML=`<div class="small">まだ支払い済みの売上はありません。</div>`;
+    }
+  }
+
   const allConvs=[...(sellerConvs||[]),...(buyerConvs||[])];
   const jobIds=[...new Set(allConvs.map(x=>x.job_id).filter(Boolean))];
   const listingIds=[...new Set(allConvs.map(x=>x.listing_id).filter(Boolean))];
@@ -999,13 +1023,20 @@ async function loadMe(){
     return `<button type="button" class="card trade-history-card mypage-item-card mypage-click-card" onclick="go('messages').then(()=>openConversation('${c.id}','${safeTitle}'))"><div class="row"><div><b>${esc(titleOf(c))}</b><div class="small">${role}${amount!=null?`　¥${Number(amount).toLocaleString()}`:''}</div></div><div class="mypage-status-wrap"><span class="delivery-status ${statusClass(c)}">${statusText(c)}</span><span class="mypage-card-arrow">›</span></div></div></button>`;
   };
 
-  const sellerAccepted=(sellerConvs||[]).filter(c=>c.delivery_status==='accepted');
-  const sellerAcceptedGross=sellerAccepted.reduce((sum,c)=>sum+Number(amountOf(c)||0),0);
+  const sellerListingMap=new Map((l||[]).map(x=>[x.id,x]));
   const latestBuyer=(buyerConvs||[])[0]||null;
   window.voiceFleaFinanceData={
-    sellerAcceptedGross,
-    sellerAcceptedCount:sellerAccepted.length,
-    sellerAcceptedTransactions:sellerAccepted.map(c=>{const amount=Number(amountOf(c)||0);const fee=Math.round(amount*FINANCE_FEE_RATE);return {title:titleOf(c),gross:amount,payout:Math.max(0,amount-fee)}}),
+    sellerAcceptedGross:paidGross,
+    sellerAcceptedFee:paidFee,
+    sellerAcceptedPayout:paidPayout,
+    sellerAcceptedCount:paidSales.length,
+    sellerAcceptedTransactions:paidSales.map(p=>({
+      title:sellerListingMap.get(p.listing_id)?.title||'出品取引',
+      gross:Number(p.amount_jpy||0),
+      fee:Number(p.platform_fee_jpy||0),
+      payout:Number(p.seller_amount_jpy||0),
+      paidAt:p.paid_at||null
+    })),
     latestBuyerAmount:latestBuyer?Number(amountOf(latestBuyer)||0):1500,
     latestBuyerTitle:latestBuyer?titleOf(latestBuyer):'取引例'
   };
