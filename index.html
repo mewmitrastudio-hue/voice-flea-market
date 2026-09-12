@@ -457,22 +457,74 @@ async function createListing(){if(!currentUser)return;let path=null;const f=sell
 const {error}=await sb.from('listings').insert({seller_id:currentUser.id,title:sellTitle.value.trim(),category:sellCategory.value,description:sellDesc.value.trim(),price_jpy:+sellPrice.value,delivery_days:+sellDays.value,ai_use:sellAI.value,sample_path:path});if(error)return info('sellMsg',error.message,'err');info('sellMsg','クラウドへ出品しました。');sellTitle.value='';sellDesc.value='';sellAudio.value='';loadHome()}
 async function startStripeCheckout(listingId,btn){
   if(!sb||!currentUser)return alert('購入するにはログインしてください。');
+
   const original=btn?.textContent||'購入する';
-  if(btn){btn.disabled=true;btn.textContent='決済画面を準備中...'}
+
+  if(btn){
+    btn.disabled=true;
+    btn.textContent='決済画面を準備中...';
+  }
+
   try{
     const {data:{session}}=await sb.auth.getSession();
-    if(!session?.access_token)throw new Error('ログイン情報を確認できませんでした。');
-    const {data,error}=await sb.functions.invoke('create-checkout-session',{
-      body:{listingId},
-      headers:{Authorization:`Bearer ${session.access_token}`}
+
+    if(!session?.access_token){
+      throw new Error('ログイン情報を確認できませんでした。');
+    }
+
+    const functionUrl =
+      `${window.VOICE_FLEA_CONFIG.SUPABASE_URL}/functions/v1/create-checkout-session`;
+
+    const response = await fetch(functionUrl,{
+      method:'POST',
+      headers:{
+        'Content-Type':'application/json',
+        'Authorization':`Bearer ${session.access_token}`,
+        'apikey':window.VOICE_FLEA_CONFIG.SUPABASE_PUBLISHABLE_KEY
+      },
+      body:JSON.stringify({listingId})
     });
-    if(error)throw error;
-    if(data?.error)throw new Error(data.error);
-    if(!data?.url)throw new Error('Stripe決済画面のURLを取得できませんでした。');
+
+    const text = await response.text();
+
+    let data=null;
+
+    try{
+      data=JSON.parse(text);
+    }catch{
+      throw new Error(`サーバー応答を読み取れませんでした。HTTP ${response.status}`);
+    }
+
+    if(!response.ok){
+      throw new Error(
+        data?.error ||
+        data?.message ||
+        `決済処理に失敗しました。HTTP ${response.status}`
+      );
+    }
+
+    if(data?.error){
+      throw new Error(data.error);
+    }
+
+    if(!data?.url){
+      throw new Error(
+        `Stripe決済URLが返りませんでした。応答: ${JSON.stringify(data)}`
+      );
+    }
+
     window.location.assign(data.url);
+
   }catch(e){
-    alert(`決済画面を開けませんでした：${e?.message||'不明なエラー'}`);
-    if(btn){btn.disabled=false;btn.textContent=original}
+
+    alert(
+      `決済画面を開けませんでした：${e?.message||String(e)}`
+    );
+
+    if(btn){
+      btn.disabled=false;
+      btn.textContent=original;
+    }
   }
 }
 async function loadListings(){if(!sb)return;let q=voiceSearch.value.trim();let query=sb.from('listings').select('id,title,category,price_jpy,delivery_days,ai_use,sample_path,seller_id,profiles!listings_seller_id_fkey(display_name)').eq('is_active',true).order('created_at',{ascending:false}).limit(50);if(q)query=query.or(`title.ilike.%${q}%,category.ilike.%${q}%`);const {data,error}=await query;if(error){listingList.innerHTML=`<div class="err">${esc(error.message)}</div>`;return}listingList.innerHTML=(data||[]).map(v=>{let audio='';if(v.sample_path){const {data:u}=sb.storage.from('voice-samples').getPublicUrl(v.sample_path);audio=`<audio controls src="${u.publicUrl}"></audio>`}const own=v.seller_id===currentUser?.id;const action=own?`<button class="btn full" type="button" disabled style="margin-top:14px;opacity:.62">購入テストは別アカウントで</button>`:`<button class="btn full" type="button" style="margin-top:14px" onclick="startStripeCheckout('${esc(v.id)}',this)">購入する</button>`;return `<div class="card voice" data-listing-id="${esc(v.id)}"><div class="row"><div><b>${esc(v.title)}</b><div class="small">${esc(v.profiles?.display_name||'出品者')}</div></div><div class="price">¥${Number(v.price_jpy).toLocaleString()}</div></div><span class="pill">${esc(v.category)}</span><span class="pill">${v.delivery_days}日</span><span class="pill">AI:${esc(v.ai_use)}</span>${audio}${action}</div>`}).join('')||'<div class="card small">まだ出品がありません。</div>'}
