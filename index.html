@@ -577,6 +577,7 @@ window.__loadSupabaseSDK=async function(){
     </div>
     <div class="profile-avatar-preview" id="profileAvatarPreview">U</div>
     <div class="field"><label>アイコン画像</label><input id="profileAvatarFile" type="file" accept="image/*" onchange="previewProfileAvatar(this)"></div>
+    <button id="removeProfileAvatarBtn" class="btn secondary full" type="button" style="margin-top:-4px;margin-bottom:12px" onclick="removeProfileAvatar()">アイコンを削除</button>
     <div class="field"><label>表示名</label><input id="profileDisplayName" maxlength="40" placeholder="表示名"></div>
     <div class="field"><label>ひとことアピール</label><input id="profileTagline" maxlength="80" placeholder="例：落ち着いたナレーションが得意です"></div>
     <div class="field"><label>自己紹介</label><textarea id="profileBio" maxlength="500" placeholder="経験、得意な声、対応できる内容など"></textarea></div>
@@ -1653,6 +1654,31 @@ function previewProfileAvatar(input){
   const url=URL.createObjectURL(file);
   document.getElementById('profileAvatarPreview').innerHTML=`<img src="${url}" alt="">`;
 }
+
+async function removeProfileAvatar(){
+  if(!sb||!currentUser)return;
+  const {data:p,error:pe}=await sb.from('profiles').select('avatar_path,display_name').eq('id',currentUser.id).maybeSingle();
+  if(pe)return info('profileEditMsg',pe.message,'err');
+  const currentPath=p?.avatar_path||null;
+
+  if(currentPath){
+    const {error:se}=await sb.storage.from('profile-avatars').remove([currentPath]);
+    if(se)return info('profileEditMsg','アイコン削除：'+se.message,'err');
+  }
+
+  const {error}=await sb.from('profiles').update({avatar_path:null}).eq('id',currentUser.id);
+  if(error)return info('profileEditMsg',error.message,'err');
+
+  const name=p?.display_name||document.getElementById('profileDisplayName')?.value||'U';
+  const avatar=document.getElementById('profileAvatarPreview');
+  if(avatar)avatar.innerHTML=esc(String(name).trim().charAt(0).toUpperCase()||'U');
+  const input=document.getElementById('profileAvatarFile');
+  if(input)input.value='';
+
+  info('profileEditMsg','アイコンを削除しました。');
+  setTimeout(async()=>{await loadMe();await loadListings(true);},300);
+}
+
 function closeProfileEdit(){
   document.getElementById('profileEditOverlay')?.classList.remove('show');
   const m=document.getElementById('profileEditMsg'); if(m)m.innerHTML='';
