@@ -285,11 +285,16 @@ function setStripeConnectUI(accountId='',message=''){
  const btn=document.getElementById('stripeConnectBtn');
  if(!status||!btn)return;
  status.classList.remove('ready','error');
+ const stripeFlow=new URLSearchParams(location.search).get('stripe_onboarding');
  if(accountId){
-   status.textContent=message||'Stripe受取アカウントは作成済みです。本人確認・振込先登録は次の工程で接続します。';
+   if(stripeFlow==='return'){
+     status.textContent=message||'Stripeの登録画面から戻りました。追加情報が必要な場合は、下のボタンから登録を再開できます。';
+   }else{
+     status.textContent=message||'Stripe受取アカウントは作成済みです。本人確認・振込先登録へ進めます。';
+   }
    status.classList.add('ready');
-   btn.textContent='Stripe受取アカウント作成済み';
-   btn.disabled=true;
+   btn.textContent='本人確認・振込先を登録';
+   btn.disabled=false;
  }else{
    status.textContent=message||'出品者として売上を受け取るためのStripe連結アカウントを作成します。';
    btn.textContent='Stripe受取アカウントを設定';
@@ -301,9 +306,9 @@ async function connectStripeSeller(){
  const status=document.getElementById('stripeConnectStatus');
  if(!sb||!currentUser||!btn||!status)return;
  btn.disabled=true;
- btn.textContent='接続中...';
+ btn.textContent='Stripe登録画面を準備中...';
  status.classList.remove('ready','error');
- status.textContent='Stripe受取アカウントを確認しています...';
+ status.textContent='Stripeの本人確認・振込先登録画面を準備しています...';
  try{
    const {data:{session}}=await sb.auth.getSession();
    if(!session?.access_token)throw new Error('ログイン情報を確認できませんでした。もう一度ログインしてください。');
@@ -314,8 +319,8 @@ async function connectStripeSeller(){
    if(error)throw error;
    if(data?.error)throw new Error(data.error);
    if(!data?.accountId)throw new Error('StripeアカウントIDを確認できませんでした。');
-   setStripeConnectUI(data.accountId,data.existing?'Stripe受取アカウントはすでに作成済みです。本人確認・振込先登録は次の工程です。':'Stripe受取アカウントを作成しました。本人確認・振込先登録は次の工程です。');
-   await loadMe();
+   if(!data?.onboardingUrl)throw new Error('Stripe登録画面のURLを取得できませんでした。');
+   window.location.assign(data.onboardingUrl);
  }catch(e){
    status.textContent=`Stripe接続に失敗しました：${e?.message||'不明なエラー'}`;
    status.classList.add('error');
@@ -700,6 +705,11 @@ async function loadMe(){
   const avg=ratings.length?(ratings.reduce((a,b)=>a+b,0)/ratings.length).toFixed(1):null;
   const verified=!!p?.verified;
   setStripeConnectUI(p?.stripe_account_id||'');
+  const stripeFlow=new URLSearchParams(location.search).get('stripe_onboarding');
+  if(stripeFlow==='refresh' && p?.stripe_account_id){
+    history.replaceState({},'',location.pathname);
+    setTimeout(()=>connectStripeSeller(),120);
+  }
   meText.innerHTML=`<div class="profile-grid"><div class="profile-left"><b class="profile-name">${esc(p?.display_name||currentUser.email)}</b><div class="profile-badges"><span class="identity-badge ${verified?'verified':'unverified'}">${verified?'✓ 本人確認済み':'本人確認 未完了'}</span>${avg?`<span class="rating-badge">★ ${avg}（${ratings.length}件）</span>`:'<span class="rating-badge muted">まだ評価はありません</span>'}</div>${!verified?'<div class="identity-note">本人確認機能は正式公開前に追加予定です。</div>':''}</div><div class="profile-right"><div class="small profile-email">${esc(currentUser.email||'')}</div><button class="btn ghost profile-logout" onclick="signOut()">ログアウト</button></div></div>`;
 
   const [{data:l},{data:sellerConvs,error:sellerErr},{data:buyerConvs,error:buyerErr}]=await Promise.all([
