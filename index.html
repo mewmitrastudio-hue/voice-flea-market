@@ -273,6 +273,22 @@ body.normal-mode #nav button{height:46px!important;min-height:46px!important;bor
 .main-menu-section button:active{background:#f7f5ff}
 .main-menu-section .danger-menu-btn{color:#b42318;border-color:#f2d0cc;background:#fffafa}
 
+
+.menu-badge-button{display:flex!important;align-items:center;justify-content:space-between;gap:10px}
+.menu-count-badge{
+  display:none;min-width:22px;height:22px;padding:0 7px;border-radius:999px;
+  align-items:center;justify-content:center;background:#e11d48;color:#fff;
+  font-size:11px;font-weight:900;line-height:22px;text-align:center
+}
+.menu-count-badge.show{display:inline-flex}
+.main-menu-account{
+  margin-top:4px;padding:12px;border:1px solid #e5e0f6;border-radius:16px;
+  background:#faf9ff;display:grid;gap:10px
+}
+.main-menu-email{font-size:12px;font-weight:800;color:#45415f;word-break:break-all;margin-bottom:7px}
+.main-menu-account .status{display:inline-block;margin:0}
+.main-menu-section .account-logout-btn{margin:0}
+
 </style>
 <script>
 if(window.navigator.standalone===true){document.body.classList.add('standalone')}
@@ -349,7 +365,7 @@ window.__loadSupabaseSDK=async function(){
 </style>
 
 </head><body><div id="pullRefreshIndicator" class="pull-refresh-indicator">↓ 引っ張って更新</div><div class="app">
-<div class="topbar"><div class="brandwrap"><div class="brandicon">🎙️</div><div class="brandtext"><div class="brand">声のフリマ</div><div class="tag"><span class="line1">世界に、あなたの声を売る。</span><span class="line2">あなたの声を、世界が買う。</span></div></div></div><div class="topactions"><button id="refreshBtn" class="refreshbtn hide" onclick="refreshAllData()" aria-label="最新情報に更新" title="最新情報に更新">↻</button><button id="bellBtn" class="bellbtn hide" onclick="openNotifications()" aria-label="お知らせ">🔔<span id="bellBadge" class="bellbadge"></span></button><button id="menuBtn" class="bellbtn hide" onclick="openMainMenu()" aria-label="メニュー">☰</button><span id="cloudStatus" class="status">確認中</span></div></div>
+<div class="topbar"><div class="brandwrap"><div class="brandicon">🎙️</div><div class="brandtext"><div class="brand">声のフリマ</div><div class="tag"><span class="line1">世界に、あなたの声を売る。</span><span class="line2">あなたの声を、世界が買う。</span></div></div></div><div class="topactions"><button id="refreshBtn" class="refreshbtn hide" onclick="refreshAllData()" aria-label="最新情報に更新" title="最新情報に更新">↻</button><button id="bellBtn" class="bellbtn hide" onclick="openNotifications()" aria-label="お知らせ">🔔<span id="bellBadge" class="bellbadge"></span></button><button id="menuBtn" class="bellbtn hide" onclick="openMainMenu()" aria-label="メニュー">☰</button></div></div>
 
 <section id="authPage" class="page on">
 <div class="hero"><h1>話す・読む・歌う。<br>あなたの声が仕事になる。</h1><p>声を売る・探す・頼む。すべてここから。</p></div>
@@ -386,7 +402,7 @@ window.__loadSupabaseSDK=async function(){
       <button onclick="menuGo('voices')">🎧 声を探す</button>
       <button onclick="menuGo('sell')">➕ 出品</button>
       <button onclick="menuGo('jobs')">💼 仕事</button>
-      <button onclick="menuGo('messages')">💬 メッセージ</button>
+      <button onclick="menuGo('messages')" class="menu-badge-button">💬 メッセージ<span id="menuMsgBadge" class="menu-count-badge"></span></button>
       <button onclick="menuGo('me')">👤 マイページ</button>
       <button onclick="closeMainMenu();openNotifications()">🔔 お知らせ</button>
     </div>
@@ -410,7 +426,13 @@ window.__loadSupabaseSDK=async function(){
       <div class="main-menu-label">サポート</div>
       <button onclick="closeMainMenu();openRulesCenter()">📘 ルール・ポリシー</button>
       <button onclick="closeMainMenu();openSafetyCenter('support')">✉️ お問い合わせ</button>
-      <button class="danger-menu-btn" onclick="closeMainMenu();signOut()">🚪 ログアウト</button>
+      <div class="main-menu-account">
+        <div>
+          <div id="menuAccountEmail" class="main-menu-email">-</div>
+          <span id="cloudStatus" class="status">確認中</span>
+        </div>
+        <button class="danger-menu-btn account-logout-btn" onclick="closeMainMenu();signOut()">🚪 ログアウト</button>
+      </div>
     </div>
   </aside>
 </div>
@@ -588,7 +610,7 @@ async function init(){
     configNotice.textContent='サービス接続に失敗しました。右上の更新ボタンで再試行してください。';
   }
 }
-async function renderAuth(){if(currentUser){authPage.classList.remove('on');nav.classList.remove('hide');refreshBtn?.classList.remove('hide');bellBtn?.classList.remove('hide');menuBtn?.classList.remove('hide');cloudStatus.textContent='オンライン';await loadHome();loadJobBadge();loadMessageBadge();loadNotificationBadge();await restoreUI()}else{document.querySelectorAll('.page').forEach(p=>p.classList.remove('on'));authPage.classList.add('on');nav.classList.add('hide');refreshBtn?.classList.add('hide');bellBtn?.classList.add('hide');menuBtn?.classList.add('hide');closeNotifications();closeMainMenu();document.body.classList.remove('normal-mode','messages-mode','chat-mode');document.querySelector('.topbar')?.classList.remove('force-hide');cloudStatus.textContent=configured?'オンライン':'設定待ち'}}
+async function renderAuth(){if(currentUser){const menuAccountEmail=document.getElementById('menuAccountEmail');if(menuAccountEmail)menuAccountEmail.textContent=currentUser.email||'-';authPage.classList.remove('on');nav.classList.remove('hide');refreshBtn?.classList.remove('hide');bellBtn?.classList.remove('hide');menuBtn?.classList.remove('hide');cloudStatus.textContent='オンライン';await loadHome();loadJobBadge();loadMessageBadge();loadNotificationBadge();await restoreUI()}else{const menuAccountEmail=document.getElementById('menuAccountEmail');if(menuAccountEmail)menuAccountEmail.textContent='-';document.querySelectorAll('.page').forEach(p=>p.classList.remove('on'));authPage.classList.add('on');nav.classList.add('hide');refreshBtn?.classList.add('hide');bellBtn?.classList.add('hide');menuBtn?.classList.add('hide');closeNotifications();closeMainMenu();document.body.classList.remove('normal-mode','messages-mode','chat-mode');document.querySelector('.topbar')?.classList.remove('force-hide');cloudStatus.textContent=configured?'オンライン':'設定待ち'}}
 async function signUp(){if(!sb)return info('authMsg','まず接続設定が必要です','err');if(password.value.length<8)return info('authMsg','パスワードは8文字以上にしてください','err');const {error}=await sb.auth.signUp({email:email.value.trim(),password:password.value,userMetadata:{display_name:displayName.value.trim()||'ユーザー'},options:{data:{display_name:displayName.value.trim()||'ユーザー'}}});if(error)return info('authMsg',error.message,'err');info('authMsg','登録を受け付けました。メール確認が有効な場合は確認後にログインしてください。')}
 function resetLoginZoom(){
   try{
@@ -1067,7 +1089,23 @@ async function acceptDeliveryConfirmed(){
  loadNotificationBadge();
 }
 async function loadMessageBadge(){
- if(!sb||!currentUser||!msgBadge)return;const {data:cs}=await sb.from('conversations').select('id').or(`buyer_id.eq.${currentUser.id},seller_id.eq.${currentUser.id}`);let count=0;for(const c of cs||[]){const seen=localStorage.getItem(seenKey(c.id))||'1970-01-01T00:00:00.000Z';const {count:n}=await sb.from('messages').select('*',{count:'exact',head:true}).eq('conversation_id',c.id).neq('sender_id',currentUser.id).gt('created_at',seen);count+=n||0}msgBadge.textContent=count>99?'99+':String(count);msgBadge.classList.toggle('show',count>0);loadNotificationBadge()
+ if(!sb||!currentUser||!msgBadge)return;
+ const {data:cs}=await sb.from('conversations').select('id').or(`buyer_id.eq.${currentUser.id},seller_id.eq.${currentUser.id}`);
+ let count=0;
+ for(const c of cs||[]){
+   const seen=localStorage.getItem(seenKey(c.id))||'1970-01-01T00:00:00.000Z';
+   const {count:n}=await sb.from('messages').select('*',{count:'exact',head:true}).eq('conversation_id',c.id).neq('sender_id',currentUser.id).gt('created_at',seen);
+   count+=n||0;
+ }
+ const label=count>99?'99+':String(count);
+ msgBadge.textContent=label;
+ msgBadge.classList.toggle('show',count>0);
+ const menuBadge=document.getElementById('menuMsgBadge');
+ if(menuBadge){
+   menuBadge.textContent=label;
+   menuBadge.classList.toggle('show',count>0);
+ }
+ loadNotificationBadge();
 }
 
 async function getNotificationData(){
