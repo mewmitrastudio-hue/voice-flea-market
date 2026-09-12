@@ -235,6 +235,24 @@ body.normal-mode #nav button{height:46px!important;min-height:46px!important;bor
 .vf-confirm-card p{margin:0 0 22px;color:#667085;line-height:1.6;}
 .vf-confirm-card .btn + .btn{margin-top:10px;}
 
+
+.history-hide-btn{
+  border:1px solid #ddd7f7;
+  background:#fff;
+  color:#68618f;
+  border-radius:999px;
+  padding:6px 10px;
+  font-size:10px;
+  font-weight:800;
+  white-space:nowrap;
+}
+.history-hide-note{
+  margin-top:8px;
+  color:#8a849f;
+  font-size:10px;
+  line-height:1.5;
+}
+
 </style>
 <script>
 if(window.navigator.standalone===true){document.body.classList.add('standalone')}
@@ -736,9 +754,24 @@ async function openPurchasedListingChat(listingId,sellerId,title='購入した�
   await go('messages');
   await openConversation(data.id,title);
 }
+
+function hiddenConversationKey(id){
+  return currentUser ? `vf_hidden_conversation_${currentUser.id}_${id}` : '';
+}
+function isConversationHidden(id){
+  return !!(currentUser && localStorage.getItem(hiddenConversationKey(id))==='1');
+}
+function hideConversationForMe(id){
+  if(!currentUser||!id)return;
+  localStorage.setItem(hiddenConversationKey(id),'1');
+  if(currentConversationId===id)closeChat();
+  loadConversations();
+  loadMe();
+}
+
 async function loadConversations(){
  if(!sb||!currentUser)return;setShellMode('messages');chatBox.classList.remove('on');conversationList.style.display='grid';
- const {data,error}=await sb.from('conversations').select('id,buyer_id,seller_id,job_id,listing_id,created_at').or(`buyer_id.eq.${currentUser.id},seller_id.eq.${currentUser.id}`).order('created_at',{ascending:false});
+ const {data,error}=await sb.from('conversations').select('id,buyer_id,seller_id,job_id,listing_id,delivery_status,created_at').or(`buyer_id.eq.${currentUser.id},seller_id.eq.${currentUser.id}`).order('created_at',{ascending:false});
  if(error){conversationList.innerHTML=`<div class="err">${esc(error.message)}</div>`;return}
  const cs=data||[];if(!cs.length){conversationList.innerHTML='<div class="card small">まだメッセージはありません。</div>';msgBadge?.classList.remove('show');return}
  const partnerIds=[...new Set(cs.map(c=>c.buyer_id===currentUser.id?c.seller_id:c.buyer_id))];
@@ -749,6 +782,7 @@ async function loadConversations(){
  if(jobIds.length){const r=await sb.from('jobs').select('id,title').in('id',jobIds);(r.data||[]).forEach(x=>jobs[x.id]=x.title)}
  if(listingIds.length){const r=await sb.from('listings').select('id,title').in('id',listingIds);(r.data||[]).forEach(x=>listings[x.id]=x.title)}
  const rows=[];for(const c of cs){
+   if(isConversationHidden(c.id))continue;
    const {data:msgs}=await sb.from('messages').select('id,sender_id,body,created_at').eq('conversation_id',c.id).order('created_at',{ascending:false}).limit(1);
    const last=msgs?.[0];
    const seen=localStorage.getItem(seenKey(c.id))||'1970-01-01T00:00:00.000Z';
@@ -756,9 +790,12 @@ async function loadConversations(){
    const partner=c.buyer_id===currentUser.id?c.seller_id:c.buyer_id;
    const title=jobs[c.job_id]||listings[c.listing_id]||'チャット';
    const kind=c.listing_id?'購入した音声の取引':'仕事のチャット';
-   rows.push(`<div class="chatrow" onclick="openConversation('${c.id}','${esc(title).replace(/'/g,'&#39;')}')"><div class="chathead"><div><b>${esc(profiles[partner]||'ユーザー')}</b><div class="small">${esc(kind)}</div></div>${unread?'<span class="unread-dot">1</span>':''}</div><div class="small" style="margin-top:6px">${esc(last?.body||'チャットを開始できます')}</div></div>`);
+   const hideBtn=c.delivery_status==='accepted'
+     ? `<button type="button" class="history-hide-btn" onclick="event.stopPropagation();hideConversationForMe('${c.id}')">非表示</button>`
+     : (unread?'<span class="unread-dot">1</span>':'');
+   rows.push(`<div class="chatrow" onclick="openConversation('${c.id}','${esc(title).replace(/'/g,'&#39;')}')"><div class="chathead"><div><b>${esc(profiles[partner]||'ユーザー')}</b><div class="small">${esc(kind)}</div></div>${hideBtn}</div><div class="small" style="margin-top:6px">${esc(last?.body||'チャットを開始できます')}</div>${c.delivery_status==='accepted'?'<div class="history-hide-note">完了した取引です。非表示にしても記録自体は削除されません。</div>':''}</div>`);
  }
- conversationList.innerHTML=rows.join('');loadMessageBadge()
+ conversationList.innerHTML=rows.join('')||'<div class="card small">表示中のメッセージはありません。</div>';loadMessageBadge()
 }
 async function openConversation(id,title='チャット',opts={}){
  clearChatNotice();currentConversationId=id;const {data:c,error:ce}=await sb.from('conversations').select('id,buyer_id,seller_id,job_id,listing_id,delivery_path,delivery_status,delivered_at,accepted_at').eq('id',id).single();if(ce)return info('chatMsg',ce.message,'err');currentConversation=c;currentConversationPartner=currentUser.id===c.buyer_id?c.seller_id:c.buyer_id;conversationList.style.display='none';chatBox.classList.add('on');setShellMode('chat');chatTitle.textContent=title;chatSub.textContent=c.listing_id?(currentUser.id===c.seller_id?'購入された音声の取引':'購入した音声の取引'):(currentUser.id===c.seller_id?'受注した仕事のチャット':'依頼した仕事のチャット');if(currentUser&&!opts.skipSave){localStorage.setItem(uiKey('page'),'messages');saveChatState(id,title)}markConversationSeen(id);await Promise.all([loadChatMessages(),loadDeliveries()]);await applyChatBlockState();loadMessageBadge()
@@ -1153,9 +1190,13 @@ async function loadMe(){
     return null;
   };
   const historyCard=(c,role)=>{
+    if(isConversationHidden(c.id))return '';
     const amount=amountOf(c);
     const safeTitle=esc(titleOf(c)).replace(/'/g,'&#39;');
-    return `<button type="button" class="card trade-history-card mypage-item-card mypage-click-card" onclick="go('messages').then(()=>openConversation('${c.id}','${safeTitle}'))"><div class="row"><div><b>${esc(titleOf(c))}</b><div class="small">${role}${amount!=null?`　¥${Number(amount).toLocaleString()}`:''}</div></div><div class="mypage-status-wrap"><span class="delivery-status ${statusClass(c)}">${statusText(c)}</span><span class="mypage-card-arrow">›</span></div></div></button>`;
+    const hideButton=c.delivery_status==='accepted'
+      ? `<button type="button" class="history-hide-btn" onclick="event.stopPropagation();hideConversationForMe('${c.id}')">非表示</button>`
+      : '';
+    return `<div class="card trade-history-card mypage-item-card mypage-click-card" onclick="go('messages').then(()=>openConversation('${c.id}','${safeTitle}'))"><div class="row"><div><b>${esc(titleOf(c))}</b><div class="small">${role}${amount!=null?`　¥${Number(amount).toLocaleString()}`:''}</div></div><div class="mypage-status-wrap"><span class="delivery-status ${statusClass(c)}">${statusText(c)}</span><span class="mypage-card-arrow">›</span></div></div>${hideButton?`<div style="margin-top:10px;text-align:right">${hideButton}</div><div class="history-hide-note">自分の一覧からだけ非表示になります。決済・納品記録は残ります。</div>`:''}</div>`;
   };
 
   const sellerListingMap=new Map((l||[]).map(x=>[x.id,x]));
