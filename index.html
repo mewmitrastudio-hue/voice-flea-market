@@ -2229,6 +2229,37 @@ function showRuleDoc(kind){const body=document.getElementById('rulesBody');if(bo
   </div>
 </div>
 
+
+<script>
+// Avatar preview: robust iPhone/Safari tap handling (2026-09-13)
+(function(){
+  function previewTappedAvatar(target){
+    const avatar = target && target.closest ? target.closest('.user-avatar, #profileAvatarPreview') : null;
+    if(!avatar) return false;
+    const img = avatar.querySelector('img');
+    if(!img) return false;
+    const src = img.currentSrc || img.src || '';
+    if(!src) return false;
+    if(typeof openAvatarPreview === 'function'){
+      openAvatarPreview(src, avatar.dataset?.avatarName || '');
+      return true;
+    }
+    return false;
+  }
+  document.addEventListener('click', function(e){
+    if(previewTappedAvatar(e.target)){
+      e.preventDefault();
+      e.stopPropagation();
+    }
+  }, true);
+  document.addEventListener('touchend', function(e){
+    if(previewTappedAvatar(e.target)){
+      e.preventDefault();
+      e.stopPropagation();
+    }
+  }, {capture:true, passive:false});
+})();
+</script>
 </body></html>
 <style id="width-tidy-20260911">
 /* Final home width tidy: keep every home element inside the iPhone viewport. */
