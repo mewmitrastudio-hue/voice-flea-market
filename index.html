@@ -201,10 +201,31 @@ body.normal-mode #nav button{height:46px!important;min-height:46px!important;bor
 /* 2026-09-11: 決済状態ステップ表示 */
 .finance-flow{display:grid;grid-template-columns:repeat(4,1fr);gap:6px;margin:12px 0 2px}.finance-step{padding:9px 5px;border:1px solid #e3def8;border-radius:12px;background:#faf9ff;text-align:center;font-size:10px;font-weight:850;color:#6c7290;line-height:1.35}.finance-step.active{background:#eefbf4;border-color:#ccefdc;color:#15844e}.finance-step.future{background:#fff}.finance-history{margin-top:12px;display:grid;gap:8px}.finance-history-item{border:1px solid #e8e3f8;border-radius:12px;padding:10px 12px;background:#fff}.finance-history-item .top{display:flex;justify-content:space-between;gap:10px;align-items:center}.finance-history-item .state{font-size:10px;font-weight:850;padding:5px 8px;border-radius:999px;background:#eefbf4;color:#15844e}.finance-history-item .amt{font-weight:900}.finance-caption{font-size:10px;line-height:1.55;color:#747b93;margin-top:8px}
 </style>
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script>
 if(window.navigator.standalone===true){document.body.classList.add('standalone')}
-window.VOICE_FLEA_CONFIG={SUPABASE_URL:"https://tyulybijubckitybgubc.supabase.co",SUPABASE_PUBLISHABLE_KEY:"sb_publishable_pcKCEYNbn8OtCEzfIERPDA_QAKWFF49"};</script>
+window.VOICE_FLEA_CONFIG={SUPABASE_URL:"https://tyulybijubckitybgubc.supabase.co",SUPABASE_PUBLISHABLE_KEY:"sb_publishable_pcKCEYNbn8OtCEzfIERPDA_QAKWFF49"};
+window.__loadSupabaseSDK=async function(){
+  if(window.supabase?.createClient)return true;
+  const urls=[
+    "https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js",
+    "https://unpkg.com/@supabase/supabase-js@2/dist/umd/supabase.min.js"
+  ];
+  for(const src of urls){
+    try{
+      await new Promise((resolve,reject)=>{
+        const sc=document.createElement('script');
+        sc.src=src+'?v=20260912-1317';
+        sc.async=true;
+        sc.onload=()=>resolve();
+        sc.onerror=()=>reject(new Error('SDK load failed'));
+        document.head.appendChild(sc);
+      });
+      if(window.supabase?.createClient)return true;
+    }catch(e){}
+  }
+  return false;
+};
+</script>
 
 <style id="review-feature-20260911">
 .review-panel{margin-top:12px;background:linear-gradient(135deg,#fff,#faf7ff);border:1px solid #e4defb;border-radius:16px;padding:13px}.review-title{font-weight:900;font-size:13px}.review-stars{display:flex;gap:6px;margin:10px 0 8px}.review-star-actions{display:flex;align-items:center;gap:10px;margin-top:6px}.review-clear{border:1px solid #d9d4ef;background:#fff;color:#6b6780;border-radius:10px;padding:7px 10px;font-size:12px;font-weight:800}.review-clear:disabled{opacity:.45}.review-star{border:0;background:transparent;font-size:28px;line-height:1;padding:6px 4px;filter:grayscale(1);opacity:.42;touch-action:manipulation;-webkit-tap-highlight-color:transparent}.review-star.on{filter:none;opacity:1}.review-panel textarea{width:100%;min-height:74px;border:1px solid var(--line);border-radius:12px;padding:10px;font-size:13px;background:#fff;resize:vertical}.review-done{background:#ecfdf3;color:#087443;border-radius:12px;padding:10px;font-size:12px;font-weight:800;margin-top:9px}.review-received{margin-top:9px;border-top:1px solid #ece8f8;padding-top:9px}.review-score{font-size:18px;letter-spacing:1px;color:#f4a000;font-weight:900}.profile-rating{margin-top:4px;font-weight:800;color:#6558ef}
@@ -389,7 +410,30 @@ function setShellMode(mode){
 }
 async function go(id,opts={}){const allowed=['home','voices','sell','jobs','messages','me'];if(!allowed.includes(id))id='home';setShellMode(id==='messages'?'messages':'normal');document.querySelectorAll('.page').forEach(p=>p.classList.remove('on'));document.getElementById(id).classList.add('on');document.querySelectorAll('#nav button').forEach((b,i)=>b.classList.toggle('on',allowed[i]===id));if(currentUser&&!opts.skipSave)localStorage.setItem(uiKey('page'),id);if(id==='voices')await loadListings();if(id==='jobs')await loadJobs();if(id==='messages')await loadConversations();if(id==='me')await loadMe();if(!opts.keepScroll){if(id==='messages'){document.getElementById('messages').scrollTop=0}else{document.querySelector('.app').scrollTop=0;window.scrollTo(0,0)}}}
 async function restoreUI(){let page=localStorage.getItem(uiKey('page'))||'home';await go(page,{skipSave:true});if(page==='messages'){try{const saved=JSON.parse(localStorage.getItem(uiKey('chat'))||'null');if(saved?.id)await openConversation(saved.id,saved.title||'チャット',{skipSave:true})}catch(e){clearChatState()}}}
-async function init(){if(!configured){cloudStatus.textContent='設定待ち';return}sb=window.supabase.createClient(cfg.SUPABASE_URL,cfg.SUPABASE_PUBLISHABLE_KEY);cloudStatus.textContent='接続中';cloudStatus.classList.add('live');configNotice.classList.add('hide');const {data}=await sb.auth.getSession();currentUser=data.session?.user||null;await renderAuth();sb.auth.onAuthStateChange((_e,s)=>{currentUser=s?.user||null;renderAuth()})}
+async function init(){
+  cloudStatus.textContent='接続中';
+  cloudStatus.classList.remove('live');
+  try{
+    if(!configured)throw new Error('Supabase設定が見つかりません');
+    const sdkReady=await window.__loadSupabaseSDK();
+    if(!sdkReady||!window.supabase?.createClient)throw new Error('Supabase SDKを読み込めませんでした');
+    sb=window.supabase.createClient(cfg.SUPABASE_URL,cfg.SUPABASE_PUBLISHABLE_KEY);
+    const {data,error}=await sb.auth.getSession();
+    if(error)throw error;
+    currentUser=data.session?.user||null;
+    cloudStatus.textContent='オンライン';
+    cloudStatus.classList.add('live');
+    configNotice.classList.add('hide');
+    await renderAuth();
+    sb.auth.onAuthStateChange((_e,s)=>{currentUser=s?.user||null;renderAuth()});
+  }catch(e){
+    console.error('Supabase init failed',e);
+    cloudStatus.textContent='接続エラー';
+    cloudStatus.classList.remove('live');
+    configNotice.classList.remove('hide');
+    configNotice.textContent='サービス接続に失敗しました。右上の更新ボタンで再試行してください。';
+  }
+}
 async function renderAuth(){if(currentUser){authPage.classList.remove('on');nav.classList.remove('hide');refreshBtn?.classList.remove('hide');bellBtn?.classList.remove('hide');cloudStatus.textContent='オンライン';await loadHome();loadJobBadge();loadMessageBadge();loadNotificationBadge();await restoreUI()}else{document.querySelectorAll('.page').forEach(p=>p.classList.remove('on'));authPage.classList.add('on');nav.classList.add('hide');refreshBtn?.classList.add('hide');bellBtn?.classList.add('hide');closeNotifications();document.body.classList.remove('normal-mode','messages-mode','chat-mode');document.querySelector('.topbar')?.classList.remove('force-hide');cloudStatus.textContent=configured?'オンライン':'設定待ち'}}
 async function signUp(){if(!sb)return info('authMsg','まず接続設定が必要です','err');if(password.value.length<8)return info('authMsg','パスワードは8文字以上にしてください','err');const {error}=await sb.auth.signUp({email:email.value.trim(),password:password.value,userMetadata:{display_name:displayName.value.trim()||'ユーザー'},options:{data:{display_name:displayName.value.trim()||'ユーザー'}}});if(error)return info('authMsg',error.message,'err');info('authMsg','登録を受け付けました。メール確認が有効な場合は確認後にログインしてください。')}
 async function signIn(){if(!sb)return info('authMsg','まず接続設定が必要です','err');const {error}=await sb.auth.signInWithPassword({email:email.value.trim(),password:password.value});if(error)return info('authMsg',error.message,'err')}
@@ -397,7 +441,27 @@ async function signOut(){document.body.classList.remove('normal-mode','chat-mode
 async function loadHome(){const [{count:lc},{count:jc}]=await Promise.all([sb.from('listings').select('*',{count:'exact',head:true}).eq('is_active',true),sb.from('jobs').select('*',{count:'exact',head:true}).eq('status','open')]);homeCounts.innerHTML=`公開中の声：<b>${lc??0}</b>件　／　募集中の仕事：<b>${jc??0}</b>件`}
 async function createListing(){if(!currentUser)return;let path=null;const f=sellAudio.files[0];if(f){const ext=(f.name.split('.').pop()||'').toLowerCase().replace(/[^a-z0-9]/g,'');const allowed=['m4a','mp3','wav','aac','mp4','mpeg','ogg','webm'];const mime=(f.type||'').toLowerCase();if(!allowed.includes(ext) && !mime.startsWith('audio/'))return info('sellMsg','音声ファイルを選択してください（m4a / mp3 / wav / aac / mp4 など）。','err');path=`${currentUser.id}/${crypto.randomUUID()}.${ext||'audio'}`;const contentType=mime||({m4a:'audio/mp4',mp4:'audio/mp4',mp3:'audio/mpeg',mpeg:'audio/mpeg',wav:'audio/wav',aac:'audio/aac',ogg:'audio/ogg',webm:'audio/webm'}[ext]||'application/octet-stream');const {error:ue}=await sb.storage.from('voice-samples').upload(path,f,{upsert:false,contentType});if(ue)return info('sellMsg','音声アップロード: '+ue.message,'err')}
 const {error}=await sb.from('listings').insert({seller_id:currentUser.id,title:sellTitle.value.trim(),category:sellCategory.value,description:sellDesc.value.trim(),price_jpy:+sellPrice.value,delivery_days:+sellDays.value,ai_use:sellAI.value,sample_path:path});if(error)return info('sellMsg',error.message,'err');info('sellMsg','クラウドへ出品しました。');sellTitle.value='';sellDesc.value='';sellAudio.value='';loadHome()}
-async function loadListings(){if(!sb)return;let q=voiceSearch.value.trim();let query=sb.from('listings').select('id,title,category,price_jpy,delivery_days,ai_use,sample_path,seller_id,profiles!listings_seller_id_fkey(display_name)').eq('is_active',true).order('created_at',{ascending:false}).limit(50);if(q)query=query.or(`title.ilike.%${q}%,category.ilike.%${q}%`);const {data,error}=await query;if(error){listingList.innerHTML=`<div class="err">${esc(error.message)}</div>`;return}listingList.innerHTML=(data||[]).map(v=>{let audio='';if(v.sample_path){const {data:u}=sb.storage.from('voice-samples').getPublicUrl(v.sample_path);audio=`<audio controls src="${u.publicUrl}"></audio>`}return `<div class="card voice" data-listing-id="${esc(v.id)}"><div class="row"><div><b>${esc(v.title)}</b><div class="small">${esc(v.profiles?.display_name||'出品者')}</div></div><div class="price">¥${Number(v.price_jpy).toLocaleString()}</div></div><span class="pill">${esc(v.category)}</span><span class="pill">${v.delivery_days}日</span><span class="pill">AI:${esc(v.ai_use)}</span>${audio}</div>`}).join('')||'<div class="card small">まだ出品がありません。</div>'}
+async function startStripeCheckout(listingId,btn){
+  if(!sb||!currentUser)return alert('購入するにはログインしてください。');
+  const original=btn?.textContent||'購入する';
+  if(btn){btn.disabled=true;btn.textContent='決済画面を準備中...'}
+  try{
+    const {data:{session}}=await sb.auth.getSession();
+    if(!session?.access_token)throw new Error('ログイン情報を確認できませんでした。');
+    const {data,error}=await sb.functions.invoke('create-checkout-session',{
+      body:{listingId},
+      headers:{Authorization:`Bearer ${session.access_token}`}
+    });
+    if(error)throw error;
+    if(data?.error)throw new Error(data.error);
+    if(!data?.url)throw new Error('Stripe決済画面のURLを取得できませんでした。');
+    window.location.assign(data.url);
+  }catch(e){
+    alert(`決済画面を開けませんでした：${e?.message||'不明なエラー'}`);
+    if(btn){btn.disabled=false;btn.textContent=original}
+  }
+}
+async function loadListings(){if(!sb)return;let q=voiceSearch.value.trim();let query=sb.from('listings').select('id,title,category,price_jpy,delivery_days,ai_use,sample_path,seller_id,profiles!listings_seller_id_fkey(display_name)').eq('is_active',true).order('created_at',{ascending:false}).limit(50);if(q)query=query.or(`title.ilike.%${q}%,category.ilike.%${q}%`);const {data,error}=await query;if(error){listingList.innerHTML=`<div class="err">${esc(error.message)}</div>`;return}listingList.innerHTML=(data||[]).map(v=>{let audio='';if(v.sample_path){const {data:u}=sb.storage.from('voice-samples').getPublicUrl(v.sample_path);audio=`<audio controls src="${u.publicUrl}"></audio>`}const own=v.seller_id===currentUser?.id;const action=own?`<button class="btn full" type="button" disabled style="margin-top:14px;opacity:.62">購入テストは別アカウントで</button>`:`<button class="btn full" type="button" style="margin-top:14px" onclick="startStripeCheckout('${esc(v.id)}',this)">購入する</button>`;return `<div class="card voice" data-listing-id="${esc(v.id)}"><div class="row"><div><b>${esc(v.title)}</b><div class="small">${esc(v.profiles?.display_name||'出品者')}</div></div><div class="price">¥${Number(v.price_jpy).toLocaleString()}</div></div><span class="pill">${esc(v.category)}</span><span class="pill">${v.delivery_days}日</span><span class="pill">AI:${esc(v.ai_use)}</span>${audio}${action}</div>`}).join('')||'<div class="card small">まだ出品がありません。</div>'}
 async function openMyListing(listingId){
   await go('voices');
   voiceSearch.value='';
