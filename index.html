@@ -581,7 +581,7 @@ async function loadListings(){
     if(own){
       action=`<button class="btn full" type="button" disabled style="margin-top:14px;opacity:.62">購入テストは別アカウントで</button>`;
     }else if(purchased){
-      action=`<button class="btn full" type="button" disabled style="margin-top:14px;background:#e9fbef;color:#16844f;border:1px solid #bcebcf;opacity:1">✓ 購入済み・支払い完了</button>`;
+      action=`<button class="btn full" type="button" disabled style="margin-top:14px;background:#e9fbef;color:#16844f;border:1px solid #bcebcf;opacity:1">✓ 購入済み・支払い完了</button><button class="btn full" type="button" style="margin-top:8px" onclick="openPurchasedListingChat('${esc(v.id)}','${esc(v.seller_id)}','${esc(v.title).replace(/'/g,'&#39;')}')">取引を開始する</button>`;
     }else{
       action=`<button class="btn full" type="button" style="margin-top:14px" onclick="startStripeCheckout('${esc(v.id)}',this)">購入する</button>`;
     }
@@ -640,14 +640,72 @@ async function ensureConversation(jobId,buyerId,sellerId){
 async function openJobChat(jobId,buyerId,sellerId,title='仕事のチャット'){
  const {data,error}=await ensureConversation(jobId,buyerId,sellerId);if(error)return alert(error.message);await go('messages');await openConversation(data.id,title)
 }
+
+async function ensureListingConversation(listingId,buyerId,sellerId){
+  const {data:paid,error:paidError}=await sb
+    .from('payments')
+    .select('id,status')
+    .eq('listing_id',listingId)
+    .eq('buyer_id',buyerId)
+    .eq('seller_id',sellerId)
+    .eq('status','paid')
+    .limit(1);
+
+  if(paidError)return {error:paidError};
+  if(!paid?.length)return {error:{message:'支払い済みの購入が確認できません。'}};
+
+  const {data:existing,error:existingError}=await sb
+    .from('conversations')
+    .select('id,buyer_id,seller_id,listing_id')
+    .eq('listing_id',listingId)
+    .eq('buyer_id',buyerId)
+    .eq('seller_id',sellerId)
+    .limit(1);
+
+  if(existingError)return {error:existingError};
+  if(existing?.length)return {data:existing[0]};
+
+  return await sb
+    .from('conversations')
+    .insert({
+      listing_id:listingId,
+      buyer_id:buyerId,
+      seller_id:sellerId,
+      delivery_status:'none'
+    })
+    .select('id,buyer_id,seller_id,listing_id')
+    .single();
+}
+
+async function openPurchasedListingChat(listingId,sellerId,title='購入した音声'){
+  if(!currentUser)return alert('ログインしてください。');
+  const {data,error}=await ensureListingConversation(listingId,currentUser.id,sellerId);
+  if(error)return alert(error.message);
+  await go('messages');
+  await openConversation(data.id,title);
+}
 async function loadConversations(){
  if(!sb||!currentUser)return;setShellMode('messages');chatBox.classList.remove('on');conversationList.style.display='grid';
- const {data,error}=await sb.from('conversations').select('id,buyer_id,seller_id,job_id,created_at').or(`buyer_id.eq.${currentUser.id},seller_id.eq.${currentUser.id}`).order('created_at',{ascending:false});
+ const {data,error}=await sb.from('conversations').select('id,buyer_id,seller_id,job_id,listing_id,created_at').or(`buyer_id.eq.${currentUser.id},seller_id.eq.${currentUser.id}`).order('created_at',{ascending:false});
  if(error){conversationList.innerHTML=`<div class="err">${esc(error.message)}</div>`;return}
  const cs=data||[];if(!cs.length){conversationList.innerHTML='<div class="card small">まだメッセージはありません。</div>';msgBadge?.classList.remove('show');return}
- const partnerIds=[...new Set(cs.map(c=>c.buyer_id===currentUser.id?c.seller_id:c.buyer_id))];const jobIds=[...new Set(cs.map(c=>c.job_id).filter(Boolean))];
- let profiles={},jobs={};if(partnerIds.length){const r=await sb.from('profiles').select('id,display_name').in('id',partnerIds);(r.data||[]).forEach(x=>profiles[x.id]=x.display_name)}if(jobIds.length){const r=await sb.from('jobs').select('id,title').in('id',jobIds);(r.data||[]).forEach(x=>jobs[x.id]=x.title)}
- const rows=[];for(const c of cs){const {data:msgs}=await sb.from('messages').select('id,sender_id,body,created_at').eq('conversation_id',c.id).order('created_at',{ascending:false}).limit(1);const last=msgs?.[0];const seen=localStorage.getItem(seenKey(c.id))||'1970-01-01T00:00:00.000Z';const unread=last&&last.sender_id!==currentUser.id&&last.created_at>seen?1:0;const partner=c.buyer_id===currentUser.id?c.seller_id:c.buyer_id;rows.push(`<div class="chatrow" onclick="openConversation('${c.id}','${esc(jobs[c.job_id]||'チャット').replace(/'/g,'&#39;')}')"><div class="chathead"><div><b>${esc(profiles[partner]||'ユーザー')}</b><div class="small">${esc(jobs[c.job_id]||'仕事のチャット')}</div></div>${unread?'<span class="unread-dot">1</span>':''}</div><div class="small" style="margin-top:6px">${esc(last?.body||'チャットを開始できます')}</div></div>`)}
+ const partnerIds=[...new Set(cs.map(c=>c.buyer_id===currentUser.id?c.seller_id:c.buyer_id))];
+ const jobIds=[...new Set(cs.map(c=>c.job_id).filter(Boolean))];
+ const listingIds=[...new Set(cs.map(c=>c.listing_id).filter(Boolean))];
+ let profiles={},jobs={},listings={};
+ if(partnerIds.length){const r=await sb.from('profiles').select('id,display_name').in('id',partnerIds);(r.data||[]).forEach(x=>profiles[x.id]=x.display_name)}
+ if(jobIds.length){const r=await sb.from('jobs').select('id,title').in('id',jobIds);(r.data||[]).forEach(x=>jobs[x.id]=x.title)}
+ if(listingIds.length){const r=await sb.from('listings').select('id,title').in('id',listingIds);(r.data||[]).forEach(x=>listings[x.id]=x.title)}
+ const rows=[];for(const c of cs){
+   const {data:msgs}=await sb.from('messages').select('id,sender_id,body,created_at').eq('conversation_id',c.id).order('created_at',{ascending:false}).limit(1);
+   const last=msgs?.[0];
+   const seen=localStorage.getItem(seenKey(c.id))||'1970-01-01T00:00:00.000Z';
+   const unread=last&&last.sender_id!==currentUser.id&&last.created_at>seen?1:0;
+   const partner=c.buyer_id===currentUser.id?c.seller_id:c.buyer_id;
+   const title=jobs[c.job_id]||listings[c.listing_id]||'チャット';
+   const kind=c.listing_id?'購入した音声の取引':'仕事のチャット';
+   rows.push(`<div class="chatrow" onclick="openConversation('${c.id}','${esc(title).replace(/'/g,'&#39;')}')"><div class="chathead"><div><b>${esc(profiles[partner]||'ユーザー')}</b><div class="small">${esc(kind)}</div></div>${unread?'<span class="unread-dot">1</span>':''}</div><div class="small" style="margin-top:6px">${esc(last?.body||'チャットを開始できます')}</div></div>`);
+ }
  conversationList.innerHTML=rows.join('');loadMessageBadge()
 }
 async function openConversation(id,title='チャット',opts={}){
