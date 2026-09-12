@@ -1134,17 +1134,10 @@ async function loadMe(){
   const jobMap=new Map(jobs.map(x=>[x.id,x]));
   const listingMap=new Map(listings.map(x=>[x.id,x]));
 
-  // 取引状態はユーザーが流れを追いやすい言葉に統一する。
-  // 受取後に双方のレビューが完了した取引だけ「完了」と表示する。
-  const convIds=allConvs.map(x=>x.id).filter(Boolean);
-  const reviewCountByConversation=new Map();
-  if(convIds.length){
-    const {data:reviewRows}=await sb.from('reviews').select('conversation_id').in('conversation_id',convIds);
-    (reviewRows||[]).forEach(r=>reviewCountByConversation.set(r.conversation_id,(reviewCountByConversation.get(r.conversation_id)||0)+1));
-  }
+  // 取引状態は決済後の実際の進行に合わせて表示する。
+  // 購入者が受取確認した時点で、この取引は「完了」とする。
   const statusText=(c)=>{
-    if(c.delivery_status==='accepted' && (reviewCountByConversation.get(c.id)||0)>=2)return '完了';
-    if(c.delivery_status==='accepted')return '受取済み';
+    if(c.delivery_status==='accepted')return '完了';
     if(c.delivery_status==='submitted')return '納品済み';
     return '取引中';
   };
