@@ -2562,3 +2562,66 @@ body.normal-mode .tag .line2{
   body.normal-mode .tag .line2{font-size:9.1px!important;transform:scaleX(1.01)}
 }
 </style>
+
+<style id="login-brand-singleline-fix-20260913">
+/* Login/header fix: keep title on one line and keep both subtitle lines fully visible. */
+.brandwrap{
+  min-width:0!important;
+  gap:8px!important;
+  align-items:center!important;
+}
+.brandicon{
+  width:40px!important;
+  height:40px!important;
+  min-width:40px!important;
+  flex:0 0 40px!important;
+  border-radius:14px!important;
+  font-size:21px!important;
+}
+.brandtext{
+  min-width:0!important;
+  overflow:visible!important;
+}
+.brand{
+  font-size:clamp(24px,6.8vw,27px)!important;
+  line-height:1.02!important;
+  white-space:nowrap!important;
+  letter-spacing:-.02em!important;
+  transform:scaleX(1.015)!important;
+  transform-origin:left center!important;
+}
+.tag{
+  margin-top:6px!important;
+  line-height:1.17!important;
+  letter-spacing:-.02em!important;
+}
+.tag .line1,
+.tag .line2{
+  display:block!important;
+  white-space:nowrap!important;
+  font-size:clamp(9.6px,2.65vw,11px)!important;
+  line-height:1.18!important;
+  letter-spacing:-.02em!important;
+  transform:scaleX(1.01)!important;
+  transform-origin:left center!important;
+}
+.tag .line2{margin-top:3px!important}
+
+@media (max-width:390px){
+  .brandicon{
+    width:38px!important;
+    height:38px!important;
+    min-width:38px!important;
+    flex-basis:38px!important;
+    font-size:20px!important;
+  }
+  .brand{font-size:24px!important;transform:scaleX(1.01)!important}
+  .tag .line1,
+  .tag .line2{font-size:9.5px!important;transform:none!important}
+}
+
+/* Preserve the same balanced look after login as well. */
+body.normal-mode .brand{white-space:nowrap!important}
+body.normal-mode .tag .line1,
+body.normal-mode .tag .line2{white-space:nowrap!important}
+</style>
