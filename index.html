@@ -1555,22 +1555,19 @@ async function loadReviewPanel(){
  const reviews=rows||[];
  const mine=reviews.find(r=>r.reviewer_id===currentUser.id);
  const theirs=reviews.find(r=>r.reviewer_id!==currentUser.id);
- let html='<div class="review-panel"><div class="review-title">⭐ 取引相手を評価する</div><div class="small" style="margin-top:4px">受取完了後、双方が1回ずつ評価できます。</div>';
+ // 自分が評価を送信した後は、評価パネルをチャット内に残し続けない。
+ // 送信した事実は messages に残るため、通常のメッセージ履歴だけで確認できる。
  if(mine){
-   html+=`<div class="review-done">評価を送信済み　<span class="review-score">${'★'.repeat(mine.rating)}${'☆'.repeat(5-mine.rating)}</span></div>`;
-   if(mine.comment)html+=`<div class="small" style="margin-top:7px">あなたのコメント：${esc(mine.comment)}</div>`;
- }else{
-   html+=`<div class="small" style="margin-top:8px">付けたい数の星をタップしてください。</div><div class="review-stars">${[1,2,3,4,5].map(n=>`<button type="button" class="review-star" data-rating="${n}" aria-label="${n}点">★</button>`).join('')}</div><div class="review-star-actions"><div class="small" id="reviewRatingLabel">未選択</div><button type="button" id="reviewClearBtn" class="review-clear" onclick="clearReviewRating()" disabled>選択を解除</button></div><textarea id="reviewComment" maxlength="200" placeholder="コメント（任意・200文字以内）"></textarea><button class="btn full" onclick="submitReview()">評価を送る</button><div id="reviewMsg"></div>`;
+   area.innerHTML='';
+   return;
  }
- if(theirs&&mine){
-   html+=`<div class="review-received"><div class="small">相手からの評価</div><div class="review-score">${'★'.repeat(theirs.rating)}${'☆'.repeat(5-theirs.rating)}</div>${theirs.comment?`<div class="small" style="margin-top:5px">${esc(theirs.comment)}</div>`:''}</div>`;
- }else if(mine&&!theirs){
-   html+=`<div class="small review-received">相手の評価は、相手も評価を送った後に表示されます。</div>`;
- }else if(!mine&&theirs){
-   html+=`<div class="small review-received">相手は評価済みです。内容はあなたが評価を送った後に表示されます。</div>`;
+ let html='<div class="review-panel"><div class="review-title">⭐ 取引相手を評価する</div><div class="small" style="margin-top:4px">受取完了後、双方が1回ずつ評価できます。</div>';
+ html+=`<div class="small" style="margin-top:8px">付けたい数の星をタップしてください。</div><div class="review-stars">${[1,2,3,4,5].map(n=>`<button type="button" class="review-star" data-rating="${n}" aria-label="${n}点">★</button>`).join('')}</div><div class="review-star-actions"><div class="small" id="reviewRatingLabel">未選択</div><button type="button" id="reviewClearBtn" class="review-clear" onclick="clearReviewRating()" disabled>選択を解除</button></div><textarea id="reviewComment" maxlength="200" placeholder="コメント（任意・200文字以内）"></textarea><button class="btn full" onclick="submitReview()">評価を送る</button><div id="reviewMsg"></div>`;
+ if(theirs){
+   html+=`<div class="small review-received">相手は評価済みです。内容はあなたが評価を送った後に確定します。</div>`;
  }
  html+='</div>';area.innerHTML=html;
- if(!mine){
+ {
    area.querySelectorAll('.review-star').forEach(btn=>{
      btn.addEventListener('click',(e)=>{
        e.preventDefault();
