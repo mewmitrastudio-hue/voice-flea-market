@@ -2659,3 +2659,43 @@ body.normal-mode .brand{white-space:nowrap!important}
 body.normal-mode .tag .line1,
 body.normal-mode .tag .line2{white-space:nowrap!important}
 </style>
+
+
+<script id="avatar-preview-force-v2">
+(function(){
+  function findAvatarImage(target){
+    if(!target || !target.closest) return null;
+    const holder = target.closest('.user-avatar, #profileAvatarPreview, .profile-avatar-preview, .profile-avatar-circle');
+    if(!holder) return null;
+    return holder.querySelector('img');
+  }
+  function showForcedAvatar(src){
+    if(!src) return;
+    let ov=document.getElementById('vfForcedAvatarPreview');
+    if(!ov){
+      ov=document.createElement('div');
+      ov.id='vfForcedAvatarPreview';
+      ov.setAttribute('role','dialog');
+      ov.setAttribute('aria-modal','true');
+      ov.style.cssText='position:fixed;inset:0;z-index:2147483647;background:rgba(0,0,0,.90);display:flex;align-items:center;justify-content:center;padding:18px;box-sizing:border-box;';
+      ov.innerHTML='<button type="button" aria-label="閉じる" style="position:absolute;top:calc(14px + env(safe-area-inset-top));right:14px;width:46px;height:46px;border:0;border-radius:50%;background:#fff;color:#222;font-size:28px;font-weight:900;z-index:2;">×</button><img alt="プロフィール画像" style="display:block;max-width:94vw;max-height:84dvh;width:auto;height:auto;object-fit:contain;border-radius:16px;box-shadow:0 18px 60px rgba(0,0,0,.45);">';
+      ov.querySelector('button').addEventListener('click',function(){ov.remove();});
+      ov.addEventListener('click',function(e){if(e.target===ov)ov.remove();});
+      document.body.appendChild(ov);
+    }
+    ov.querySelector('img').src=src;
+  }
+  function handle(e){
+    const img=findAvatarImage(e.target);
+    if(!img) return;
+    const src=img.currentSrc||img.src||'';
+    if(!src) return;
+    e.preventDefault();
+    e.stopPropagation();
+    if(e.stopImmediatePropagation) e.stopImmediatePropagation();
+    showForcedAvatar(src);
+  }
+  document.addEventListener('pointerup',handle,true);
+  document.addEventListener('click',handle,true);
+})();
+</script>
