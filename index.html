@@ -449,6 +449,7 @@ body.normal-mode #nav button{height:46px!important;min-height:46px!important;bor
 .user-avatar img{width:100%;height:100%;object-fit:cover;display:block}
 .user-avatar.xs{width:28px;height:28px;font-size:11px}.user-avatar.sm{width:38px;height:38px;font-size:14px}.user-avatar.md{width:48px;height:48px}.user-avatar.lg{width:62px;height:62px;font-size:23px}.user-avatar.xl{width:86px;height:86px;font-size:30px}
 .user-avatar.clickable{cursor:pointer;box-shadow:0 0 0 2px #fff,0 0 0 3px #ddd8ff}
+.user-avatar.avatar-preview-trigger{border:0;padding:0;margin:0;font:inherit;appearance:none;-webkit-appearance:none;touch-action:manipulation;-webkit-tap-highlight-color:transparent}
 .profile-avatar-preview img{width:100%;height:100%;object-fit:cover;border-radius:50%}
 .profile-edit-box{max-height:88dvh;overflow:auto}
 .profile-edit-box textarea{min-height:100px}
@@ -859,7 +860,7 @@ body:has(#authPage.on) .tag .line2{
 <nav id="nav" class="nav hide"><button onclick="go('home')">ホーム</button><button onclick="go('voices')">声を探す</button><button onclick="go('sell')">出品</button><button onclick="go('jobs')">仕事<span id="jobBadge" class="badge"></span></button><button onclick="go('messages')">メッセージ<span id="msgBadge" class="badge"></span></button><button onclick="go('me')">マイページ</button></nav>
 </div>
 <script>
-let sb=null,currentUser=null,currentConversationId=null,currentConversationPartner=null,currentConversation=null;
+let sb=null,currentUser=null,currentConversationId=null,currentConversationPartner=null,currentConversation=null,currentConversationGroupIds=[];
 const selectedDeliveryFiles=new Map();
 const cfg=window.VOICE_FLEA_CONFIG||{};
 const configured=cfg.SUPABASE_URL && cfg.SUPABASE_PUBLISHABLE_KEY && !cfg.SUPABASE_URL.includes('YOUR_PROJECT') && !cfg.SUPABASE_PUBLISHABLE_KEY.includes('YOUR_');
@@ -1501,50 +1502,73 @@ async function loadConversations(){
  if(error){conversationList.innerHTML=`<div class="err">${esc(error.message)}</div>`;return}
  const cs=data||[];if(!cs.length){conversationList.innerHTML='<div class="card small">まだメッセージはありません。</div>';msgBadge?.classList.remove('show');return}
  const partnerIds=[...new Set(cs.map(c=>c.buyer_id===currentUser.id?c.seller_id:c.buyer_id))];
- const jobIds=[...new Set(cs.map(c=>c.job_id).filter(Boolean))];
- const listingIds=[...new Set(cs.map(c=>c.listing_id).filter(Boolean))];
- let profiles={},jobs={},listings={};
+ let profiles={};
  if(partnerIds.length){const r=await sb.from('profiles').select('id,display_name,avatar_path').in('id',partnerIds);(r.data||[]).forEach(x=>profiles[x.id]=x)}
- if(jobIds.length){const r=await sb.from('jobs').select('id,title').in('id',jobIds);(r.data||[]).forEach(x=>jobs[x.id]=x.title)}
- if(listingIds.length){const r=await sb.from('listings').select('id,title').in('id',listingIds);(r.data||[]).forEach(x=>listings[x.id]=x.title)}
- const rows=[];for(const c of cs){
+ // LINEのように「相手ごとに1行」にまとめる。取引データ自体は分けたまま保持する。
+ const grouped={};
+ for(const c of cs){
    if(isConversationHidden(c.id))continue;
-   const {data:msgs}=await sb.from('messages').select('id,sender_id,body,created_at').eq('conversation_id',c.id).order('created_at',{ascending:false}).limit(20);
-   const last=msgs?.[0];
-   // 評価送信のシステム文はチャット履歴には残すが、メッセージ一覧のプレビューには出さない。
-   const preview=(msgs||[]).find(m=>m.body!=='⭐ 取引評価を送信しました。')||null;
-   const seen=localStorage.getItem(seenKey(c.id))||'1970-01-01T00:00:00.000Z';
-   const unread=last&&last.sender_id!==currentUser.id&&last.created_at>seen?1:0;
    const partner=c.buyer_id===currentUser.id?c.seller_id:c.buyer_id;
-   const title=jobs[c.job_id]||listings[c.listing_id]||'チャット';
-   const kind=c.listing_id?'購入した音声の取引':'仕事のチャット';
-   const hideBtn=c.delivery_status==='accepted'
-     ? `<button type="button" class="history-hide-btn" onclick="event.stopPropagation();hideConversationForMe('${c.id}')">非表示</button>`
-     : (unread?'<span class="unread-dot">1</span>':'');
-   rows.push(`<div class="chatrow" onclick="openConversation('${c.id}','${esc(title).replace(/'/g,'&#39;')}')"><div class="chathead"><div class="chat-partner">${avatarMarkup(profiles[partner]||{display_name:'ユーザー'},'sm',partner)}<div><b>${esc(profiles[partner]?.display_name||'ユーザー')}</b><div class="small">${esc(kind)}</div></div></div>${hideBtn}</div><div class="small" style="margin-top:6px">${esc(preview?.body||'チャットを開始できます')}</div>${c.delivery_status==='accepted'?'<div class="history-hide-note">完了した取引です。非表示にしても記録自体は削除されません。</div>':''}</div>`);
+   (grouped[partner] ||= []).push(c);
+ }
+ const rows=[];
+ for(const [partner,group] of Object.entries(grouped)){
+   group.sort((a,b)=>new Date(b.created_at||0)-new Date(a.created_at||0));
+   let latestConversation=group[0], latestMsg=null, latestPreview=null, unreadCount=0;
+   for(const c of group){
+     const {data:msgs}=await sb.from('messages').select('id,sender_id,body,created_at').eq('conversation_id',c.id).order('created_at',{ascending:false}).limit(20);
+     const last=msgs?.[0]||null;
+     const preview=(msgs||[]).find(m=>m.body!=='⭐ 取引評価を送信しました。')||null;
+     if(last && (!latestMsg || new Date(last.created_at)>new Date(latestMsg.created_at))){latestMsg=last;latestConversation=c;}
+     if(preview && (!latestPreview || new Date(preview.created_at)>new Date(latestPreview.created_at)))latestPreview=preview;
+     const seen=localStorage.getItem(seenKey(c.id))||'1970-01-01T00:00:00.000Z';
+     if(last&&last.sender_id!==currentUser.id&&last.created_at>seen)unreadCount++;
+   }
+   const name=profiles[partner]?.display_name||'ユーザー';
+   const ids=group.map(c=>c.id);
+   const allAccepted=group.every(c=>c.delivery_status==='accepted');
+   const action=allAccepted
+     ? `<button type="button" class="history-hide-btn" onclick='event.stopPropagation();hidePartnerConversations(${JSON.stringify(ids)})'>非表示</button>`
+     : (unreadCount?`<span class="unread-dot">${unreadCount}</span>`:'');
+   rows.push(`<div class="chatrow" onclick="openConversation('${latestConversation.id}','${esc(name).replace(/'/g,'&#39;')}')"><div class="chathead"><div class="chat-partner">${avatarMarkup(profiles[partner]||{display_name:'ユーザー'},'sm',partner)}<div><b>${esc(name)}</b><div class="small">個別メッセージ</div></div></div>${action}</div><div class="small" style="margin-top:6px">${esc(latestPreview?.body||'チャットを開始できます')}</div>${allAccepted?'<div class="history-hide-note">完了した取引の記録も、この相手とのチャット履歴にまとめて残ります。</div>':''}</div>`);
  }
  conversationList.innerHTML=rows.join('')||'<div class="card small">表示中のメッセージはありません。</div>';loadMessageBadge()
 }
-async function openConversation(id,title='チャット',opts={}){
- clearChatNotice();currentConversationId=id;const {data:c,error:ce}=await sb.from('conversations').select('id,buyer_id,seller_id,job_id,listing_id,delivery_path,delivery_status,delivered_at,accepted_at').eq('id',id).single();if(ce)return info('chatMsg',ce.message,'err');currentConversation=c;currentConversationPartner=currentUser.id===c.buyer_id?c.seller_id:c.buyer_id;conversationList.style.display='none';chatBox.classList.add('on');setShellMode('chat');chatTitle.textContent=title;chatSub.textContent=c.listing_id?(currentUser.id===c.seller_id?'購入された音声の取引':'購入した音声の取引'):(currentUser.id===c.seller_id?'受注した仕事のチャット':'依頼した仕事のチャット');if(currentUser&&!opts.skipSave){localStorage.setItem(uiKey('page'),'messages');saveChatState(id,title)}markConversationSeen(id);await Promise.all([loadChatMessages(),loadDeliveries()]);await applyChatBlockState();loadMessageBadge()
+function hidePartnerConversations(ids){
+ if(!currentUser||!Array.isArray(ids))return;
+ ids.forEach(id=>localStorage.setItem(hiddenConversationKey(id),'1'));
+ if(ids.includes(currentConversationId))closeChat();
+ loadConversations();loadMe();
 }
-function closeChat(){clearChatNotice();clearChatState();currentConversationId=null;currentConversation=null;currentConversationPartner=null;setShellMode('messages');chatBox.classList.remove('on');conversationList.style.display='grid';loadConversations()}
+async function openConversation(id,title='チャット',opts={}){
+ clearChatNotice();currentConversationId=id;
+ const {data:c,error:ce}=await sb.from('conversations').select('id,buyer_id,seller_id,job_id,listing_id,delivery_path,delivery_status,delivered_at,accepted_at,created_at').eq('id',id).single();
+ if(ce)return info('chatMsg',ce.message,'err');
+ currentConversation=c;currentConversationPartner=currentUser.id===c.buyer_id?c.seller_id:c.buyer_id;
+ // 同じ相手との複数取引を、表示上は1つのトーク履歴としてまとめる。
+ const {data:partnerConvs}=await sb.from('conversations').select('id,buyer_id,seller_id,created_at').or(`and(buyer_id.eq.${currentUser.id},seller_id.eq.${currentConversationPartner}),and(buyer_id.eq.${currentConversationPartner},seller_id.eq.${currentUser.id})`).order('created_at',{ascending:true});
+ currentConversationGroupIds=(partnerConvs||[]).map(x=>x.id).filter(id=>!isConversationHidden(id));
+ if(!currentConversationGroupIds.includes(c.id))currentConversationGroupIds.push(c.id);
+ conversationList.style.display='none';chatBox.classList.add('on');setShellMode('chat');chatTitle.textContent=title;chatSub.textContent='この相手とのメッセージ';
+ if(currentUser&&!opts.skipSave){localStorage.setItem(uiKey('page'),'messages');saveChatState(id,title)}
+ currentConversationGroupIds.forEach(markConversationSeen);
+ await Promise.all([loadChatMessages(),loadDeliveries()]);await applyChatBlockState();loadMessageBadge()
+}
+function closeChat(){clearChatNotice();clearChatState();currentConversationId=null;currentConversation=null;currentConversationPartner=null;currentConversationGroupIds=[];setShellMode('messages');chatBox.classList.remove('on');conversationList.style.display='grid';loadConversations()}
 async function loadChatMessages(){
  if(!currentConversationId)return;
- const {data,error}=await sb.from('messages').select('id,sender_id,body,created_at').eq('conversation_id',currentConversationId).order('created_at',{ascending:true}).limit(200);
+ const ids=currentConversationGroupIds.length?currentConversationGroupIds:[currentConversationId];
+ const {data,error}=await sb.from('messages').select('id,conversation_id,sender_id,body,created_at').in('conversation_id',ids).order('created_at',{ascending:true}).limit(500);
  if(error){chatMessages.innerHTML=`<div class="err">${esc(error.message)}</div>`;return}
  const senderIds=[...new Set((data||[]).map(m=>m.sender_id).filter(Boolean))];
  let profileMap={};
- if(senderIds.length){
-   const {data:ps}=await sb.from('profiles').select('id,display_name,avatar_path').in('id',senderIds);
-   (ps||[]).forEach(p=>profileMap[p.id]=p);
- }
+ if(senderIds.length){const {data:ps}=await sb.from('profiles').select('id,display_name,avatar_path').in('id',senderIds);(ps||[]).forEach(p=>profileMap[p.id]=p)}
  chatMessages.innerHTML=(data||[]).map(m=>{
    const mine=m.sender_id===currentUser.id;
    if(mine)return `<div class="chat-message-row mine-row"><div class="bubble mine">${esc(m.body)}</div></div>`;
    return `<div class="chat-message-row theirs-row">${avatarMarkup(profileMap[m.sender_id]||{display_name:'ユーザー'},'xs',m.sender_id)}<div class="bubble theirs">${esc(m.body)}</div></div>`;
  }).join('')||'<div class="small">まだメッセージはありません。最初のメッセージを送ってみましょう。</div>';
- markConversationSeen(currentConversationId);setTimeout(()=>chatMessages.scrollTop=chatMessages.scrollHeight,0)
+ ids.forEach(markConversationSeen);setTimeout(()=>chatMessages.scrollTop=chatMessages.scrollHeight,0)
 }
 async function sendChatMessage(){
  const body=chatInput.value.trim();if(!body||!currentConversationId)return;clearChatNotice();if(await isCurrentConversationBlocked())return info('chatMsg','ブロック中のためメッセージを送信できません。','err');const {error}=await sb.from('messages').insert({conversation_id:currentConversationId,sender_id:currentUser.id,body});if(error)return info('chatMsg',error.message,'err');chatInput.value='';info('chatMsg','送信しました。');setTimeout(()=>{if(chatMsg?.textContent.includes('送信しました'))chatMsg.innerHTML=''},2200);await loadChatMessages();loadMessageBadge()
@@ -1853,9 +1877,11 @@ function profileAvatarUrl(path){
 function avatarMarkup(profile,size='md',clickId=''){
   const name=profile?.display_name||'ユーザー';
   const url=profileAvatarUrl(profile?.avatar_path);
-  const inner=url?`<img src="${esc(url)}" alt="">`:`<span>${esc(String(name).trim().charAt(0).toUpperCase()||'U')}</span>`;
-  const click=(url&&clickId)?` onclick="event.stopPropagation();openAvatarPreviewFromElement(this)" data-avatar-name="${esc(name)}" role="button" aria-label="プロフィール画像を拡大"`:'';
-  return `<div class="user-avatar ${size} ${url&&clickId?'clickable':''}"${click}>${inner}</div>`;
+  const inner=url?`<img src="${esc(url)}" alt="${esc(name)}のプロフィール画像">`:`<span>${esc(String(name).trim().charAt(0).toUpperCase()||'U')}</span>`;
+  if(url&&clickId){
+    return `<button type="button" class="user-avatar ${size} clickable avatar-preview-trigger" data-avatar-name="${esc(name)}" aria-label="プロフィール画像を拡大" onclick="event.preventDefault();event.stopPropagation();openAvatarPreviewFromElement(this);return false;">${inner}</button>`;
+  }
+  return `<div class="user-avatar ${size}">${inner}</div>`;
 }
 
 function openAvatarPreviewFromElement(el){
@@ -2294,408 +2320,14 @@ function showRuleDoc(kind){const body=document.getElementById('rulesBody');if(bo
   }, {capture:true, passive:false});
 })();
 </script>
-</body></html>
-<style id="width-tidy-20260911">
-/* Final home width tidy: keep every home element inside the iPhone viewport. */
-body.normal-mode .app{
-  padding-left:16px!important;
-  padding-right:16px!important;
-}
-body.normal-mode .topbar{
-  width:100%!important;
-  grid-template-columns:minmax(0,1fr) auto!important;
-  gap:6px!important;
-}
-body.normal-mode .brandwrap{gap:7px!important;min-width:0!important}
-body.normal-mode .brandicon{width:36px!important;height:36px!important;flex-basis:36px!important;font-size:19px!important}
-body.normal-mode .brand{font-size:25px!important}
-body.normal-mode .tag .line1,
-body.normal-mode .tag .line2{font-size:clamp(9.4px,2.45vw,10.6px)!important}
-body.normal-mode .topactions{gap:4px!important;min-width:0!important}
-body.normal-mode .refreshbtn,
-body.normal-mode .bellbtn{width:30px!important;height:30px!important;flex:0 0 30px!important}
-body.normal-mode .status{font-size:8.5px!important;padding:4px 6px!important;white-space:nowrap!important}
-#home .home-note{width:100%!important;gap:4px!important}
-#home .home-note span{font-size:8.4px!important;padding:5px 2px!important}
-#home .quickgrid{width:100%!important;gap:8px!important}
-#home .quickcard{width:100%!important;max-width:100%!important;padding-left:11px!important;padding-right:11px!important}
-#home .home-stats{width:100%!important}
-/* Narrower six-button navigation, centered and fully inside the screen. */
-body.normal-mode #nav{
-  width:calc(100% - 20px)!important;
-  margin:6px 10px 0!important;
-  padding:6px 0 calc(6px + env(safe-area-inset-bottom))!important;
-  gap:6px!important;
-  background:rgba(255,255,255,.96)!important;
-  border-radius:16px 16px 0 0!important;
-}
-body.normal-mode #nav button{
-  width:100%!important;
-  height:44px!important;
-  min-height:44px!important;
-  font-size:13.5px!important;
-  border-radius:12px!important;
-}
-@media (max-width:390px){
-  body.normal-mode .app{padding-left:14px!important;padding-right:14px!important}
-  body.normal-mode .brand{font-size:23px!important}
-  body.normal-mode .brandicon{width:34px!important;height:34px!important;flex-basis:34px!important;font-size:18px!important}
-  body.normal-mode .tag .line1,body.normal-mode .tag .line2{font-size:9.2px!important}
-  body.normal-mode .status{font-size:8px!important;padding:4px 5px!important}
-  #home .home-note span{font-size:8px!important}
-  body.normal-mode #nav{width:calc(100% - 18px)!important;margin-left:9px!important;margin-right:9px!important}
-}
-</style>
-<style id="final-home-fit-20260911">
-/* Final fit polish: keep header, home chips, cards, and bottom nav fully inside narrow iPhone widths. */
-html,body{overflow-x:hidden!important}
-body.normal-mode .app{
-  width:100%!important;
-  max-width:440px!important;
-  padding-left:14px!important;
-  padding-right:14px!important;
-  overflow-x:hidden!important;
-}
-body.normal-mode .topbar{
-  width:100%!important;
-  max-width:100%!important;
-  display:grid!important;
-  grid-template-columns:minmax(0,1fr) auto!important;
-  align-items:center!important;
-  gap:8px!important;
-  overflow:hidden!important;
-}
-body.normal-mode .brandwrap{min-width:0!important;max-width:100%!important;gap:8px!important}
-body.normal-mode .brandicon{width:32px!important;height:32px!important;min-width:32px!important;flex:0 0 32px!important;border-radius:13px!important;font-size:18px!important}
-body.normal-mode .brandicon:after{right:-4px!important;top:-7px!important;font-size:12px!important}
-body.normal-mode .brandtext{min-width:0!important;max-width:100%!important}
-body.normal-mode .brand{font-size:clamp(20px,8vw,24px)!important;line-height:1.02!important}
-body.normal-mode .tag{margin-top:5px!important}
-body.normal-mode .tag .line1,
-body.normal-mode .tag .line2{font-size:clamp(8.8px,2.5vw,10.5px)!important;line-height:1.16!important;white-space:normal!important}
-body.normal-mode .topactions{display:flex!important;align-items:center!important;gap:5px!important;flex:0 0 auto!important}
-body.normal-mode .refreshbtn,
-body.normal-mode .bellbtn{width:28px!important;height:28px!important;min-width:28px!important;flex:0 0 28px!important;border-radius:11px!important;font-size:18px!important}
-body.normal-mode .status{font-size:8px!important;padding:4px 6px!important;white-space:nowrap!important;border-radius:999px!important}
-#home{overflow-x:hidden!important}
-#home .home-note{
-  width:100%!important;
-  display:grid!important;
-  grid-template-columns:repeat(3,minmax(0,1fr))!important;
-  gap:6px!important;
-}
-#home .home-note span{
-  display:flex!important;
-  align-items:center!important;
-  justify-content:center!important;
-  min-width:0!important;
-  text-align:center!important;
-  font-size:8.4px!important;
-  padding:6px 4px!important;
-  line-height:1.2!important;
-}
-#home .quickgrid{width:100%!important;gap:8px!important}
-#home .quickcard{min-width:0!important;width:100%!important;max-width:100%!important;padding:14px 12px!important}
-#home .quickcard .qi{font-size:24px!important}
-#home .quickcard small{font-size:10px!important}
-#home .home-stats{width:100%!important;max-width:100%!important;padding:14px 12px!important}
-body.normal-mode #nav{
-  left:50%!important;
-  right:auto!important;
-  transform:translateX(-50%)!important;
-  width:min(calc(100vw - 24px),416px)!important;
-  max-width:416px!important;
-  margin:0!important;
-  padding:6px 0 calc(6px + env(safe-area-inset-bottom))!important;
-  gap:6px!important;
-  border-radius:18px 18px 0 0!important;
-  overflow:hidden!important;
-}
-body.normal-mode #nav button{
-  min-width:0!important;
-  width:100%!important;
-  height:44px!important;
-  min-height:44px!important;
-  padding:6px 4px!important;
-  font-size:13px!important;
-  border-radius:12px!important;
-}
-@media (max-width:390px){
-  body.normal-mode .app{padding-left:12px!important;padding-right:12px!important}
-  body.normal-mode .brand{font-size:21px!important}
-  body.normal-mode .brandicon{width:30px!important;height:30px!important;min-width:30px!important;flex-basis:30px!important;font-size:17px!important}
-  body.normal-mode .tag .line1,body.normal-mode .tag .line2{font-size:8.6px!important}
-  body.normal-mode .topactions{gap:4px!important}
-  body.normal-mode .refreshbtn,body.normal-mode .bellbtn{width:27px!important;height:27px!important;min-width:27px!important;font-size:17px!important}
-  body.normal-mode .status{font-size:7.8px!important;padding:4px 5px!important}
-  #home .home-note{gap:5px!important}
-  #home .home-note span{font-size:8px!important;padding:5px 3px!important}
-  body.normal-mode #nav{width:min(calc(100vw - 20px),410px)!important}
-}
-</style>
-<style id="home-final-width-balance-20260911b">
-/* Final width balance: use almost full safe width while keeping every block aligned. */
-html,body{overflow-x:hidden!important}
-body.normal-mode .app{
-  max-width:448px!important;
-  padding-left:10px!important;
-  padding-right:10px!important;
-}
-#home,
-#home .home-note,
-#home .quickgrid,
-#home .home-stats,
-body.normal-mode .topbar{
-  width:100%!important;
-  max-width:100%!important;
-  box-sizing:border-box!important;
-}
-body.normal-mode .topbar{gap:7px!important}
-body.normal-mode .brandwrap{gap:7px!important}
-body.normal-mode .brandicon{width:31px!important;height:31px!important;min-width:31px!important;flex-basis:31px!important}
-body.normal-mode .brand{font-size:clamp(20px,7.7vw,23px)!important}
-body.normal-mode .tag .line1,
-body.normal-mode .tag .line2{font-size:clamp(8.6px,2.45vw,10px)!important}
-body.normal-mode .topactions{gap:4px!important}
-body.normal-mode .refreshbtn,
-body.normal-mode .bellbtn{width:27px!important;height:27px!important;min-width:27px!important;font-size:17px!important}
-body.normal-mode .status{font-size:7.8px!important;padding:4px 5px!important}
-#home .home-note{gap:5px!important}
-#home .home-note span{font-size:8px!important;padding:6px 3px!important}
-#home .quickgrid{gap:7px!important}
-#home .quickcard{padding:13px 11px!important}
-#home .home-stats{padding:13px 11px!important}
-body.normal-mode #nav{
-  width:min(calc(100vw - 16px),428px)!important;
-  max-width:428px!important;
-  padding-top:6px!important;
-}
-body.normal-mode #nav button{font-size:13px!important}
-@media (max-width:390px){
-  body.normal-mode .app{padding-left:9px!important;padding-right:9px!important}
-  body.normal-mode #nav{width:min(calc(100vw - 14px),424px)!important}
-}
-</style>
 
-<style id="mypage-history-20260911">
-#me h3{margin:18px 2px 8px;font-size:18px}
-.trade-history-card{margin:8px 0}
-.trade-history-card .delivery-status{flex:0 0 auto}
-</style>
-
-<style id="mypage-card-height-fix-20260911">
-/* マイページ3項目のカード高を揃える。ほかの画面のカードには影響させない。 */
-#me .mypage-item-card{
-  min-height:66px;
-  display:flex;
-  flex-direction:column;
-  justify-content:center;
-}
-#me .mypage-item-card > .row{width:100%}
-#me .mypage-click-card{position:relative;display:block;width:100%;text-align:left;font:inherit;color:inherit;cursor:pointer;-webkit-tap-highlight-color:transparent}
-#me .mypage-click-card:active{transform:scale(.992);filter:brightness(.985)}
-#me .mypage-click-card .mypage-card-arrow{font-size:26px;line-height:1;color:#7882a8;font-weight:700;margin-left:10px}
-#me .mypage-click-card:not(.trade-history-card) .mypage-card-arrow{position:absolute;right:24px;top:50%;transform:translateY(-50%)}
-#me .mypage-status-wrap{display:flex;align-items:center;gap:8px;flex:0 0 auto}
-.mypage-target-highlight{outline:3px solid rgba(103,83,245,.38);box-shadow:0 0 0 6px rgba(103,83,245,.10),0 10px 28px rgba(74,58,170,.14)!important;transition:box-shadow .2s ease,outline .2s ease}
-#me .mypage-empty-card{align-items:flex-start}
-</style>
-
-<style id="mypage-profile-compact-20260911">
-#me .profile-compact{
-  padding:14px 16px!important;
-  margin-top:10px!important;
-  margin-bottom:12px!important;
-}
-#me .profile-grid{
-  display:grid;
-  grid-template-columns:minmax(0,.9fr) minmax(0,1.35fr);
-  gap:12px;
-  align-items:start;
-}
-#me .profile-left,
-#me .profile-right{
-  min-width:0;
-}
-#me .profile-name{
-  display:block;
-  font-size:18px;
-  line-height:1.2;
-  margin-bottom:5px;
-}
-#me .profile-badges{display:flex;flex-wrap:wrap;gap:6px;align-items:center;margin-top:4px}
-#me .identity-badge,#me .rating-badge{display:inline-flex;align-items:center;min-height:25px;padding:4px 9px;border-radius:999px;font-size:10px;font-weight:800;line-height:1.1;white-space:nowrap}
-#me .identity-badge.verified{background:#e9fbf0;color:#138049;border:1px solid #c9f0d8}
-#me .identity-badge.unverified{background:#f3f4f7;color:#60697c;border:1px solid #e0e3ea}
-#me .rating-badge{background:#f4f1ff;color:#6558ef;border:1px solid #e3dcff}
-#me .rating-badge.muted{background:#f7f7f9;color:#8a8fa1;border-color:#eceef2}
-#me .identity-note{margin-top:7px;font-size:9.5px;line-height:1.35;color:#7f879b}
-#me .profile-right{
-  display:flex;
-  flex-direction:column;
-  align-items:stretch;
-  gap:7px;
-}
-#me .profile-email{
-  font-size:10.5px;
-  line-height:1.25;
-  text-align:left;
-  overflow-wrap:anywhere;
-}
-#me .profile-logout{
-  width:112px;
-  max-width:100%;
-  align-self:flex-start;
-  padding:8px 10px;
-  margin:0;
-  font-size:11px;
-  border-radius:10px;
-}
-#me h3{
-  margin-top:14px!important;
-}
-@media (max-width:360px){
-  #me .profile-grid{grid-template-columns:minmax(0,.8fr) minmax(0,1.4fr);gap:9px}
-  #me .profile-name{font-size:16px}
-  #me .profile-email{font-size:9.5px}
-  #me .identity-badge,#me .rating-badge{font-size:9.5px;padding:4px 8px}
-  #me .profile-logout{width:100px;font-size:10.5px}
-}
-</style>
-
-
-<style id="final-brand-avatar-polish-20260913">
-/* 2026-09-13: requested micro-adjustments only. */
-body.normal-mode .brand{
-  font-size:clamp(21px,7.9vw,24px)!important;
-  letter-spacing:-.015em!important;
-  transform:scaleX(1.025);
-  transform-origin:left center;
-}
-body.normal-mode .tag{
-  margin-top:5px!important;
-  letter-spacing:-.015em!important;
-}
-body.normal-mode .tag .line1,
-body.normal-mode .tag .line2{
-  font-size:clamp(9px,2.58vw,10.8px)!important;
-  line-height:1.18!important;
-  letter-spacing:-.015em!important;
-  white-space:nowrap!important;
-  transform:scaleX(1.015);
-  transform-origin:left center;
-}
-.user-avatar.clickable{
-  cursor:pointer!important;
-  touch-action:manipulation;
-  -webkit-tap-highlight-color:transparent;
-}
-@media (max-width:390px){
-  body.normal-mode .brand{font-size:22px!important;transform:scaleX(1.02)}
-  body.normal-mode .tag .line1,
-  body.normal-mode .tag .line2{font-size:9.1px!important;transform:scaleX(1.01)}
-}
-</style>
-
-<style id="login-brand-singleline-fix-20260913">
-/* Login/header fix: keep title on one line and keep both subtitle lines fully visible. */
-.brandwrap{
-  min-width:0!important;
-  gap:8px!important;
-  align-items:center!important;
-}
-.brandicon{
-  width:40px!important;
-  height:40px!important;
-  min-width:40px!important;
-  flex:0 0 40px!important;
-  border-radius:14px!important;
-  font-size:21px!important;
-}
-.brandtext{
-  min-width:0!important;
-  overflow:visible!important;
-}
-.brand{
-  font-size:clamp(24px,6.8vw,27px)!important;
-  line-height:1.02!important;
-  white-space:nowrap!important;
-  letter-spacing:-.02em!important;
-  transform:scaleX(1.015)!important;
-  transform-origin:left center!important;
-}
-.tag{
-  margin-top:6px!important;
-  line-height:1.17!important;
-  letter-spacing:-.02em!important;
-}
-.tag .line1,
-.tag .line2{
-  display:block!important;
-  white-space:nowrap!important;
-  font-size:clamp(9.6px,2.65vw,11px)!important;
-  line-height:1.18!important;
-  letter-spacing:-.02em!important;
-  transform:scaleX(1.01)!important;
-  transform-origin:left center!important;
-}
-.tag .line2{margin-top:3px!important}
-
-@media (max-width:390px){
-  .brandicon{
-    width:38px!important;
-    height:38px!important;
-    min-width:38px!important;
-    flex-basis:38px!important;
-    font-size:20px!important;
-  }
-  .brand{font-size:24px!important;transform:scaleX(1.01)!important}
-  .tag .line1,
-  .tag .line2{font-size:9.5px!important;transform:none!important}
-}
-
-/* Preserve the same balanced look after login as well. */
-body.normal-mode .brand{white-space:nowrap!important}
-body.normal-mode .tag .line1,
-body.normal-mode .tag .line2{white-space:nowrap!important}
-</style>
-
-
-<script id="avatar-preview-force-v2">
-(function(){
-  function findAvatarImage(target){
-    if(!target || !target.closest) return null;
-    const holder = target.closest('.user-avatar, #profileAvatarPreview, .profile-avatar-preview, .profile-avatar-circle');
-    if(!holder) return null;
-    return holder.querySelector('img');
-  }
-  function showForcedAvatar(src){
-    if(!src) return;
-    let ov=document.getElementById('vfForcedAvatarPreview');
-    if(!ov){
-      ov=document.createElement('div');
-      ov.id='vfForcedAvatarPreview';
-      ov.setAttribute('role','dialog');
-      ov.setAttribute('aria-modal','true');
-      ov.style.cssText='position:fixed;inset:0;z-index:2147483647;background:rgba(0,0,0,.90);display:flex;align-items:center;justify-content:center;padding:18px;box-sizing:border-box;';
-      ov.innerHTML='<button type="button" aria-label="閉じる" style="position:absolute;top:calc(14px + env(safe-area-inset-top));right:14px;width:46px;height:46px;border:0;border-radius:50%;background:#fff;color:#222;font-size:28px;font-weight:900;z-index:2;">×</button><img alt="プロフィール画像" style="display:block;max-width:94vw;max-height:84dvh;width:auto;height:auto;object-fit:contain;border-radius:16px;box-shadow:0 18px 60px rgba(0,0,0,.45);">';
-      ov.querySelector('button').addEventListener('click',function(){ov.remove();});
-      ov.addEventListener('click',function(e){if(e.target===ov)ov.remove();});
-      document.body.appendChild(ov);
-    }
-    ov.querySelector('img').src=src;
-  }
-  function handle(e){
-    const img=findAvatarImage(e.target);
-    if(!img) return;
-    const src=img.currentSrc||img.src||'';
-    if(!src) return;
-    e.preventDefault();
-    e.stopPropagation();
-    if(e.stopImmediatePropagation) e.stopImmediatePropagation();
-    showForcedAvatar(src);
-  }
-  document.addEventListener('pointerup',handle,true);
-  document.addEventListener('click',handle,true);
-})();
+<script id="avatar-preview-delegated-fallback">
+document.addEventListener('click',function(e){
+  const trigger=e.target && e.target.closest ? e.target.closest('.avatar-preview-trigger') : null;
+  if(!trigger)return;
+  e.preventDefault();
+  e.stopPropagation();
+  openAvatarPreviewFromElement(trigger);
+},true);
 </script>
+</body></html>
