@@ -500,6 +500,19 @@ body.normal-mode #nav button{height:46px!important;min-height:46px!important;bor
 .home-summary-card span{font-size:11px;color:#6b657c;font-weight:800}
 .home-summary-card strong{font-size:18px;color:#2f2a45}
 
+
+.listing-card-actions{display:flex;flex-direction:column;align-items:flex-end;gap:5px}
+.favorite-heart{width:34px;height:34px;border:1px solid #ddd8f8;border-radius:50%;background:#fff;color:#7569dd;font-size:20px;line-height:1;font-weight:900}
+.favorite-heart.on{background:#fff0f6;color:#d43b78;border-color:#f0bed1}
+.favorites-overlay{position:fixed;inset:0;z-index:100005;display:none;align-items:center;justify-content:center;padding:18px;background:rgba(20,22,35,.42);backdrop-filter:blur(3px)}
+.favorites-overlay.show{display:flex}
+.favorites-box{width:min(100%,500px);max-height:88dvh;overflow:auto;background:#fff;border-radius:24px;padding:20px;box-shadow:0 22px 70px rgba(36,28,74,.24)}
+.favorites-head{display:flex;justify-content:space-between;align-items:flex-start;gap:12px;margin-bottom:14px}.favorites-head h3{margin:0;font-size:22px}
+.favorite-row{display:flex;align-items:center;gap:9px;padding:10px 0;border-top:1px solid #eeeaf7}.favorite-row:first-child{border-top:0}
+.favorite-open{flex:1;min-width:0;border:0;background:transparent;display:flex;justify-content:space-between;align-items:center;gap:10px;text-align:left;padding:0}
+.favorite-open strong{white-space:nowrap;color:#5148c9}
+.favorite-remove{border:0;background:#f7f4ff;color:#655bd0;border-radius:10px;padding:8px 9px;font-size:11px;font-weight:800}
+
 </style>
 <script>
 if(window.navigator.standalone===true){document.body.classList.add('standalone')}
@@ -576,7 +589,7 @@ window.__loadSupabaseSDK=async function(){
 </style>
 
 </head><body><div id="pullRefreshIndicator" class="pull-refresh-indicator">↓ 引っ張って更新</div><div class="app">
-<div class="topbar"><div class="brandwrap"><div class="brandicon">🎙️</div><div class="brandtext"><div class="brand">声のフリマ</div><div class="tag"><span class="line1">世界に、あなたの声を売る。</span><span class="line2">あなたの声を、世界が買う。</span></div></div></div><div class="topactions"><button id="refreshBtn" class="refreshbtn hide" onclick="refreshAllData()" aria-label="最新情報に更新" title="最新情報に更新">↻</button><button id="bellBtn" class="bellbtn hide" onclick="openNotifications()" aria-label="お知らせ">🔔<span id="bellBadge" class="bellbadge"></span></button><button id="menuBtn" class="bellbtn hide" onclick="openMainMenu()" aria-label="メニュー">☰</button></div></div>
+<div class="topbar"><div class="brandwrap"><div class="brandicon">🎙️</div><div class="brandtext"><div class="brand">声のフリマ</div><div class="tag"><span class="line1">世界に、あなたの声を売る。</span><span class="line2">あなたの声を、世界が買う。</span></div></div></div><div class="topactions"><button id="refreshBtn" class="refreshbtn hide" onclick="refreshAllData()" aria-label="最新情報に更新" title="最新情報に更新">↻</button><button id="bellBtn" class="bellbtn hide" onclick="openNotifications()" aria-label="お知らせ">🔔<span id="bellBadge" class="bellbadge"></span></button><button id="favoriteBtn" class="bellbtn hide" onclick="openFavorites()" aria-label="お気に入り">♡<span id="favoriteBadge" class="bellbadge"></span></button><button id="menuBtn" class="bellbtn hide" onclick="openMainMenu()" aria-label="メニュー">☰</button></div></div>
 
 <section id="authPage" class="page on">
 <div class="hero"><h1>話す・読む・歌う。<br>あなたの声が仕事になる。</h1><p>声を売る・探す・頼む。すべてここから。</p></div>
@@ -584,7 +597,7 @@ window.__loadSupabaseSDK=async function(){
 <div id="configNotice" class="notice">現在サービスへ接続できません。時間をおいて再度お試しください。</div>
 </section>
 
-<section id="home" class="page"><div class="quickgrid"><button class="quickcard" onclick="go('sell')"><span class="qi">🎙️</span>声を出品<small>自分の声を商品にする</small></button><button class="quickcard" onclick="go('voices')"><span class="qi">🔎</span>声を探す<small>ぴったりの声を見つける</small></button><button class="quickcard" onclick="go('jobs')"><span class="qi">📣</span>仕事を募集<small>欲しい声を依頼する</small></button><button class="quickcard" onclick="go('messages')"><span class="qi">💬</span>メッセージ<small>取引相手とやり取りする</small></button></div><div class="home-summary-title">すぐ確認</div><div class="home-summary-grid"><button class="home-summary-card" type="button" onclick="openFinanceCenter('seller')"><span>💰 売上</span><strong id="homeSalesAmount">¥0</strong></button><button class="home-summary-card" type="button" onclick="menuGoMySection('myPurchasedVoices')"><span>🛒 購入済み</span><strong id="homePurchasedCount">0件</strong></button><button class="home-summary-card" type="button" onclick="go('messages')"><span>🔄 取引中</span><strong id="homeActiveTradeCount">0件</strong></button><button class="home-summary-card" type="button" onclick="go('messages')"><span>💬 未読</span><strong id="homeUnreadCount">0件</strong></button></div><div id="homeCounts" class="card small home-stats">読み込み中...</div></section>
+<section id="home" class="page"><div class="quickgrid"><button class="quickcard" onclick="go('sell')"><span class="qi">🎙️</span>声を出品<small>自分の声を商品にする</small></button><button class="quickcard" onclick="go('voices')"><span class="qi">🔎</span>声を探す<small>ぴったりの声を見つける</small></button><button class="quickcard" onclick="go('jobs')"><span class="qi">📣</span>仕事を募集<small>欲しい声を依頼する</small></button><button class="quickcard" onclick="go('messages')"><span class="qi">💬</span>メッセージ<small>取引相手とやり取りする</small></button></div><div class="home-summary-title">すぐ確認</div><div class="home-summary-grid"><button class="home-summary-card" type="button" onclick="openFinanceCenter('seller')"><span>💰 売上</span><strong id="homeSalesAmount">¥0</strong></button><button class="home-summary-card" type="button" onclick="menuGoMySection('myPurchasedVoices')"><span>🛒 購入済み</span><strong id="homePurchasedCount">0件</strong></button><button class="home-summary-card" type="button" onclick="go('messages')"><span>🔄 取引中</span><strong id="homeActiveTradeCount">0件</strong></button><button class="home-summary-card" type="button" onclick="go('messages')"><span>💬 未読</span><strong id="homeUnreadCount">0件</strong></button><button class="home-summary-card" type="button" onclick="menuGoMySection('myListings')"><span>🎙️ 出品中</span><strong id="homeMyListingCount">0件</strong></button><button class="home-summary-card" type="button" onclick="openFavorites()"><span>♡ お気に入り</span><strong id="homeFavoriteCount">0件</strong></button></div><div id="homeCounts" class="card small home-stats">読み込み中...</div></section>
 
 <section id="voices" class="page"><h2>声を探す</h2><div class="field"><input id="voiceSearch" placeholder="英語、関西弁、YouTube、出品者名..." oninput="scheduleListingSearch()"></div><div class="small" style="margin:-4px 2px 10px">タイトル・カテゴリー・説明・AI条件・出品者名から検索できます。</div><div class="voice-filter-row"><label><input id="hidePurchasedToggle" type="checkbox" onchange="loadListings(true)"> 購入済みを非表示</label><label><input id="hideOwnToggle" type="checkbox" onchange="loadListings(true)"> 自分の出品を除外</label></div><div id="listingSearchMeta" class="small" style="margin:0 2px 10px"></div><div id="listingList"></div><button id="listingLoadMoreBtn" class="btn secondary full hide" type="button" style="margin-top:12px" onclick="loadMoreListings()">さらに表示</button></section>
 
@@ -656,6 +669,7 @@ window.__loadSupabaseSDK=async function(){
       <button onclick="menuGo('messages')" class="menu-badge-button">💬 メッセージ<span id="menuMsgBadge" class="menu-count-badge"></span></button>
       <button onclick="menuGo('me')">👤 マイページ</button>
       <button onclick="closeMainMenu();openNotifications()">🔔 お知らせ</button>
+      <button onclick="closeMainMenu();openFavorites()">♡ お気に入り</button>
     </div>
 
     <div class="main-menu-section">
@@ -689,6 +703,19 @@ window.__loadSupabaseSDK=async function(){
   </aside>
 </div>
 
+
+<div id="favoritesOverlay" class="favorites-overlay" onclick="if(event.target===this)closeFavorites()">
+  <div class="favorites-box">
+    <div class="favorites-head">
+      <div>
+        <h3>お気に入り</h3>
+        <div class="small">あとで見たい声をまとめて確認できます。</div>
+      </div>
+      <button class="profile-edit-close" type="button" onclick="closeFavorites()">×</button>
+    </div>
+    <div id="favoritesList"><div class="small">読み込み中...</div></div>
+  </div>
+</div>
 <div id="manualOverlay" class="manual-overlay" onclick="if(event.target===this)closeManualCenter()">
   <div class="manual-box">
     <div class="manual-head">
@@ -963,10 +990,12 @@ async function loadHome(){
 
   if(!currentUser)return;
 
-  const [{data:sales},{count:purchased},{data:convs}]=await Promise.all([
+  const [{data:sales},{count:purchased},{data:convs},{count:myListingCount},{count:favoriteCount}]=await Promise.all([
     sb.from('payments').select('seller_amount_jpy,status').eq('seller_id',currentUser.id).eq('status','paid'),
     sb.from('payments').select('*',{count:'exact',head:true}).eq('buyer_id',currentUser.id).eq('status','paid'),
-    sb.from('conversations').select('id,delivery_status').or(`buyer_id.eq.${currentUser.id},seller_id.eq.${currentUser.id}`)
+    sb.from('conversations').select('id,delivery_status').or(`buyer_id.eq.${currentUser.id},seller_id.eq.${currentUser.id}`),
+    sb.from('listings').select('*',{count:'exact',head:true}).eq('seller_id',currentUser.id).eq('is_active',true),
+    sb.from('favorite_listings').select('*',{count:'exact',head:true}).eq('user_id',currentUser.id)
   ]);
 
   const salesAmount=(sales||[]).reduce((sum,p)=>sum+Number(p.seller_amount_jpy||0),0);
@@ -986,11 +1015,16 @@ async function loadHome(){
   const purchasedEl=document.getElementById('homePurchasedCount');
   const activeEl=document.getElementById('homeActiveTradeCount');
   const unreadEl=document.getElementById('homeUnreadCount');
+  const myListingEl=document.getElementById('homeMyListingCount');
+  const favoriteEl=document.getElementById('homeFavoriteCount');
 
   if(salesEl)salesEl.textContent=`¥${salesAmount.toLocaleString()}`;
   if(purchasedEl)purchasedEl.textContent=`${purchased||0}件`;
   if(activeEl)activeEl.textContent=`${activeTrades}件`;
   if(unreadEl)unreadEl.textContent=`${unread}件`;
+  if(myListingEl)myListingEl.textContent=`${myListingCount||0}件`;
+  if(favoriteEl)favoriteEl.textContent=`${favoriteCount||0}件`;
+  loadFavoriteBadge();
 }
 async function createListing(){if(!currentUser)return;let path=null;const f=sellAudio.files[0];if(f){const ext=(f.name.split('.').pop()||'').toLowerCase().replace(/[^a-z0-9]/g,'');const allowed=['m4a','mp3','wav','aac','mp4','mpeg','ogg','webm'];const mime=(f.type||'').toLowerCase();if(!allowed.includes(ext) && !mime.startsWith('audio/'))return info('sellMsg','音声ファイルを選択してください（m4a / mp3 / wav / aac / mp4 など）。','err');path=`${currentUser.id}/${crypto.randomUUID()}.${ext||'audio'}`;const contentType=mime||({m4a:'audio/mp4',mp4:'audio/mp4',mp3:'audio/mpeg',mpeg:'audio/mpeg',wav:'audio/wav',aac:'audio/aac',ogg:'audio/ogg',webm:'audio/webm'}[ext]||'application/octet-stream');const {error:ue}=await sb.storage.from('voice-samples').upload(path,f,{upsert:false,contentType});if(ue)return info('sellMsg','音声アップロード: '+ue.message,'err')}
 const {error}=await sb.from('listings').insert({seller_id:currentUser.id,title:sellTitle.value.trim(),category:sellCategory.value,description:sellDesc.value.trim(),price_jpy:+sellPrice.value,delivery_days:+sellDays.value,ai_use:sellAI.value,sample_path:path});if(error)return info('sellMsg',error.message,'err');info('sellMsg','クラウドへ出品しました。');sellTitle.value='';sellDesc.value='';sellAudio.value='';loadHome()}
@@ -1068,6 +1102,54 @@ async function startStripeCheckout(listingId,btn){
 }
 
 
+
+async function getFavoriteListingIds(){
+  if(!sb||!currentUser)return new Set();
+  const {data,error}=await sb.from('favorite_listings').select('listing_id').eq('user_id',currentUser.id);
+  if(error){console.warn('お気に入り取得',error);return new Set()}
+  return new Set((data||[]).map(x=>x.listing_id).filter(Boolean));
+}
+async function toggleFavoriteListing(listingId,button=null){
+  if(!currentUser)return alert('お気に入りを使うにはログインしてください。');
+  const {data:existing}=await sb.from('favorite_listings').select('listing_id').eq('user_id',currentUser.id).eq('listing_id',listingId).maybeSingle();
+  if(existing){
+    const {error}=await sb.from('favorite_listings').delete().eq('user_id',currentUser.id).eq('listing_id',listingId);
+    if(error)return alert(error.message);
+  }else{
+    const {error}=await sb.from('favorite_listings').insert({user_id:currentUser.id,listing_id:listingId});
+    if(error)return alert(error.message);
+  }
+  await Promise.all([loadListings(true),loadFavoriteBadge(),loadHome()]);
+}
+async function loadFavoriteBadge(){
+  const badge=document.getElementById('favoriteBadge');
+  if(!badge||!currentUser)return;
+  const {count}=await sb.from('favorite_listings').select('*',{count:'exact',head:true}).eq('user_id',currentUser.id);
+  badge.textContent=count>99?'99+':String(count||0);
+  badge.classList.toggle('show',(count||0)>0);
+}
+async function openFavorites(){
+  if(!currentUser)return;
+  const ov=document.getElementById('favoritesOverlay');
+  const list=document.getElementById('favoritesList');
+  if(!ov||!list)return;
+  ov.classList.add('show');
+  list.innerHTML='<div class="small">読み込み中...</div>';
+  const {data:favs,error}=await sb.from('favorite_listings')
+    .select('listing_id,created_at,listings!favorite_listings_listing_id_fkey(id,title,category,price_jpy,is_active,seller_id,profiles!listings_seller_id_fkey(display_name,avatar_path))')
+    .eq('user_id',currentUser.id)
+    .order('created_at',{ascending:false});
+  if(error){list.innerHTML=`<div class="err">${esc(error.message)}</div>`;return}
+  const rows=(favs||[]).filter(x=>x.listings?.is_active);
+  list.innerHTML=rows.map(x=>{
+    const v=x.listings;
+    return `<div class="favorite-row">${avatarMarkup(v.profiles||{display_name:'出品者'},'sm',v.seller_id)}<button type="button" class="favorite-open" onclick="closeFavorites();go('voices').then(()=>{voiceSearch.value='';loadListings(true).then(()=>setTimeout(()=>document.querySelector('[data-listing-id=&quot;${esc(v.id)}&quot;]')?.scrollIntoView({behavior:'smooth',block:'center'}),250))})"><div><b>${esc(v.title)}</b><div class="small">${esc(v.profiles?.display_name||'出品者')}　${esc(v.category||'')}</div></div><strong>¥${Number(v.price_jpy||0).toLocaleString()}</strong></button><button type="button" class="favorite-remove" onclick="toggleFavoriteListing('${esc(v.id)}')">削除</button></div>`;
+  }).join('')||'<div class="card small">お気に入りはまだありません。</div>';
+}
+function closeFavorites(){
+  document.getElementById('favoritesOverlay')?.classList.remove('show');
+}
+
 function hiddenPurchasedListingKey(id){
   return currentUser ? `vf_hidden_purchased_listing_${currentUser.id}_${id}` : '';
 }
@@ -1114,6 +1196,7 @@ async function loadListings(reset=true){
   const hidePurchased=!!document.getElementById('hidePurchasedToggle')?.checked;
   const hideOwn=!!document.getElementById('hideOwnToggle')?.checked;
   const paidListingIds=new Set();
+  const favoriteListingIds=await getFavoriteListingIds();
 
   if(currentUser?.id){
     const {data:paidRows,error:paidError}=await sb
@@ -1194,6 +1277,7 @@ async function loadListings(reset=true){
 
     const own=v.seller_id===currentUser?.id;
     const purchased=paidListingIds.has(v.id);
+    const favorited=favoriteListingIds.has(v.id);
 
     let action='';
 
@@ -1208,7 +1292,7 @@ async function loadListings(reset=true){
     const desc=(v.description||'').trim();
     const descHtml=desc?`<div class="small" style="margin-top:8px;line-height:1.6">${esc(desc.length>120?desc.slice(0,120)+'…':desc)}</div>`:'';
 
-    return `<div class="card voice" data-listing-id="${esc(v.id)}"><div class="row"><div class="listing-seller-wrap">${avatarMarkup(v.profiles,'sm',v.seller_id)}<div><b>${esc(v.title)}</b><button type="button" class="seller-profile-link" onclick="openPublicProfile('${esc(v.seller_id)}')">${esc(v.profiles?.display_name||'出品者')} のプロフィール</button></div></div><div class="price">¥${Number(v.price_jpy).toLocaleString()}</div></div><span class="pill">${esc(v.category)}</span><span class="pill">${v.delivery_days}日</span><span class="pill">AI:${esc(v.ai_use)}</span>${descHtml}${audio}${action}</div>`;
+    return `<div class="card voice" data-listing-id="${esc(v.id)}"><div class="row"><div class="listing-seller-wrap">${avatarMarkup(v.profiles,'sm',v.seller_id)}<div><b>${esc(v.title)}</b><button type="button" class="seller-profile-link" onclick="openPublicProfile('${esc(v.seller_id)}')">${esc(v.profiles?.display_name||'出品者')} のプロフィール</button></div></div><div class="listing-card-actions"><button type="button" class="favorite-heart ${favorited?'on':''}" onclick="toggleFavoriteListing('${esc(v.id)}',this)" aria-label="お気に入り">${favorited?'♥':'♡'}</button><div class="price">¥${Number(v.price_jpy).toLocaleString()}</div></div></div><span class="pill">${esc(v.category)}</span><span class="pill">${v.delivery_days}日</span><span class="pill">AI:${esc(v.ai_use)}</span>${descHtml}${audio}${action}</div>`;
   }).join('');
 
   if(reset){
