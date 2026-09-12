@@ -1475,8 +1475,10 @@ async function loadConversations(){
  if(listingIds.length){const r=await sb.from('listings').select('id,title').in('id',listingIds);(r.data||[]).forEach(x=>listings[x.id]=x.title)}
  const rows=[];for(const c of cs){
    if(isConversationHidden(c.id))continue;
-   const {data:msgs}=await sb.from('messages').select('id,sender_id,body,created_at').eq('conversation_id',c.id).order('created_at',{ascending:false}).limit(1);
+   const {data:msgs}=await sb.from('messages').select('id,sender_id,body,created_at').eq('conversation_id',c.id).order('created_at',{ascending:false}).limit(20);
    const last=msgs?.[0];
+   // 評価送信のシステム文はチャット履歴には残すが、メッセージ一覧のプレビューには出さない。
+   const preview=(msgs||[]).find(m=>m.body!=='⭐ 取引評価を送信しました。')||null;
    const seen=localStorage.getItem(seenKey(c.id))||'1970-01-01T00:00:00.000Z';
    const unread=last&&last.sender_id!==currentUser.id&&last.created_at>seen?1:0;
    const partner=c.buyer_id===currentUser.id?c.seller_id:c.buyer_id;
@@ -1485,7 +1487,7 @@ async function loadConversations(){
    const hideBtn=c.delivery_status==='accepted'
      ? `<button type="button" class="history-hide-btn" onclick="event.stopPropagation();hideConversationForMe('${c.id}')">非表示</button>`
      : (unread?'<span class="unread-dot">1</span>':'');
-   rows.push(`<div class="chatrow" onclick="openConversation('${c.id}','${esc(title).replace(/'/g,'&#39;')}')"><div class="chathead"><div class="chat-partner">${avatarMarkup(profiles[partner]||{display_name:'ユーザー'},'sm',partner)}<div><b>${esc(profiles[partner]?.display_name||'ユーザー')}</b><div class="small">${esc(kind)}</div></div></div>${hideBtn}</div><div class="small" style="margin-top:6px">${esc(last?.body||'チャットを開始できます')}</div>${c.delivery_status==='accepted'?'<div class="history-hide-note">完了した取引です。非表示にしても記録自体は削除されません。</div>':''}</div>`);
+   rows.push(`<div class="chatrow" onclick="openConversation('${c.id}','${esc(title).replace(/'/g,'&#39;')}')"><div class="chathead"><div class="chat-partner">${avatarMarkup(profiles[partner]||{display_name:'ユーザー'},'sm',partner)}<div><b>${esc(profiles[partner]?.display_name||'ユーザー')}</b><div class="small">${esc(kind)}</div></div></div>${hideBtn}</div><div class="small" style="margin-top:6px">${esc(preview?.body||'チャットを開始できます')}</div>${c.delivery_status==='accepted'?'<div class="history-hide-note">完了した取引です。非表示にしても記録自体は削除されません。</div>':''}</div>`);
  }
  conversationList.innerHTML=rows.join('')||'<div class="card small">表示中のメッセージはありません。</div>';loadMessageBadge()
 }
