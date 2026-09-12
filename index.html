@@ -514,14 +514,16 @@ body.normal-mode #nav button{height:46px!important;min-height:46px!important;bor
 .favorite-remove{border:0;background:#f7f4ff;color:#655bd0;border-radius:10px;padding:8px 9px;font-size:11px;font-weight:800}
 
 
-/* Favorite color tuning */
+.favorite-summary-card{
+  background:linear-gradient(145deg,#fff8fb,#ffeef5)!important;
+  border-color:#efbfd3!important;
+}
+.favorite-summary-card span{color:#d34b83!important}
+.favorite-summary-card strong{color:#c72f70!important}
 #favoriteBtn{
   color:#d94f8b!important;
   border-color:#f0c7d9!important;
   background:#fff8fb!important;
-}
-#favoriteBtn:hover,#favoriteBtn:active{
-  background:#fff0f6!important;
 }
 .favorite-heart{
   background:#fff8fb!important;
@@ -533,25 +535,22 @@ body.normal-mode #nav button{height:46px!important;min-height:46px!important;bor
   color:#d92f76!important;
   border-color:#eba7c4!important;
 }
-.home-summary-card[onclick*="openFavorites"]{
-  background:linear-gradient(145deg,#fff,#fff6fa)!important;
-  border-color:#f0d0df!important;
-}
-.home-summary-card[onclick*="openFavorites"] span,
-.home-summary-card[onclick*="openFavorites"] strong{
-  color:#c9427c!important;
-}
 
 
-.favorite-summary-card{
-  background:linear-gradient(145deg,#fff8fb,#ffeef5)!important;
-  border-color:#efbfd3!important;
+.avatar-preview-overlay{
+  position:fixed;inset:0;z-index:100010;display:none;align-items:center;justify-content:center;
+  padding:18px;background:rgba(0,0,0,.88);backdrop-filter:blur(5px)
 }
-.favorite-summary-card span{
-  color:#d34b83!important;
+.avatar-preview-overlay.show{display:flex}
+.avatar-preview-box{position:relative;width:100%;height:100%;display:flex;align-items:center;justify-content:center}
+.avatar-preview-box img{
+  max-width:94vw;max-height:86dvh;width:auto;height:auto;object-fit:contain;
+  border-radius:14px;box-shadow:0 20px 70px rgba(0,0,0,.5)
 }
-.favorite-summary-card strong{
-  color:#c72f70!important;
+.avatar-preview-close{
+  position:absolute;right:6px;top:calc(6px + env(safe-area-inset-top));
+  width:44px;height:44px;border:0;border-radius:50%;background:#fff;color:#222;
+  font-size:25px;font-weight:900;z-index:2
 }
 
 </style>
@@ -679,7 +678,7 @@ window.__loadSupabaseSDK=async function(){
   <div class="avatar-preview-box">
     <button type="button" class="avatar-preview-close" onclick="closeAvatarPreview()">×</button>
     <img id="avatarPreviewImage" src="" alt="プロフィール画像">
-    <div id="avatarPreviewName" class="avatar-preview-name"></div>
+    
   </div>
 </div>
 <div id="publicProfileOverlay" class="public-profile-overlay" onclick="if(event.target===this)closePublicProfile()">
@@ -1052,6 +1051,7 @@ async function loadHome(){
   if(unreadEl)unreadEl.textContent=`${unread}件`;
   if(myListingEl)myListingEl.textContent=`${myListingCount||0}件`;
   if(favoriteEl)favoriteEl.textContent=`${favoriteCount||0}件`;
+
   loadFavoriteBadge();
 }
 async function createListing(){if(!currentUser)return;let path=null;const f=sellAudio.files[0];if(f){const ext=(f.name.split('.').pop()||'').toLowerCase().replace(/[^a-z0-9]/g,'');const allowed=['m4a','mp3','wav','aac','mp4','mpeg','ogg','webm'];const mime=(f.type||'').toLowerCase();if(!allowed.includes(ext) && !mime.startsWith('audio/'))return info('sellMsg','音声ファイルを選択してください（m4a / mp3 / wav / aac / mp4 など）。','err');path=`${currentUser.id}/${crypto.randomUUID()}.${ext||'audio'}`;const contentType=mime||({m4a:'audio/mp4',mp4:'audio/mp4',mp3:'audio/mpeg',mpeg:'audio/mpeg',wav:'audio/wav',aac:'audio/aac',ogg:'audio/ogg',webm:'audio/webm'}[ext]||'application/octet-stream');const {error:ue}=await sb.storage.from('voice-samples').upload(path,f,{upsert:false,contentType});if(ue)return info('sellMsg','音声アップロード: '+ue.message,'err')}
@@ -1820,8 +1820,8 @@ function avatarMarkup(profile,size='md',clickId=''){
   const name=profile?.display_name||'ユーザー';
   const url=profileAvatarUrl(profile?.avatar_path);
   const inner=url?`<img src="${esc(url)}" alt="">`:`<span>${esc(String(name).trim().charAt(0).toUpperCase()||'U')}</span>`;
-  const click=clickId?` onclick="event.stopPropagation();openAvatarForUser('${esc(clickId)}')"`:'';
-  return `<div class="user-avatar ${size} ${clickId?'clickable':''}"${click}>${inner}</div>`;
+  const click=(url&&clickId)?` onclick="event.stopPropagation();openAvatarForUser('${esc(clickId)}')"`:'';
+  return `<div class="user-avatar ${size} ${url&&clickId?'clickable':''}"${click}>${inner}</div>`;
 }
 
 async function openAvatarForUser(userId){
@@ -1843,10 +1843,8 @@ function openAvatarPreview(url,name=''){
   if(!url)return;
   const ov=document.getElementById('avatarPreviewOverlay');
   const img=document.getElementById('avatarPreviewImage');
-  const label=document.getElementById('avatarPreviewName');
   if(!ov||!img)return;
   img.src=url;
-  if(label)label.textContent=name||'';
   ov.classList.add('show');
 }
 function closeAvatarPreview(){
