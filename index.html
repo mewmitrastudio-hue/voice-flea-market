@@ -463,7 +463,7 @@ window.__loadSupabaseSDK=async function(){
 
 <section id="home" class="page"><div class="quickgrid"><button class="quickcard" onclick="go('sell')"><span class="qi">🎙️</span>声を出品<small>自分の声を商品にする</small></button><button class="quickcard" onclick="go('voices')"><span class="qi">🔎</span>声を探す<small>ぴったりの声を見つける</small></button><button class="quickcard" onclick="go('jobs')"><span class="qi">📣</span>仕事を募集<small>欲しい声を依頼する</small></button><button class="quickcard" onclick="go('messages')"><span class="qi">💬</span>メッセージ<small>取引相手とやり取りする</small></button></div><div id="homeCounts" class="card small home-stats">読み込み中...</div></section>
 
-<section id="voices" class="page"><h2>声を探す</h2><div class="field"><input id="voiceSearch" placeholder="英語、方言、歌..." oninput="loadListings()"></div><div id="listingList"></div></section>
+<section id="voices" class="page"><h2>声を探す</h2><div class="field"><input id="voiceSearch" placeholder="英語、関西弁、YouTube、出品者名..." oninput="scheduleListingSearch()"></div><div class="small" style="margin:-4px 2px 10px">タイトル・カテゴリー・説明・AI条件・出品者名から検索できます。</div><div id="listingSearchMeta" class="small" style="margin:0 2px 10px"></div><div id="listingList"></div><button id="listingLoadMoreBtn" class="btn secondary full hide" type="button" style="margin-top:12px" onclick="loadMoreListings()">さらに表示</button></section>
 
 <section id="sell" class="page"><h2>声を出品する</h2><div class="card"><div class="field"><label>タイトル</label><input id="sellTitle" placeholder="例：自然な日本語を読みます"></div><div class="field"><label>カテゴリー</label><select id="sellCategory"><option>外国語・学習</option><option>日本語・方言</option><option>YouTube・SNS</option><option>ナレーション</option><option>歌</option><option>メッセージ</option><option>その他</option></select></div><div class="field"><label>説明</label><textarea id="sellDesc" placeholder="声の特徴、対応できる内容など"></textarea></div><div class="field"><label>価格（円）</label><input id="sellPrice" type="number" value="1000" min="0"></div><div class="field"><label>納期（日）</label><input id="sellDays" type="number" value="3" min="1"></div><div class="field"><label>AI利用</label><select id="sellAI"><option>禁止</option><option>案件ごとに相談</option><option>許可</option></select></div><div class="field"><label>公開用の声サンプル</label><input id="sellAudio" type="file"><div class="small">対応形式：m4a / mp3 / wav / aac / mp4 などの音声ファイル</div></div><div class="notice">ここへ登録する音声は「公開サンプル」として扱います。取引後の納品音声は別の非公開領域へ保存します。</div><button class="btn full" onclick="createListing()">出品する</button><div id="sellMsg"></div></div></section>
 
@@ -794,10 +794,33 @@ async function startStripeCheckout(listingId,btn){
     }
   }
 }
-async function loadListings(){
+
+const LISTING_PAGE_SIZE=24;
+let listingOffset=0;
+let listingSearchTimer=null;
+let listingSearchToken=0;
+
+function scheduleListingSearch(){
+  clearTimeout(listingSearchTimer);
+  listingSearchTimer=setTimeout(()=>loadListings(true),220);
+}
+
+async function loadMoreListings(){
+  await loadListings(false);
+}
+
+async function loadListings(reset=true){
   if(!sb)return;
 
-  let q=voiceSearch.value.trim();
+  const token=++listingSearchToken;
+  if(reset){
+    listingOffset=0;
+    listingList.innerHTML='<div class="card small">検索中...</div>';
+    listingLoadMoreBtn?.classList.add('hide');
+  }
+
+  const rawQ=(voiceSearch?.value||'').trim();
+  const safeQ=rawQ.replace(/[(),]/g,' ').replace(/\s+/g,' ').trim();
   const paidListingIds=new Set();
 
   if(currentUser?.id){
@@ -816,23 +839,55 @@ async function loadListings(){
     }
   }
 
+  // 出品者名も検索対象にするため、先に一致するプロフィールIDを取得。
+  let sellerIds=[];
+  if(safeQ){
+    const {data:profileHits,error:profileError}=await sb
+      .from('profiles')
+      .select('id')
+      .ilike('display_name',`%${safeQ}%`)
+      .limit(50);
+
+    if(!profileError){
+      sellerIds=(profileHits||[]).map(x=>x.id).filter(Boolean);
+    }
+  }
+
   let query=sb
     .from('listings')
-    .select('id,title,category,price_jpy,delivery_days,ai_use,sample_path,seller_id,profiles!listings_seller_id_fkey(display_name)')
+    .select('id,title,category,description,price_jpy,delivery_days,ai_use,sample_path,seller_id,created_at,profiles!listings_seller_id_fkey(display_name)',{count:'exact'})
     .eq('is_active',true)
     .order('created_at',{ascending:false})
-    .limit(50);
+    .range(listingOffset,listingOffset+LISTING_PAGE_SIZE-1);
 
-  if(q)query=query.or(`title.ilike.%${q}%,category.ilike.%${q}%`);
+  if(safeQ){
+    const filters=[
+      `title.ilike.%${safeQ}%`,
+      `category.ilike.%${safeQ}%`,
+      `description.ilike.%${safeQ}%`,
+      `ai_use.ilike.%${safeQ}%`
+    ];
+    if(sellerIds.length){
+      filters.push(`seller_id.in.(${sellerIds.join(',')})`);
+    }
+    query=query.or(filters.join(','));
+  }
 
-  const {data,error}=await query;
+  const {data,error,count}=await query;
+
+  // 古い検索があとから返ってきた場合は描画しない。
+  if(token!==listingSearchToken)return;
 
   if(error){
     listingList.innerHTML=`<div class="err">${esc(error.message)}</div>`;
+    listingSearchMeta.textContent='';
+    listingLoadMoreBtn?.classList.add('hide');
     return;
   }
 
-  listingList.innerHTML=(data||[]).map(v=>{
+  const rows=data||[];
+
+  const cards=rows.map(v=>{
     let audio='';
 
     if(v.sample_path){
@@ -853,8 +908,31 @@ async function loadListings(){
       action=`<button class="btn full" type="button" style="margin-top:14px" onclick="startStripeCheckout('${esc(v.id)}',this)">購入する</button>`;
     }
 
-    return `<div class="card voice" data-listing-id="${esc(v.id)}"><div class="row"><div><b>${esc(v.title)}</b><div class="small">${esc(v.profiles?.display_name||'出品者')}</div></div><div class="price">¥${Number(v.price_jpy).toLocaleString()}</div></div><span class="pill">${esc(v.category)}</span><span class="pill">${v.delivery_days}日</span><span class="pill">AI:${esc(v.ai_use)}</span>${audio}${action}</div>`;
-  }).join('')||'<div class="card small">まだ出品がありません。</div>';
+    const desc=(v.description||'').trim();
+    const descHtml=desc?`<div class="small" style="margin-top:8px;line-height:1.6">${esc(desc.length>120?desc.slice(0,120)+'…':desc)}</div>`:'';
+
+    return `<div class="card voice" data-listing-id="${esc(v.id)}"><div class="row"><div><b>${esc(v.title)}</b><div class="small">${esc(v.profiles?.display_name||'出品者')}</div></div><div class="price">¥${Number(v.price_jpy).toLocaleString()}</div></div><span class="pill">${esc(v.category)}</span><span class="pill">${v.delivery_days}日</span><span class="pill">AI:${esc(v.ai_use)}</span>${descHtml}${audio}${action}</div>`;
+  }).join('');
+
+  if(reset){
+    listingList.innerHTML=cards||'<div class="card small">条件に合う出品がありません。</div>';
+  }else if(cards){
+    listingList.insertAdjacentHTML('beforeend',cards);
+  }
+
+  listingOffset+=rows.length;
+
+  const total=Number(count||0);
+  listingSearchMeta.textContent=safeQ
+    ? `「${rawQ}」の検索結果：${total}件`
+    : `公開中の声：${total}件`;
+
+  if(rows.length===LISTING_PAGE_SIZE && listingOffset<total){
+    listingLoadMoreBtn?.classList.remove('hide');
+    listingLoadMoreBtn.textContent=`さらに表示（残り ${Math.max(0,total-listingOffset)}件）`;
+  }else{
+    listingLoadMoreBtn?.classList.add('hide');
+  }
 }
 async function openMyListing(listingId){
   await go('voices');
