@@ -200,6 +200,14 @@ body.normal-mode #nav button{height:46px!important;min-height:46px!important;bor
 
 /* 2026-09-11: 決済状態ステップ表示 */
 .finance-flow{display:grid;grid-template-columns:repeat(4,1fr);gap:6px;margin:12px 0 2px}.finance-step{padding:9px 5px;border:1px solid #e3def8;border-radius:12px;background:#faf9ff;text-align:center;font-size:10px;font-weight:850;color:#6c7290;line-height:1.35}.finance-step.active{background:#eefbf4;border-color:#ccefdc;color:#15844e}.finance-step.future{background:#fff}.finance-history{margin-top:12px;display:grid;gap:8px}.finance-history-item{border:1px solid #e8e3f8;border-radius:12px;padding:10px 12px;background:#fff}.finance-history-item .top{display:flex;justify-content:space-between;gap:10px;align-items:center}.finance-history-item .state{font-size:10px;font-weight:850;padding:5px 8px;border-radius:999px;background:#eefbf4;color:#15844e}.finance-history-item .amt{font-weight:900}.finance-caption{font-size:10px;line-height:1.55;color:#747b93;margin-top:8px}
+
+/* Keep login at normal scale on iPhone Safari */
+#authPage input,
+#authPage select,
+#authPage textarea{
+  font-size:16px !important;
+}
+
 </style>
 <script>
 if(window.navigator.standalone===true){document.body.classList.add('standalone')}
@@ -450,7 +458,24 @@ async function init(){
 }
 async function renderAuth(){if(currentUser){authPage.classList.remove('on');nav.classList.remove('hide');refreshBtn?.classList.remove('hide');bellBtn?.classList.remove('hide');cloudStatus.textContent='オンライン';await loadHome();loadJobBadge();loadMessageBadge();loadNotificationBadge();await restoreUI()}else{document.querySelectorAll('.page').forEach(p=>p.classList.remove('on'));authPage.classList.add('on');nav.classList.add('hide');refreshBtn?.classList.add('hide');bellBtn?.classList.add('hide');closeNotifications();document.body.classList.remove('normal-mode','messages-mode','chat-mode');document.querySelector('.topbar')?.classList.remove('force-hide');cloudStatus.textContent=configured?'オンライン':'設定待ち'}}
 async function signUp(){if(!sb)return info('authMsg','まず接続設定が必要です','err');if(password.value.length<8)return info('authMsg','パスワードは8文字以上にしてください','err');const {error}=await sb.auth.signUp({email:email.value.trim(),password:password.value,userMetadata:{display_name:displayName.value.trim()||'ユーザー'},options:{data:{display_name:displayName.value.trim()||'ユーザー'}}});if(error)return info('authMsg',error.message,'err');info('authMsg','登録を受け付けました。メール確認が有効な場合は確認後にログインしてください。')}
-async function signIn(){if(!sb)return info('authMsg','まず接続設定が必要です','err');const {error}=await sb.auth.signInWithPassword({email:email.value.trim(),password:password.value});if(error)return info('authMsg',error.message,'err')}
+function resetLoginZoom(){
+  try{
+    document.activeElement?.blur();
+    const vp=document.querySelector('meta[name="viewport"]');
+    if(vp){
+      const normal='width=device-width,initial-scale=1,viewport-fit=cover';
+      vp.setAttribute('content','width=device-width,initial-scale=1,maximum-scale=1,viewport-fit=cover');
+      setTimeout(()=>vp.setAttribute('content',normal),180);
+    }
+    setTimeout(()=>window.scrollTo({top:0,left:0,behavior:'auto'}),50);
+  }catch(_){}
+}
+async function signIn(){
+  if(!sb)return info('authMsg','まず接続設定が必要です','err');
+  const {error}=await sb.auth.signInWithPassword({email:email.value.trim(),password:password.value});
+  if(error)return info('authMsg',error.message,'err');
+  resetLoginZoom();
+}
 async function signOut(){document.body.classList.remove('normal-mode','chat-mode','messages-mode');document.querySelector('.topbar')?.classList.remove('force-hide');document.getElementById('nav')?.classList.remove('force-hide');await sb.auth.signOut()}
 async function loadHome(){const [{count:lc},{count:jc}]=await Promise.all([sb.from('listings').select('*',{count:'exact',head:true}).eq('is_active',true),sb.from('jobs').select('*',{count:'exact',head:true}).eq('status','open')]);homeCounts.innerHTML=`公開中の声：<b>${lc??0}</b>件　／　募集中の仕事：<b>${jc??0}</b>件`}
 async function createListing(){if(!currentUser)return;let path=null;const f=sellAudio.files[0];if(f){const ext=(f.name.split('.').pop()||'').toLowerCase().replace(/[^a-z0-9]/g,'');const allowed=['m4a','mp3','wav','aac','mp4','mpeg','ogg','webm'];const mime=(f.type||'').toLowerCase();if(!allowed.includes(ext) && !mime.startsWith('audio/'))return info('sellMsg','音声ファイルを選択してください（m4a / mp3 / wav / aac / mp4 など）。','err');path=`${currentUser.id}/${crypto.randomUUID()}.${ext||'audio'}`;const contentType=mime||({m4a:'audio/mp4',mp4:'audio/mp4',mp3:'audio/mpeg',mpeg:'audio/mpeg',wav:'audio/wav',aac:'audio/aac',ogg:'audio/ogg',webm:'audio/webm'}[ext]||'application/octet-stream');const {error:ue}=await sb.storage.from('voice-samples').upload(path,f,{upsert:false,contentType});if(ue)return info('sellMsg','音声アップロード: '+ue.message,'err')}
