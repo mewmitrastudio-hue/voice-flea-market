@@ -208,6 +208,33 @@ body.normal-mode #nav button{height:46px!important;min-height:46px!important;bor
   font-size:16px !important;
 }
 
+
+.vf-confirm-overlay{
+  position:fixed;
+  inset:0;
+  z-index:99999;
+  display:none;
+  align-items:center;
+  justify-content:center;
+  padding:24px;
+  background:rgba(21,24,40,.42);
+  backdrop-filter:blur(3px);
+}
+.vf-confirm-overlay.show{display:flex;}
+.vf-confirm-card{
+  width:min(100%,420px);
+  background:#fff;
+  border-radius:26px;
+  padding:28px 22px 20px;
+  box-shadow:0 22px 70px rgba(36,28,74,.24);
+  text-align:center;
+  border:1px solid rgba(105,83,246,.12);
+}
+.vf-confirm-icon{font-size:34px;margin-bottom:8px;}
+.vf-confirm-card h3{margin:0 0 10px;font-size:22px;}
+.vf-confirm-card p{margin:0 0 22px;color:#667085;line-height:1.6;}
+.vf-confirm-card .btn + .btn{margin-top:10px;}
+
 </style>
 <script>
 if(window.navigator.standalone===true){document.body.classList.add('standalone')}
@@ -872,10 +899,42 @@ async function uploadDelivery(){
  await sb.from('messages').insert({conversation_id:currentConversationId,sender_id:currentUser.id,body:'📦 音声を納品しました。チャット内の納品欄から確認できます。'});
  selectedDeliveryFiles.delete(currentConversationId);info('deliveryMsg','納品しました。');await Promise.all([loadDeliveries(),loadChatMessages()]);loadMessageBadge();loadNotificationBadge();
 }
+function openDeliveryConfirm(){
+ if(!currentConversation||currentUser.id!==currentConversation.buyer_id)return;
+ const el=document.getElementById('deliveryConfirmOverlay');
+ if(!el)return;
+ el.classList.add('show');
+ el.setAttribute('aria-hidden','false');
+}
+function closeDeliveryConfirm(){
+ const el=document.getElementById('deliveryConfirmOverlay');
+ if(!el)return;
+ el.classList.remove('show');
+ el.setAttribute('aria-hidden','true');
+}
 async function confirmDelivery(){
- if(!currentConversation||currentUser.id!==currentConversation.buyer_id)return;if(!confirm('この納品を受け取り済みにしますか？'))return;
- const now=new Date().toISOString();const {data:updated,error}=await sb.from('conversations').update({delivery_status:'accepted',accepted_at:now}).eq('id',currentConversationId).select('id,buyer_id,seller_id,job_id,listing_id,delivery_path,delivery_status,delivered_at,accepted_at').single();if(error)return alert(error.message);currentConversation=updated;
- await sb.from('messages').insert({conversation_id:currentConversationId,sender_id:currentUser.id,body:'✅ 納品物を受け取りました。'});if(currentConversation.job_id)await sb.from('jobs').update({status:'closed'}).eq('id',currentConversation.job_id);await Promise.all([loadDeliveries(),loadChatMessages()]);loadHome();loadNotificationBadge();
+ openDeliveryConfirm();
+}
+async function acceptDeliveryConfirmed(){
+ if(!currentConversation||currentUser.id!==currentConversation.buyer_id)return;
+ closeDeliveryConfirm();
+ const now=new Date().toISOString();
+ const {data:updated,error}=await sb.from('conversations')
+   .update({delivery_status:'accepted',accepted_at:now})
+   .eq('id',currentConversationId)
+   .select('id,buyer_id,seller_id,job_id,listing_id,delivery_path,delivery_status,delivered_at,accepted_at')
+   .single();
+ if(error)return alert(error.message);
+ currentConversation=updated;
+ await sb.from('messages').insert({
+   conversation_id:currentConversationId,
+   sender_id:currentUser.id,
+   body:'✅ 納品物を受け取りました。'
+ });
+ if(currentConversation.job_id)await sb.from('jobs').update({status:'closed'}).eq('id',currentConversation.job_id);
+ await Promise.all([loadDeliveries(),loadChatMessages()]);
+ loadHome();
+ loadNotificationBadge();
 }
 async function loadMessageBadge(){
  if(!sb||!currentUser||!msgBadge)return;const {data:cs}=await sb.from('conversations').select('id').or(`buyer_id.eq.${currentUser.id},seller_id.eq.${currentUser.id}`);let count=0;for(const c of cs||[]){const seen=localStorage.getItem(seenKey(c.id))||'1970-01-01T00:00:00.000Z';const {count:n}=await sb.from('messages').select('*',{count:'exact',head:true}).eq('conversation_id',c.id).neq('sender_id',currentUser.id).gt('created_at',seen);count+=n||0}msgBadge.textContent=count>99?'99+':String(count);msgBadge.classList.toggle('show',count>0);loadNotificationBadge()
@@ -1220,6 +1279,17 @@ function showRuleDoc(kind){const body=document.getElementById('rulesBody');if(bo
   window.cleanupChatRating=cleanupChatRating;
 })();
 </script>
+
+
+<div id="deliveryConfirmOverlay" class="vf-confirm-overlay" aria-hidden="true">
+  <div class="vf-confirm-card" role="dialog" aria-modal="true" aria-labelledby="deliveryConfirmTitle">
+    <div class="vf-confirm-icon">🎧</div>
+    <h3 id="deliveryConfirmTitle">受け取り確認</h3>
+    <p>この納品を受け取り済みにしますか？</p>
+    <button class="btn full" type="button" onclick="acceptDeliveryConfirmed()">受け取る</button>
+    <button class="btn secondary full" type="button" onclick="closeDeliveryConfirm()">キャンセル</button>
+  </div>
+</div>
 
 </body></html>
 <style id="width-tidy-20260911">
