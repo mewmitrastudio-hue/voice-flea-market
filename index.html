@@ -513,6 +513,35 @@ body.normal-mode #nav button{height:46px!important;min-height:46px!important;bor
 .favorite-open strong{white-space:nowrap;color:#5148c9}
 .favorite-remove{border:0;background:#f7f4ff;color:#655bd0;border-radius:10px;padding:8px 9px;font-size:11px;font-weight:800}
 
+
+/* Favorite color tuning */
+#favoriteBtn{
+  color:#d94f8b!important;
+  border-color:#f0c7d9!important;
+  background:#fff8fb!important;
+}
+#favoriteBtn:hover,#favoriteBtn:active{
+  background:#fff0f6!important;
+}
+.favorite-heart{
+  background:#fff8fb!important;
+  color:#e58ab0!important;
+  border-color:#f2cfdf!important;
+}
+.favorite-heart.on{
+  background:#ffeaf3!important;
+  color:#d92f76!important;
+  border-color:#eba7c4!important;
+}
+.home-summary-card[onclick*="openFavorites"]{
+  background:linear-gradient(145deg,#fff,#fff6fa)!important;
+  border-color:#f0d0df!important;
+}
+.home-summary-card[onclick*="openFavorites"] span,
+.home-summary-card[onclick*="openFavorites"] strong{
+  color:#c9427c!important;
+}
+
 </style>
 <script>
 if(window.navigator.standalone===true){document.body.classList.add('standalone')}
