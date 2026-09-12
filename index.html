@@ -461,6 +461,7 @@ body.normal-mode #nav button{height:46px!important;min-height:46px!important;bor
 .chat-message-row.mine-row{justify-content:flex-end}
 .chat-message-row.theirs-row{justify-content:flex-start}
 .chat-message-row .bubble{margin:0}
+.chat-system-row{display:flex;justify-content:center;margin:8px 0}.chat-system-note{max-width:88%;padding:7px 12px;border-radius:999px;background:#f5f5fa;border:1px solid #e7e4f4;color:#667085;font-size:11px;line-height:1.45;text-align:center;box-shadow:0 2px 8px rgba(73,57,130,.04)}
 .public-profile-overlay{position:fixed;inset:0;z-index:100001;display:none;align-items:center;justify-content:center;padding:18px;background:rgba(20,22,35,.42);backdrop-filter:blur(3px)}
 .public-profile-overlay.show{display:flex}
 .public-profile-box{width:min(100%,460px);max-height:88dvh;overflow:auto;background:#fff;border-radius:24px;padding:20px;box-shadow:0 22px 70px rgba(36,28,74,.24)}
@@ -1564,9 +1565,15 @@ async function loadChatMessages(){
  let profileMap={};
  if(senderIds.length){const {data:ps}=await sb.from('profiles').select('id,display_name,avatar_path').in('id',senderIds);(ps||[]).forEach(p=>profileMap[p.id]=p)}
  chatMessages.innerHTML=(data||[]).map(m=>{
+   const body=String(m.body||'');
+   const isSystem=/^(📦 音声を納品しました。|✅ 納品物を受け取りました。|⭐ 取引評価を送信しました。)/.test(body);
+   if(isSystem){
+     const shortBody=body.startsWith('📦 音声を納品しました。')?'📦 音声を納品しました':body.startsWith('✅ 納品物を受け取りました。')?'✅ 受取確認が完了しました':'⭐ 取引評価が完了しました';
+     return `<div class="chat-system-row"><div class="chat-system-note">${esc(shortBody)}</div></div>`;
+   }
    const mine=m.sender_id===currentUser.id;
-   if(mine)return `<div class="chat-message-row mine-row"><div class="bubble mine">${esc(m.body)}</div></div>`;
-   return `<div class="chat-message-row theirs-row">${avatarMarkup(profileMap[m.sender_id]||{display_name:'ユーザー'},'xs',m.sender_id)}<div class="bubble theirs">${esc(m.body)}</div></div>`;
+   if(mine)return `<div class="chat-message-row mine-row"><div class="bubble mine">${esc(body)}</div></div>`;
+   return `<div class="chat-message-row theirs-row">${avatarMarkup(profileMap[m.sender_id]||{display_name:'ユーザー'},'xs',m.sender_id)}<div class="bubble theirs">${esc(body)}</div></div>`;
  }).join('')||'<div class="small">まだメッセージはありません。最初のメッセージを送ってみましょう。</div>';
  ids.forEach(markConversationSeen);setTimeout(()=>chatMessages.scrollTop=chatMessages.scrollHeight,0)
 }
@@ -1877,19 +1884,26 @@ function profileAvatarUrl(path){
 function avatarMarkup(profile,size='md',clickId=''){
   const name=profile?.display_name||'ユーザー';
   const url=profileAvatarUrl(profile?.avatar_path);
-  const inner=url?`<img src="${esc(url)}" alt="${esc(name)}のプロフィール画像">`:`<span>${esc(String(name).trim().charAt(0).toUpperCase()||'U')}</span>`;
-  if(url&&clickId){
-    return `<button type="button" class="user-avatar ${size} clickable avatar-preview-trigger" data-avatar-name="${esc(name)}" aria-label="プロフィール画像を拡大" onclick="event.preventDefault();event.stopPropagation();openAvatarPreviewFromElement(this);return false;">${inner}</button>`;
+  const initial=String(name).trim().charAt(0).toUpperCase()||'U';
+  const inner=url?`<img src="${esc(url)}" alt="${esc(name)}のプロフィール画像">`:`<span>${esc(initial)}</span>`;
+  if(clickId){
+    return `<button type="button" class="user-avatar ${size} clickable avatar-preview-trigger" data-avatar-name="${esc(name)}" data-avatar-initial="${esc(initial)}" aria-label="アイコンを拡大" onclick="event.preventDefault();event.stopPropagation();openAvatarPreviewFromElement(this);return false;">${inner}</button>`;
   }
   return `<div class="user-avatar ${size}">${inner}</div>`;
 }
 
+function fallbackAvatarDataUrl(initial='U'){
+  const safe=String(initial||'U').slice(0,2).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&apos;'}[c]));
+  const svg=`<svg xmlns="http://www.w3.org/2000/svg" width="720" height="720" viewBox="0 0 720 720"><defs><linearGradient id="g" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#6f62f4"/><stop offset="1" stop-color="#d56ab9"/></linearGradient></defs><rect width="720" height="720" rx="360" fill="url(#g)"/><text x="360" y="390" text-anchor="middle" dominant-baseline="middle" fill="white" font-family="-apple-system,BlinkMacSystemFont,'Hiragino Sans','Yu Gothic',sans-serif" font-size="290" font-weight="900">${safe}</text></svg>`;
+  return 'data:image/svg+xml;charset=utf-8,'+encodeURIComponent(svg);
+}
+
 function openAvatarPreviewFromElement(el){
-  const img=el?.querySelector('img');
-  if(!img)return;
-  const url=img.currentSrc||img.src||'';
+  if(!el)return;
+  const img=el.querySelector('img');
+  const url=img?(img.currentSrc||img.src||''):fallbackAvatarDataUrl(el.dataset?.avatarInitial||el.textContent?.trim()||'U');
   if(!url)return;
-  openAvatarPreview(url,el?.dataset?.avatarName||'');
+  openAvatarPreview(url,el.dataset?.avatarName||'');
 }
 
 async function openAvatarForUser(userId){
@@ -2294,14 +2308,10 @@ function showRuleDoc(kind){const body=document.getElementById('rulesBody');if(bo
 // Avatar preview: robust iPhone/Safari tap handling (2026-09-13)
 (function(){
   function previewTappedAvatar(target){
-    const avatar = target && target.closest ? target.closest('.user-avatar, #profileAvatarPreview') : null;
+    const avatar = target && target.closest ? target.closest('.avatar-preview-trigger, #profileAvatarPreview.clickable-preview') : null;
     if(!avatar) return false;
-    const img = avatar.querySelector('img');
-    if(!img) return false;
-    const src = img.currentSrc || img.src || '';
-    if(!src) return false;
-    if(typeof openAvatarPreview === 'function'){
-      openAvatarPreview(src, avatar.dataset?.avatarName || '');
+    if(typeof openAvatarPreviewFromElement === 'function'){
+      openAvatarPreviewFromElement(avatar);
       return true;
     }
     return false;
