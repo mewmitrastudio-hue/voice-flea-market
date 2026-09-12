@@ -1564,8 +1564,17 @@ async function loadChatMessages(){
  const senderIds=[...new Set((data||[]).map(m=>m.sender_id).filter(Boolean))];
  let profileMap={};
  if(senderIds.length){const {data:ps}=await sb.from('profiles').select('id,display_name,avatar_path').in('id',senderIds);(ps||[]).forEach(p=>profileMap[p.id]=p)}
+ const seenRatingConversations=new Set();
  chatMessages.innerHTML=(data||[]).map(m=>{
    const body=String(m.body||'');
+   const isRatingNotice=body.startsWith('⭐ 取引評価を送信しました。');
+   // 同じ取引で双方が評価しても、完了通知はチャット上1回だけ表示する。
+   // 取引ごとの履歴自体はDBに残したまま、表示だけ重複をまとめる。
+   if(isRatingNotice){
+     const key=String(m.conversation_id||'');
+     if(seenRatingConversations.has(key))return '';
+     seenRatingConversations.add(key);
+   }
    const isSystem=/^(📦 音声を納品しました。|✅ 納品物を受け取りました。|⭐ 取引評価を送信しました。)/.test(body);
    if(isSystem){
      const shortBody=body.startsWith('📦 音声を納品しました。')?'📦 音声を納品しました':body.startsWith('✅ 納品物を受け取りました。')?'✅ 受取確認が完了しました':'⭐ 取引評価が完了しました';
