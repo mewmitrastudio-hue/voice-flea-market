@@ -333,6 +333,30 @@ body.normal-mode #nav button{height:46px!important;min-height:46px!important;bor
   }
 }
 
+
+.home-catch{
+  margin:18px 0 20px;
+  padding:4px 2px 2px;
+}
+.home-catch-main{
+  font-size:28px;
+  line-height:1.25;
+  font-weight:900;
+  letter-spacing:-.035em;
+  color:#26233f;
+}
+.home-catch-sub{
+  margin-top:7px;
+  font-size:15px;
+  line-height:1.5;
+  font-weight:700;
+  color:#77718f;
+}
+@media (max-width:430px){
+  .home-catch-main{font-size:26px}
+  .home-catch-sub{font-size:14px}
+}
+
 </style>
 <script>
 if(window.navigator.standalone===true){document.body.classList.add('standalone')}
@@ -417,7 +441,7 @@ window.__loadSupabaseSDK=async function(){
 <div id="configNotice" class="notice">現在サービスへ接続できません。時間をおいて再度お試しください。</div>
 </section>
 
-<section id="home" class="page"><div class="home-note"><span>🎧 声でつながる</span><span>🌍 海外にも届ける</span><span>💬 直接やり取り</span></div><div class="quickgrid"><button class="quickcard" onclick="go('sell')"><span class="qi">🎙️</span>声を出品<small>自分の声を商品にする</small></button><button class="quickcard" onclick="go('voices')"><span class="qi">🔎</span>声を探す<small>ぴったりの声を見つける</small></button><button class="quickcard wide" onclick="go('jobs')"><span class="qi">💬</span>声の仕事を募集<small>欲しい声が見つからなければ募集できます</small></button></div><div id="homeCounts" class="card small home-stats">読み込み中...</div></section>
+<section id="home" class="page"><div class="home-catch"><div class="home-catch-main">世界に、あなたの声を売る。</div><div class="home-catch-sub">あなたの声を、世界が買う。</div></div><div class="quickgrid"><button class="quickcard" onclick="go('sell')"><span class="qi">🎙️</span>声を出品<small>自分の声を商品にする</small></button><button class="quickcard" onclick="go('voices')"><span class="qi">🔎</span>声を探す<small>ぴったりの声を見つける</small></button><button class="quickcard wide" onclick="go('jobs')"><span class="qi">💬</span>声の仕事を募集<small>欲しい声が見つからなければ募集できます</small></button></div><div id="homeCounts" class="card small home-stats">読み込み中...</div></section>
 
 <section id="voices" class="page"><h2>声を探す</h2><div class="field"><input id="voiceSearch" placeholder="英語、方言、歌..." oninput="loadListings()"></div><div id="listingList"></div></section>
 
