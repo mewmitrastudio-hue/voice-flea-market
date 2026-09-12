@@ -280,13 +280,18 @@ const FINANCE_FEE_RATE=0.15;
 function financeYen(n){return `¥${Number(n||0).toLocaleString()}`}
 function closeFinanceCenter(){document.getElementById('financeOverlay')?.classList.remove('on');document.body.classList.remove('finance-modal-open')}
 function openFinanceCenter(mode='buyer'){document.body.classList.add('finance-modal-open');document.getElementById('financeOverlay')?.classList.add('on');showFinancePanel(mode)}
-function setStripeConnectUI(accountId='',message=''){
+function setStripeConnectUI(accountId='',message='',verified=false){
  const status=document.getElementById('stripeConnectStatus');
  const btn=document.getElementById('stripeConnectBtn');
  if(!status||!btn)return;
  status.classList.remove('ready','error');
  const stripeFlow=new URLSearchParams(location.search).get('stripe_onboarding');
- if(accountId){
+ if(accountId&&verified){
+   status.textContent=message||'Stripeの本人確認・振込先登録は完了しています。';
+   status.classList.add('ready');
+   btn.textContent='Stripe登録 完了';
+   btn.disabled=true;
+ }else if(accountId){
    if(stripeFlow==='return'){
      status.textContent=message||'Stripeの登録画面から戻りました。追加情報が必要な場合は、下のボタンから登録を再開できます。';
    }else{
@@ -299,6 +304,22 @@ function setStripeConnectUI(accountId='',message=''){
    status.textContent=message||'出品者として売上を受け取るためのStripe連結アカウントを作成します。';
    btn.textContent='Stripe受取アカウントを設定';
    btn.disabled=false;
+ }
+}
+async function getStripeSellerStatus(){
+ if(!sb||!currentUser)return null;
+ try{
+   const {data:{session}}=await sb.auth.getSession();
+   if(!session?.access_token)return null;
+   const {data,error}=await sb.functions.invoke('create-connect-account',{
+     body:{action:'status'},
+     headers:{Authorization:`Bearer ${session.access_token}`}
+   });
+   if(error||data?.error)return null;
+   return data||null;
+ }catch(e){
+   console.warn('Stripe status check failed',e);
+   return null;
  }
 }
 async function connectStripeSeller(){
@@ -699,18 +720,38 @@ async function refreshAllData(){
 }
 
 async function loadMe(){
-  const {data:p}=await sb.from('profiles').select('*').eq('id',currentUser.id).maybeSingle();
+  const {data:profile}=await sb.from('profiles').select('*').eq('id',currentUser.id).maybeSingle();
+  let p=profile||{};
   const {data:receivedReviews}=await sb.from('reviews').select('rating').eq('target_user_id',currentUser.id);
   const ratings=(receivedReviews||[]).map(r=>Number(r.rating)).filter(n=>n>=1&&n<=5);
   const avg=ratings.length?(ratings.reduce((a,b)=>a+b,0)/ratings.length).toFixed(1):null;
-  const verified=!!p?.verified;
-  setStripeConnectUI(p?.stripe_account_id||'');
   const stripeFlow=new URLSearchParams(location.search).get('stripe_onboarding');
+
   if(stripeFlow==='refresh' && p?.stripe_account_id){
     history.replaceState({},'',location.pathname);
     setTimeout(()=>connectStripeSeller(),120);
   }
-  meText.innerHTML=`<div class="profile-grid"><div class="profile-left"><b class="profile-name">${esc(p?.display_name||currentUser.email)}</b><div class="profile-badges"><span class="identity-badge ${verified?'verified':'unverified'}">${verified?'✓ 本人確認済み':'本人確認 未完了'}</span>${avg?`<span class="rating-badge">★ ${avg}（${ratings.length}件）</span>`:'<span class="rating-badge muted">まだ評価はありません</span>'}</div>${!verified?'<div class="identity-note">本人確認機能は正式公開前に追加予定です。</div>':''}</div><div class="profile-right"><div class="small profile-email">${esc(currentUser.email||'')}</div><button class="btn ghost profile-logout" onclick="signOut()">ログアウト</button></div></div>`;
+
+  let stripeStatus=null;
+  if(p?.stripe_account_id){
+    stripeStatus=await getStripeSellerStatus();
+    if(stripeStatus&&typeof stripeStatus.verified==='boolean'){
+      p={...p,verified:stripeStatus.verified};
+    }
+  }
+
+  const verified=!!p?.verified;
+  setStripeConnectUI(
+    p?.stripe_account_id||'',
+    verified?'Stripeの本人確認・振込先登録は完了しています。':'',
+    verified
+  );
+
+  if(stripeFlow==='return'){
+    history.replaceState({},'',location.pathname);
+  }
+
+  meText.innerHTML=`<div class="profile-grid"><div class="profile-left"><b class="profile-name">${esc(p?.display_name||currentUser.email)}</b><div class="profile-badges"><span class="identity-badge ${verified?'verified':'unverified'}">${verified?'✓ 本人確認済み':'本人確認 未完了'}</span>${avg?`<span class="rating-badge">★ ${avg}（${ratings.length}件）</span>`:'<span class="rating-badge muted">まだ評価はありません</span>'}</div>${!verified?'<div class="identity-note">Stripeで本人確認・振込先登録を完了すると、ここに反映されます。</div>':''}</div><div class="profile-right"><div class="small profile-email">${esc(currentUser.email||'')}</div><button class="btn ghost profile-logout" onclick="signOut()">ログアウト</button></div></div>`;
 
   const [{data:l},{data:sellerConvs,error:sellerErr},{data:buyerConvs,error:buyerErr}]=await Promise.all([
     sb.from('listings').select('*').eq('seller_id',currentUser.id).order('created_at',{ascending:false}),
