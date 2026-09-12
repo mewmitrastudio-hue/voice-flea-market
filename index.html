@@ -527,7 +527,68 @@ async function startStripeCheckout(listingId,btn){
     }
   }
 }
-async function loadListings(){if(!sb)return;let q=voiceSearch.value.trim();let query=sb.from('listings').select('id,title,category,price_jpy,delivery_days,ai_use,sample_path,seller_id,profiles!listings_seller_id_fkey(display_name)').eq('is_active',true).order('created_at',{ascending:false}).limit(50);if(q)query=query.or(`title.ilike.%${q}%,category.ilike.%${q}%`);const {data,error}=await query;if(error){listingList.innerHTML=`<div class="err">${esc(error.message)}</div>`;return}listingList.innerHTML=(data||[]).map(v=>{let audio='';if(v.sample_path){const {data:u}=sb.storage.from('voice-samples').getPublicUrl(v.sample_path);audio=`<audio controls src="${u.publicUrl}"></audio>`}const own=v.seller_id===currentUser?.id;const action=own?`<button class="btn full" type="button" disabled style="margin-top:14px;opacity:.62">購入テストは別アカウントで</button>`:`<button class="btn full" type="button" style="margin-top:14px" onclick="startStripeCheckout('${esc(v.id)}',this)">購入する</button>`;return `<div class="card voice" data-listing-id="${esc(v.id)}"><div class="row"><div><b>${esc(v.title)}</b><div class="small">${esc(v.profiles?.display_name||'出品者')}</div></div><div class="price">¥${Number(v.price_jpy).toLocaleString()}</div></div><span class="pill">${esc(v.category)}</span><span class="pill">${v.delivery_days}日</span><span class="pill">AI:${esc(v.ai_use)}</span>${audio}${action}</div>`}).join('')||'<div class="card small">まだ出品がありません。</div>'}
+async function loadListings(){
+  if(!sb)return;
+
+  let q=voiceSearch.value.trim();
+  const paidListingIds=new Set();
+
+  if(currentUser?.id){
+    const {data:paidRows,error:paidError}=await sb
+      .from('payments')
+      .select('listing_id,status')
+      .eq('buyer_id',currentUser.id)
+      .eq('status','paid');
+
+    if(!paidError){
+      (paidRows||[]).forEach(p=>{
+        if(p.listing_id)paidListingIds.add(p.listing_id);
+      });
+    }else{
+      console.warn('購入済み情報の取得に失敗しました',paidError);
+    }
+  }
+
+  let query=sb
+    .from('listings')
+    .select('id,title,category,price_jpy,delivery_days,ai_use,sample_path,seller_id,profiles!listings_seller_id_fkey(display_name)')
+    .eq('is_active',true)
+    .order('created_at',{ascending:false})
+    .limit(50);
+
+  if(q)query=query.or(`title.ilike.%${q}%,category.ilike.%${q}%`);
+
+  const {data,error}=await query;
+
+  if(error){
+    listingList.innerHTML=`<div class="err">${esc(error.message)}</div>`;
+    return;
+  }
+
+  listingList.innerHTML=(data||[]).map(v=>{
+    let audio='';
+
+    if(v.sample_path){
+      const {data:u}=sb.storage.from('voice-samples').getPublicUrl(v.sample_path);
+      audio=`<audio controls src="${u.publicUrl}"></audio>`;
+    }
+
+    const own=v.seller_id===currentUser?.id;
+    const purchased=paidListingIds.has(v.id);
+
+    let action='';
+
+    if(own){
+      action=`<button class="btn full" type="button" disabled style="margin-top:14px;opacity:.62">購入テストは別アカウントで</button>`;
+    }else if(purchased){
+      action=`<button class="btn full" type="button" disabled style="margin-top:14px;background:#e9fbef;color:#16844f;border:1px solid #bcebcf;opacity:1">✓ 購入済み・支払い完了</button>`;
+    }else{
+      action=`<button class="btn full" type="button" style="margin-top:14px" onclick="startStripeCheckout('${esc(v.id)}',this)">購入する</button>`;
+    }
+
+    return `<div class="card voice" data-listing-id="${esc(v.id)}"><div class="row"><div><b>${esc(v.title)}</b><div class="small">${esc(v.profiles?.display_name||'出品者')}</div></div><div class="price">¥${Number(v.price_jpy).toLocaleString()}</div></div><span class="pill">${esc(v.category)}</span><span class="pill">${v.delivery_days}日</span><span class="pill">AI:${esc(v.ai_use)}</span>${audio}${action}</div>`;
+  }).join('')||'<div class="card small">まだ出品がありません。</div>';
+}
 async function openMyListing(listingId){
   await go('voices');
   voiceSearch.value='';
