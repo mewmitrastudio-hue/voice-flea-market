@@ -489,6 +489,17 @@ body.normal-mode #nav button{height:46px!important;min-height:46px!important;bor
 .avatar-preview-name{color:#fff;font-size:14px;font-weight:800;text-align:center}
 .profile-avatar-preview.clickable-preview{cursor:pointer;box-shadow:0 0 0 3px #eeeaff}
 
+
+.home-summary-title{font-size:12px;font-weight:900;color:#5c5673;margin:12px 2px 7px}
+.home-summary-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:8px}
+.home-summary-card{
+  border:1px solid #e4dff8;background:#fff;border-radius:16px;padding:12px;
+  display:flex;flex-direction:column;align-items:flex-start;gap:5px;text-align:left;
+  box-shadow:0 5px 14px rgba(63,51,126,.05)
+}
+.home-summary-card span{font-size:11px;color:#6b657c;font-weight:800}
+.home-summary-card strong{font-size:18px;color:#2f2a45}
+
 </style>
 <script>
 if(window.navigator.standalone===true){document.body.classList.add('standalone')}
@@ -573,7 +584,7 @@ window.__loadSupabaseSDK=async function(){
 <div id="configNotice" class="notice">現在サービスへ接続できません。時間をおいて再度お試しください。</div>
 </section>
 
-<section id="home" class="page"><div class="quickgrid"><button class="quickcard" onclick="go('sell')"><span class="qi">🎙️</span>声を出品<small>自分の声を商品にする</small></button><button class="quickcard" onclick="go('voices')"><span class="qi">🔎</span>声を探す<small>ぴったりの声を見つける</small></button><button class="quickcard" onclick="go('jobs')"><span class="qi">📣</span>仕事を募集<small>欲しい声を依頼する</small></button><button class="quickcard" onclick="go('messages')"><span class="qi">💬</span>メッセージ<small>取引相手とやり取りする</small></button></div><div id="homeCounts" class="card small home-stats">読み込み中...</div></section>
+<section id="home" class="page"><div class="quickgrid"><button class="quickcard" onclick="go('sell')"><span class="qi">🎙️</span>声を出品<small>自分の声を商品にする</small></button><button class="quickcard" onclick="go('voices')"><span class="qi">🔎</span>声を探す<small>ぴったりの声を見つける</small></button><button class="quickcard" onclick="go('jobs')"><span class="qi">📣</span>仕事を募集<small>欲しい声を依頼する</small></button><button class="quickcard" onclick="go('messages')"><span class="qi">💬</span>メッセージ<small>取引相手とやり取りする</small></button></div><div class="home-summary-title">すぐ確認</div><div class="home-summary-grid"><button class="home-summary-card" type="button" onclick="openFinanceCenter('seller')"><span>💰 売上</span><strong id="homeSalesAmount">¥0</strong></button><button class="home-summary-card" type="button" onclick="menuGoMySection('myPurchasedVoices')"><span>🛒 購入済み</span><strong id="homePurchasedCount">0件</strong></button><button class="home-summary-card" type="button" onclick="go('messages')"><span>🔄 取引中</span><strong id="homeActiveTradeCount">0件</strong></button><button class="home-summary-card" type="button" onclick="go('messages')"><span>💬 未読</span><strong id="homeUnreadCount">0件</strong></button></div><div id="homeCounts" class="card small home-stats">読み込み中...</div></section>
 
 <section id="voices" class="page"><h2>声を探す</h2><div class="field"><input id="voiceSearch" placeholder="英語、関西弁、YouTube、出品者名..." oninput="scheduleListingSearch()"></div><div class="small" style="margin:-4px 2px 10px">タイトル・カテゴリー・説明・AI条件・出品者名から検索できます。</div><div class="voice-filter-row"><label><input id="hidePurchasedToggle" type="checkbox" onchange="loadListings(true)"> 購入済みを非表示</label><label><input id="hideOwnToggle" type="checkbox" onchange="loadListings(true)"> 自分の出品を除外</label></div><div id="listingSearchMeta" class="small" style="margin:0 2px 10px"></div><div id="listingList"></div><button id="listingLoadMoreBtn" class="btn secondary full hide" type="button" style="margin-top:12px" onclick="loadMoreListings()">さらに表示</button></section>
 
@@ -942,7 +953,45 @@ async function signIn(){
   resetLoginZoom();
 }
 async function signOut(){document.body.classList.remove('normal-mode','chat-mode','messages-mode');document.querySelector('.topbar')?.classList.remove('force-hide');document.getElementById('nav')?.classList.remove('force-hide');await sb.auth.signOut()}
-async function loadHome(){const [{count:lc},{count:jc}]=await Promise.all([sb.from('listings').select('*',{count:'exact',head:true}).eq('is_active',true),sb.from('jobs').select('*',{count:'exact',head:true}).eq('status','open')]);homeCounts.innerHTML=`公開中の声：<b>${lc??0}</b>件　／　募集中の仕事：<b>${jc??0}</b>件`}
+async function loadHome(){
+  if(!sb)return;
+  const [{count:lc},{count:jc}]=await Promise.all([
+    sb.from('listings').select('*',{count:'exact',head:true}).eq('is_active',true),
+    sb.from('jobs').select('*',{count:'exact',head:true}).eq('status','open')
+  ]);
+  homeCounts.innerHTML=`公開中の声：<b>${lc??0}</b>件　／　募集中の仕事：<b>${jc??0}</b>件`;
+
+  if(!currentUser)return;
+
+  const [{data:sales},{count:purchased},{data:convs}]=await Promise.all([
+    sb.from('payments').select('seller_amount_jpy,status').eq('seller_id',currentUser.id).eq('status','paid'),
+    sb.from('payments').select('*',{count:'exact',head:true}).eq('buyer_id',currentUser.id).eq('status','paid'),
+    sb.from('conversations').select('id,delivery_status').or(`buyer_id.eq.${currentUser.id},seller_id.eq.${currentUser.id}`)
+  ]);
+
+  const salesAmount=(sales||[]).reduce((sum,p)=>sum+Number(p.seller_amount_jpy||0),0);
+  const activeTrades=(convs||[]).filter(c=>c.delivery_status!=='accepted').length;
+
+  let unread=0;
+  for(const c of convs||[]){
+    const seen=localStorage.getItem(seenKey(c.id))||'1970-01-01T00:00:00.000Z';
+    const {count:n}=await sb.from('messages').select('*',{count:'exact',head:true})
+      .eq('conversation_id',c.id)
+      .neq('sender_id',currentUser.id)
+      .gt('created_at',seen);
+    unread+=n||0;
+  }
+
+  const salesEl=document.getElementById('homeSalesAmount');
+  const purchasedEl=document.getElementById('homePurchasedCount');
+  const activeEl=document.getElementById('homeActiveTradeCount');
+  const unreadEl=document.getElementById('homeUnreadCount');
+
+  if(salesEl)salesEl.textContent=`¥${salesAmount.toLocaleString()}`;
+  if(purchasedEl)purchasedEl.textContent=`${purchased||0}件`;
+  if(activeEl)activeEl.textContent=`${activeTrades}件`;
+  if(unreadEl)unreadEl.textContent=`${unread}件`;
+}
 async function createListing(){if(!currentUser)return;let path=null;const f=sellAudio.files[0];if(f){const ext=(f.name.split('.').pop()||'').toLowerCase().replace(/[^a-z0-9]/g,'');const allowed=['m4a','mp3','wav','aac','mp4','mpeg','ogg','webm'];const mime=(f.type||'').toLowerCase();if(!allowed.includes(ext) && !mime.startsWith('audio/'))return info('sellMsg','音声ファイルを選択してください（m4a / mp3 / wav / aac / mp4 など）。','err');path=`${currentUser.id}/${crypto.randomUUID()}.${ext||'audio'}`;const contentType=mime||({m4a:'audio/mp4',mp4:'audio/mp4',mp3:'audio/mpeg',mpeg:'audio/mpeg',wav:'audio/wav',aac:'audio/aac',ogg:'audio/ogg',webm:'audio/webm'}[ext]||'application/octet-stream');const {error:ue}=await sb.storage.from('voice-samples').upload(path,f,{upsert:false,contentType});if(ue)return info('sellMsg','音声アップロード: '+ue.message,'err')}
 const {error}=await sb.from('listings').insert({seller_id:currentUser.id,title:sellTitle.value.trim(),category:sellCategory.value,description:sellDesc.value.trim(),price_jpy:+sellPrice.value,delivery_days:+sellDays.value,ai_use:sellAI.value,sample_path:path});if(error)return info('sellMsg',error.message,'err');info('sellMsg','クラウドへ出品しました。');sellTitle.value='';sellDesc.value='';sellAudio.value='';loadHome()}
 async function startStripeCheckout(listingId,btn){
