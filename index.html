@@ -329,7 +329,7 @@ window.__loadSupabaseSDK=async function(){
 
 <section id="messages" class="page"><div class="messages-list-head"><button class="chatback" onclick="go('home')" aria-label="ホームへ戻る">‹</button><div class="messages-list-title"><b>メッセージ</b><span>取引相手とのやり取り</span></div></div><h2>メッセージ</h2><div id="conversationList" class="chatlist"></div><div id="chatBox" class="card chatbox"><div class="chatroom-head"><button class="chatback" onclick="closeChat()" aria-label="メッセージ一覧へ">‹</button><div class="chatroom-title"><b id="chatTitle">チャット</b><span id="chatSub">取引メッセージ</span></div><button id="chatSafetyBtn" class="safety-chat-btn" onclick="openSafetyCenter('chat')">通報・ブロック</button></div><div id="chatMessages" class="chatmessages"></div><div id="deliveryArea" class="chatdelivery"></div><div class="chatdock"><div class="chatcomposer"><textarea id="chatInput" placeholder="メッセージを入力"></textarea><button class="btn" onclick="sendChatMessage()">送信</button></div><div id="chatMsg"></div></div></div></section>
 
-<section id="me" class="page"><h2>マイページ</h2><div class="card profile-compact"><div id="meText">-</div></div><div id="myListings"></div><div id="mySellerJobs"></div><div id="myBuyerJobs"></div><div class="card finance-card"><b>💳 決済・売上</b><div class="small" style="margin-top:5px">Stripeで確定した支払いと、出品者の売上を確認できます。</div><div id="sellerSalesSummary" style="margin-top:12px"></div><div class="finance-grid"><button class="btn secondary" onclick="openFinanceCenter('buyer')">支払い内訳</button><button class="btn secondary" onclick="openFinanceCenter('seller')">売上・振込</button></div><div class="stripe-connect-box"><div id="stripeConnectStatus" class="stripe-connect-status">Stripe受取アカウントの状態を確認中...</div><button id="stripeConnectBtn" class="btn full stripe-connect-btn" type="button" onclick="connectStripeSeller()">Stripe受取アカウントを設定</button></div></div><div class="card safety-card"><b>✉️ お問い合わせ</b><div class="small" style="margin-top:5px">使い方、不具合、その他のお問い合わせはこちらから。</div><button class="btn secondary full" onclick="openSafetyCenter('support')">お問い合わせを開く</button></div><div class="card rules-card"><b>📘 ルール・ポリシー</b><div class="small" style="margin-top:5px">利用規約、プライバシー、禁止事項、キャンセル・返金、音声・AI利用条件、特商法・運営者情報を確認できます。</div><button class="btn secondary full" onclick="openRulesCenter()">ルールを確認する</button></div></section>
+<section id="me" class="page"><h2>マイページ</h2><div class="card profile-compact"><div id="meText">-</div></div><div id="myListings"></div><div id="mySoldVoices"></div><div id="myPurchasedVoices"></div><div id="mySellerJobs"></div><div id="myBuyerJobs"></div><div class="card finance-card"><b>💳 決済・売上</b><div class="small" style="margin-top:5px">Stripeで確定した支払いと、出品者の売上を確認できます。</div><div id="sellerSalesSummary" style="margin-top:12px"></div><div class="finance-grid"><button class="btn secondary" onclick="openFinanceCenter('buyer')">支払い内訳</button><button class="btn secondary" onclick="openFinanceCenter('seller')">売上・振込</button></div><div class="stripe-connect-box"><div id="stripeConnectStatus" class="stripe-connect-status">Stripe受取アカウントの状態を確認中...</div><button id="stripeConnectBtn" class="btn full stripe-connect-btn" type="button" onclick="connectStripeSeller()">Stripe受取アカウントを設定</button></div></div><div class="card safety-card"><b>✉️ お問い合わせ</b><div class="small" style="margin-top:5px">使い方、不具合、その他のお問い合わせはこちらから。</div><button class="btn secondary full" onclick="openSafetyCenter('support')">お問い合わせを開く</button></div><div class="card rules-card"><b>📘 ルール・ポリシー</b><div class="small" style="margin-top:5px">利用規約、プライバシー、禁止事項、キャンセル・返金、音声・AI利用条件、特商法・運営者情報を確認できます。</div><button class="btn secondary full" onclick="openRulesCenter()">ルールを確認する</button></div></section>
 
 <div id="financeOverlay" class="finance-overlay" onclick="if(event.target===this)closeFinanceCenter()"><div class="finance-box"><div class="finance-head"><h3>決済・売上</h3><button class="finance-close" onclick="closeFinanceCenter()">×</button></div><div class="finance-beta">Stripe Sandboxで決済連携を確認中です。ここにはSupabaseに保存された実際のテスト決済結果を表示します。</div><div class="finance-tabs"><button id="financeTabBuyer" class="finance-tab active" onclick="showFinancePanel('buyer')">支払い確認</button><button id="financeTabSeller" class="finance-tab" onclick="showFinancePanel('seller')">売上・振込</button></div><div id="financeBody"></div></div></div>
 <div id="notifOverlay" class="notif-overlay" onclick="if(event.target===this)closeNotifications()"><aside class="notif-sheet"><div class="notif-head"><h2>お知らせ</h2><div class="notif-actions"><button class="notif-readall" onclick="markAllNotificationsRead()">すべて既読</button><button class="notif-close" onclick="closeNotifications()">×</button></div></div><div class="small">必要な連絡をまとめて確認できます。</div><div id="notifContent"><div class="notif-empty">読み込み中...</div></div></aside></div>
@@ -1176,16 +1176,25 @@ async function loadMe(){
     latestBuyerTitle:latestBuyer?titleOf(latestBuyer):'取引例'
   };
 
+  const sellerVoiceConvs=(sellerConvs||[]).filter(c=>c.listing_id);
+  const sellerJobConvs=(sellerConvs||[]).filter(c=>c.job_id);
+  const buyerVoiceConvs=(buyerConvs||[]).filter(c=>c.listing_id);
+  const buyerJobConvs=(buyerConvs||[]).filter(c=>c.job_id);
+
   if(sellerErr){
+    mySoldVoices.innerHTML=`<h3>販売した音声</h3><div class="card err">${esc(sellerErr.message)}</div>`;
     mySellerJobs.innerHTML=`<h3>受注した仕事</h3><div class="card err">${esc(sellerErr.message)}</div>`;
   }else{
-    mySellerJobs.innerHTML=`<h3>受注した仕事</h3>${(sellerConvs||[]).map(c=>historyCard(c,'受注')).join('')||'<button type="button" class="card small mypage-item-card mypage-empty-card mypage-click-card" onclick="go(\'jobs\')">まだ受注した仕事はありません。<span class="mypage-card-arrow">›</span></button>'}`;
+    mySoldVoices.innerHTML=`<h3>販売した音声</h3>${sellerVoiceConvs.map(c=>historyCard(c,'販売')).join('')||'<div class="card small mypage-item-card">まだ販売した音声はありません。</div>'}`;
+    mySellerJobs.innerHTML=`<h3>受注した仕事</h3>${sellerJobConvs.map(c=>historyCard(c,'受注')).join('')||'<button type="button" class="card small mypage-item-card mypage-empty-card mypage-click-card" onclick="go(\'jobs\')">まだ受注した仕事はありません。<span class="mypage-card-arrow">›</span></button>'}`;
   }
 
   if(buyerErr){
+    myPurchasedVoices.innerHTML=`<h3>購入した音声</h3><div class="card err">${esc(buyerErr.message)}</div>`;
     myBuyerJobs.innerHTML=`<h3>依頼した仕事</h3><div class="card err">${esc(buyerErr.message)}</div>`;
   }else{
-    myBuyerJobs.innerHTML=`<h3>依頼した仕事</h3>${(buyerConvs||[]).map(c=>historyCard(c,'依頼')).join('')||'<button type="button" class="card small mypage-item-card mypage-empty-card mypage-click-card" onclick="go(\'jobs\')">まだ依頼した仕事はありません。<span class="mypage-card-arrow">›</span></button>'}`;
+    myPurchasedVoices.innerHTML=`<h3>購入した音声</h3>${buyerVoiceConvs.map(c=>historyCard(c,'購入')).join('')||'<button type="button" class="card small mypage-item-card mypage-empty-card mypage-click-card" onclick="go(\'browse\')">まだ購入した音声はありません。<span class="mypage-card-arrow">›</span></button>'}`;
+    myBuyerJobs.innerHTML=`<h3>依頼した仕事</h3>${buyerJobConvs.map(c=>historyCard(c,'依頼')).join('')||'<button type="button" class="card small mypage-item-card mypage-empty-card mypage-click-card" onclick="go(\'jobs\')">まだ依頼した仕事はありません。<span class="mypage-card-arrow">›</span></button>'}`;
   }
 }
 
