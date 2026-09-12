@@ -192,6 +192,11 @@ body.normal-mode #nav button{height:46px!important;min-height:46px!important;bor
 .finance-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:10px}.finance-grid .btn{margin-top:0}
 .finance-overlay{display:none;position:fixed;inset:0;background:rgba(24,25,52,.45);backdrop-filter:blur(3px);z-index:30000;padding:16px;align-items:center;justify-content:center}.finance-overlay.on{display:flex}.finance-box{width:min(430px,100%);max-height:calc(100dvh - 32px);overflow:auto;background:#fff;border-radius:28px;padding:22px 22px calc(28px + env(safe-area-inset-bottom));box-shadow:0 24px 80px rgba(30,26,74,.28)}body.finance-modal-open #nav{display:none!important}
 .finance-head{display:flex;align-items:center;justify-content:space-between;gap:10px}.finance-head h3{margin:0;font-size:25px}.finance-close{width:48px;height:48px;border:0;border-radius:16px;background:#f2f0ff;color:#5f5af4;font-size:28px}.finance-beta{margin:14px 0;padding:12px;border:1px solid #f0d49b;border-radius:14px;background:#fff8e8;color:#805600;font-size:12px;line-height:1.65}.finance-tabs{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin:12px 0}.finance-tab{border:1px solid #d7d3ff;background:#fff;color:#4f46c8;border-radius:14px;padding:11px;font-weight:900}.finance-tab.active{background:var(--brand);color:#fff;border-color:transparent}.finance-summary{border:1px solid #e4e0fb;border-radius:18px;padding:14px;background:#fcfbff}.finance-line{display:flex;justify-content:space-between;gap:12px;padding:10px 0;border-bottom:1px solid #eeeafd}.finance-line:last-child{border-bottom:0}.finance-line strong{font-size:15px}.finance-total{font-size:19px!important;color:#4f46c8}.finance-status{display:inline-block;margin-top:10px;padding:6px 9px;border-radius:999px;background:#eefbf3;color:#087443;font-size:11px;font-weight:900}.finance-muted{font-size:11px;color:var(--sub);line-height:1.65;margin-top:12px}.btn.disabled-preview{background:#e8e8ef;color:#8a8da0;pointer-events:none}
+.stripe-connect-box{margin-top:10px;padding:12px;border:1px solid #e3def8;border-radius:14px;background:linear-gradient(135deg,#faf9ff,#fff)}
+.stripe-connect-status{font-size:11px;line-height:1.55;color:#69718a;margin-bottom:8px}
+.stripe-connect-status.ready{color:#087443;font-weight:850}
+.stripe-connect-status.error{color:#b42318;font-weight:800}
+.stripe-connect-btn:disabled{opacity:.55;pointer-events:none}
 
 /* 2026-09-11: 決済状態ステップ表示 */
 .finance-flow{display:grid;grid-template-columns:repeat(4,1fr);gap:6px;margin:12px 0 2px}.finance-step{padding:9px 5px;border:1px solid #e3def8;border-radius:12px;background:#faf9ff;text-align:center;font-size:10px;font-weight:850;color:#6c7290;line-height:1.35}.finance-step.active{background:#eefbf4;border-color:#ccefdc;color:#15844e}.finance-step.future{background:#fff}.finance-history{margin-top:12px;display:grid;gap:8px}.finance-history-item{border:1px solid #e8e3f8;border-radius:12px;padding:10px 12px;background:#fff}.finance-history-item .top{display:flex;justify-content:space-between;gap:10px;align-items:center}.finance-history-item .state{font-size:10px;font-weight:850;padding:5px 8px;border-radius:999px;background:#eefbf4;color:#15844e}.finance-history-item .amt{font-weight:900}.finance-caption{font-size:10px;line-height:1.55;color:#747b93;margin-top:8px}
@@ -254,7 +259,7 @@ window.VOICE_FLEA_CONFIG={SUPABASE_URL:"https://tyulybijubckitybgubc.supabase.co
 
 <section id="messages" class="page"><div class="messages-list-head"><button class="chatback" onclick="go('home')" aria-label="ホームへ戻る">‹</button><div class="messages-list-title"><b>メッセージ</b><span>取引相手とのやり取り</span></div></div><h2>メッセージ</h2><div id="conversationList" class="chatlist"></div><div id="chatBox" class="card chatbox"><div class="chatroom-head"><button class="chatback" onclick="closeChat()" aria-label="メッセージ一覧へ">‹</button><div class="chatroom-title"><b id="chatTitle">チャット</b><span id="chatSub">取引メッセージ</span></div><button id="chatSafetyBtn" class="safety-chat-btn" onclick="openSafetyCenter('chat')">通報・ブロック</button></div><div id="chatMessages" class="chatmessages"></div><div id="deliveryArea" class="chatdelivery"></div><div class="chatdock"><div class="chatcomposer"><textarea id="chatInput" placeholder="メッセージを入力"></textarea><button class="btn" onclick="sendChatMessage()">送信</button></div><div id="chatMsg"></div></div></div></section>
 
-<section id="me" class="page"><h2>マイページ</h2><div class="card profile-compact"><div id="meText">-</div></div><div id="myListings"></div><div id="mySellerJobs"></div><div id="myBuyerJobs"></div><div class="card finance-card"><b>💳 決済・売上（準備中）</b><div class="small" style="margin-top:5px">購入時の金額内訳と、出品者の売上・振込イメージを確認できます。</div><div class="finance-grid"><button class="btn secondary" onclick="openFinanceCenter('buyer')">支払い内訳</button><button class="btn secondary" onclick="openFinanceCenter('seller')">売上・振込</button></div></div><div class="card safety-card"><b>✉️ お問い合わせ</b><div class="small" style="margin-top:5px">使い方、不具合、その他のお問い合わせはこちらから。</div><button class="btn secondary full" onclick="openSafetyCenter('support')">お問い合わせを開く</button></div><div class="card rules-card"><b>📘 ルール・ポリシー</b><div class="small" style="margin-top:5px">利用規約、プライバシー、禁止事項、キャンセル・返金、音声・AI利用条件、特商法・運営者情報を確認できます。</div><button class="btn secondary full" onclick="openRulesCenter()">ルールを確認する</button></div></section>
+<section id="me" class="page"><h2>マイページ</h2><div class="card profile-compact"><div id="meText">-</div></div><div id="myListings"></div><div id="mySellerJobs"></div><div id="myBuyerJobs"></div><div class="card finance-card"><b>💳 決済・売上（準備中）</b><div class="small" style="margin-top:5px">購入時の金額内訳と、出品者の売上・振込イメージを確認できます。</div><div class="finance-grid"><button class="btn secondary" onclick="openFinanceCenter('buyer')">支払い内訳</button><button class="btn secondary" onclick="openFinanceCenter('seller')">売上・振込</button></div><div class="stripe-connect-box"><div id="stripeConnectStatus" class="stripe-connect-status">Stripe受取アカウントの状態を確認中...</div><button id="stripeConnectBtn" class="btn full stripe-connect-btn" type="button" onclick="connectStripeSeller()">Stripe受取アカウントを設定</button></div></div><div class="card safety-card"><b>✉️ お問い合わせ</b><div class="small" style="margin-top:5px">使い方、不具合、その他のお問い合わせはこちらから。</div><button class="btn secondary full" onclick="openSafetyCenter('support')">お問い合わせを開く</button></div><div class="card rules-card"><b>📘 ルール・ポリシー</b><div class="small" style="margin-top:5px">利用規約、プライバシー、禁止事項、キャンセル・返金、音声・AI利用条件、特商法・運営者情報を確認できます。</div><button class="btn secondary full" onclick="openRulesCenter()">ルールを確認する</button></div></section>
 
 <div id="financeOverlay" class="finance-overlay" onclick="if(event.target===this)closeFinanceCenter()"><div class="finance-box"><div class="finance-head"><h3>決済・売上</h3><button class="finance-close" onclick="closeFinanceCenter()">×</button></div><div class="finance-beta">現在は決済機能をまだ接続していないMVP段階です。表示金額は設計確認用で、実際の請求・入金は発生しません。</div><div class="finance-tabs"><button id="financeTabBuyer" class="finance-tab active" onclick="showFinancePanel('buyer')">支払い確認</button><button id="financeTabSeller" class="finance-tab" onclick="showFinancePanel('seller')">売上・振込</button></div><div id="financeBody"></div></div></div>
 <div id="notifOverlay" class="notif-overlay" onclick="if(event.target===this)closeNotifications()"><aside class="notif-sheet"><div class="notif-head"><h2>お知らせ</h2><div class="notif-actions"><button class="notif-readall" onclick="markAllNotificationsRead()">すべて既読</button><button class="notif-close" onclick="closeNotifications()">×</button></div></div><div class="small">必要な連絡をまとめて確認できます。</div><div id="notifContent"><div class="notif-empty">読み込み中...</div></div></aside></div>
@@ -275,6 +280,49 @@ const FINANCE_FEE_RATE=0.15;
 function financeYen(n){return `¥${Number(n||0).toLocaleString()}`}
 function closeFinanceCenter(){document.getElementById('financeOverlay')?.classList.remove('on');document.body.classList.remove('finance-modal-open')}
 function openFinanceCenter(mode='buyer'){document.body.classList.add('finance-modal-open');document.getElementById('financeOverlay')?.classList.add('on');showFinancePanel(mode)}
+function setStripeConnectUI(accountId='',message=''){
+ const status=document.getElementById('stripeConnectStatus');
+ const btn=document.getElementById('stripeConnectBtn');
+ if(!status||!btn)return;
+ status.classList.remove('ready','error');
+ if(accountId){
+   status.textContent=message||'Stripe受取アカウントは作成済みです。本人確認・振込先登録は次の工程で接続します。';
+   status.classList.add('ready');
+   btn.textContent='Stripe受取アカウント作成済み';
+   btn.disabled=true;
+ }else{
+   status.textContent=message||'出品者として売上を受け取るためのStripe連結アカウントを作成します。';
+   btn.textContent='Stripe受取アカウントを設定';
+   btn.disabled=false;
+ }
+}
+async function connectStripeSeller(){
+ const btn=document.getElementById('stripeConnectBtn');
+ const status=document.getElementById('stripeConnectStatus');
+ if(!sb||!currentUser||!btn||!status)return;
+ btn.disabled=true;
+ btn.textContent='接続中...';
+ status.classList.remove('ready','error');
+ status.textContent='Stripe受取アカウントを確認しています...';
+ try{
+   const {data:{session}}=await sb.auth.getSession();
+   if(!session?.access_token)throw new Error('ログイン情報を確認できませんでした。もう一度ログインしてください。');
+   const {data,error}=await sb.functions.invoke('create-connect-account',{
+     body:{},
+     headers:{Authorization:`Bearer ${session.access_token}`}
+   });
+   if(error)throw error;
+   if(data?.error)throw new Error(data.error);
+   if(!data?.accountId)throw new Error('StripeアカウントIDを確認できませんでした。');
+   setStripeConnectUI(data.accountId,data.existing?'Stripe受取アカウントはすでに作成済みです。本人確認・振込先登録は次の工程です。':'Stripe受取アカウントを作成しました。本人確認・振込先登録は次の工程です。');
+   await loadMe();
+ }catch(e){
+   status.textContent=`Stripe接続に失敗しました：${e?.message||'不明なエラー'}`;
+   status.classList.add('error');
+   btn.textContent='もう一度試す';
+   btn.disabled=false;
+ }
+}
 function showFinancePanel(mode='buyer'){
  const b=document.getElementById('financeTabBuyer'),s=document.getElementById('financeTabSeller'),body=document.getElementById('financeBody');if(!body)return;
  b?.classList.toggle('active',mode==='buyer');s?.classList.toggle('active',mode==='seller');
@@ -651,6 +699,7 @@ async function loadMe(){
   const ratings=(receivedReviews||[]).map(r=>Number(r.rating)).filter(n=>n>=1&&n<=5);
   const avg=ratings.length?(ratings.reduce((a,b)=>a+b,0)/ratings.length).toFixed(1):null;
   const verified=!!p?.verified;
+  setStripeConnectUI(p?.stripe_account_id||'');
   meText.innerHTML=`<div class="profile-grid"><div class="profile-left"><b class="profile-name">${esc(p?.display_name||currentUser.email)}</b><div class="profile-badges"><span class="identity-badge ${verified?'verified':'unverified'}">${verified?'✓ 本人確認済み':'本人確認 未完了'}</span>${avg?`<span class="rating-badge">★ ${avg}（${ratings.length}件）</span>`:'<span class="rating-badge muted">まだ評価はありません</span>'}</div>${!verified?'<div class="identity-note">本人確認機能は正式公開前に追加予定です。</div>':''}</div><div class="profile-right"><div class="small profile-email">${esc(currentUser.email||'')}</div><button class="btn ghost profile-logout" onclick="signOut()">ログアウト</button></div></div>`;
 
   const [{data:l},{data:sellerConvs,error:sellerErr},{data:buyerConvs,error:buyerErr}]=await Promise.all([
