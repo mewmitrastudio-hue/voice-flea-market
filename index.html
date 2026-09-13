@@ -1,5 +1,5 @@
 <!doctype html>
-<!-- BUILD: 2026-09-13-0805-auth-header-clean -->
+<!-- BUILD: 2026-09-13-1145-admin-refund -->
 <html lang="ja"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><title>声のフリマ</title>
 <style>
 :root{--bg:#f8f7ff;--card:#fff;--ink:#182033;--sub:#667085;--line:#e7e4f4;--brand:#6558ef;--brand2:#8b6df6;--pink:#f6d9ee;--blue:#dff2ff;--accent:#f0edff;--good:#087443;--bad:#b42318}*{box-sizing:border-box}body{margin:0;background:linear-gradient(180deg,#f3efff 0,#faf9ff 260px,#f8f7ff 100%);color:var(--ink);font-family:-apple-system,BlinkMacSystemFont,"Hiragino Sans",sans-serif}.app{max-width:440px;margin:auto;min-height:100vh;padding:16px 16px 260px}.brandwrap{display:flex;align-items:center;gap:11px;margin-top:16px}.brandicon{width:46px;height:46px;border-radius:16px;display:grid;place-items:center;font-size:24px;background:linear-gradient(145deg,#645df4,#9a63ef 58%,#d56ab9);box-shadow:0 10px 22px rgba(101,88,239,.24);position:relative}.brandicon:after{content:"✦";position:absolute;right:-5px;top:-8px;font-size:14px;color:#d56ab9;text-shadow:0 2px 8px rgba(213,106,185,.25)}.brandtext{min-width:0}.brand{font-size:30px;font-weight:950;letter-spacing:-.035em;background:linear-gradient(90deg,#282650,#5f58ef 56%,#a24e9b);-webkit-background-clip:text;background-clip:text;color:transparent;line-height:1.05} .tag{margin-top:7px;line-height:1.28;font-weight:900;letter-spacing:-.035em}.tag .line1{display:block;white-space:nowrap;font-size:12px;color:#3c3a62}.tag .line2{display:block;white-space:nowrap;font-size:13px;margin-top:3px;background:linear-gradient(90deg,#5f58ef,#9b4ca0);-webkit-background-clip:text;background-clip:text;color:transparent}.card{background:linear-gradient(180deg,rgba(255,255,255,.98),rgba(255,255,255,.94));border:1px solid var(--line);border-radius:20px;padding:15px;margin:12px 0;box-shadow:0 8px 24px rgba(73,57,130,.06)}.field{margin:12px 0}.field label{display:block;font-size:12px;font-weight:800;margin-bottom:6px}.field input,.field textarea,.field select{width:100%;border:1px solid var(--line);border-radius:12px;padding:12px;background:#fff;font-size:14px}.field textarea{min-height:82px}.btn{border:0;border-radius:13px;padding:12px 14px;font-weight:800;background:var(--brand);color:#fff}.btn.secondary{background:#fff;color:var(--brand);border:1px solid #cfd3ff}.btn.ghost{background:#eef0f4;color:#344054}.full{width:100%;margin-top:9px}.row{display:flex;gap:8px;align-items:center;justify-content:space-between}.small{font-size:11px;color:var(--sub)}.pill{display:inline-block;background:linear-gradient(135deg,#f0edff,#edf6ff);color:#4f46c8;padding:5px 8px;border-radius:999px;font-size:10px;margin:4px 3px 0 0}.price{font-weight:900}.hero{position:relative;overflow:hidden;margin-top:16px;background:linear-gradient(135deg,#5f5af4 0%,#7f61f5 52%,#b660b3 100%);color:#fff;padding:22px;border-radius:24px;box-shadow:0 14px 32px rgba(101,88,239,.24)}.hero:after{content:"";position:absolute;width:150px;height:150px;border-radius:50%;right:-55px;top:-65px;background:rgba(255,255,255,.14)}.hero:before{content:"";position:absolute;width:90px;height:90px;border-radius:50%;left:-30px;bottom:-40px;background:rgba(255,255,255,.1)}.hero h1{position:relative;z-index:1;font-size:23px;line-height:1.4;margin:0}.hero p{position:relative;z-index:1}.hero p{font-size:12px;opacity:.92}.nav{position:fixed;bottom:0;left:50%;transform:translateX(-50%);width:min(440px,100%);display:grid;grid-template-columns:repeat(2,minmax(0,1fr));grid-template-rows:repeat(3,52px);gap:6px;background:rgba(255,255,255,.98);border-top:1px solid var(--line);padding:8px 10px calc(8px + env(safe-area-inset-bottom));z-index:5;box-shadow:0 -8px 24px rgba(24,32,51,.06);overflow:hidden}.nav button{border:1px solid #d9dcff;background:#f1f2ff;color:#4d56b8;font-size:15px;font-weight:800;border-radius:14px;min-height:52px;padding:8px 8px;touch-action:manipulation;width:100%;min-width:0;box-shadow:0 2px 8px rgba(91,103,241,.08)}.nav button.on{background:linear-gradient(145deg,#5b67f1,#7c5cf5);color:#fff;border-color:transparent;font-weight:900;box-shadow:0 6px 14px rgba(91,103,241,.24)}.page{display:none}.page.on{display:block}.notice,.ok,.err{font-size:12px;padding:11px;border-radius:12px;margin-top:10px}.notice{background:#fff8e8;color:#805600}.ok{background:#ecfdf3;color:#087443}.err{background:#fef3f2;color:#b42318}.hide{display:none}.voice audio{width:100%;margin-top:8px;height:36px}.topbar{display:flex;justify-content:space-between;align-items:flex-start;gap:10px}.topbar .status{margin-top:18px;flex:0 0 auto}.status{font-size:10px;padding:7px 10px;border-radius:99px;background:#eef0f4;font-weight:800;border:1px solid #e4e7ec}.status.live{background:linear-gradient(135deg,#ecfdf3,#f3fff8);color:#087443;border-color:#c9efdc}.nav button{position:relative}.badge{display:none;position:absolute;top:4px;right:12px;min-width:17px;height:17px;padding:0 5px;border-radius:999px;background:#e11d48;color:#fff;font-size:10px;line-height:17px;font-weight:900}.badge.show{display:block}.appbox{border:1px solid #f0d4da;background:#fff7f8;border-radius:13px;padding:11px;margin-top:10px}.appmsg{font-size:12px;line-height:1.6;margin:7px 0}.appactions{display:flex;gap:7px;margin-top:8px}.appactions .btn{flex:1;padding:9px 8px;font-size:11px}.btn.reject{background:#fff;color:#b42318;border:1px solid #f0b7b0}.countbadge{display:inline-block;background:#e11d48;color:#fff;border-radius:999px;padding:4px 8px;font-size:10px;font-weight:900;margin-top:8px}.chatlist{display:grid;gap:10px}.chatrow{background:#fff;border:1px solid var(--line);border-radius:16px;padding:13px}.chathead{display:flex;justify-content:space-between;gap:8px;align-items:center}.chatbox{display:none}.chatbox.on{display:block}.chatmessages{display:flex;flex-direction:column;gap:8px;max-height:46vh;overflow:auto;padding:8px 0}.bubble{max-width:82%;padding:9px 11px;border-radius:15px;font-size:12px;line-height:1.55;white-space:pre-wrap;word-break:break-word}.mine{align-self:flex-end;background:var(--brand);color:#fff;border-bottom-right-radius:5px}.theirs{align-self:flex-start;background:#eef0f4;color:var(--ink);border-bottom-left-radius:5px}.chatcomposer{display:flex;gap:8px;margin-top:10px}.chatcomposer textarea{flex:1;min-height:44px;max-height:100px;border:1px solid var(--line);border-radius:12px;padding:10px;font-size:14px}.chatcomposer .btn{align-self:flex-end}.unread-dot{display:inline-flex;align-items:center;justify-content:center;min-width:20px;height:20px;padding:0 6px;border-radius:999px;background:#e11d48;color:#fff;font-size:10px;font-weight:900}
@@ -556,6 +556,17 @@ body.normal-mode #nav button{height:46px!important;min-height:46px!important;bor
   font-size:25px;font-weight:900;z-index:2
 }
 
+
+
+/* === 2026-09-13 運営専用・返金管理 === */
+.admin-refund-overlay{display:none;position:fixed;inset:0;z-index:120000;background:rgba(20,22,35,.44);backdrop-filter:blur(3px);-webkit-backdrop-filter:blur(3px);padding:16px;align-items:center;justify-content:center}
+.admin-refund-overlay.show{display:flex}
+.admin-refund-box{width:min(100%,460px);max-height:90dvh;overflow:auto;background:#fff;border-radius:24px;padding:20px;box-shadow:0 24px 80px rgba(30,26,74,.28)}
+.admin-refund-head{display:flex;align-items:flex-start;justify-content:space-between;gap:12px;margin-bottom:12px}.admin-refund-head h3{margin:0;font-size:22px}.admin-refund-close{width:40px;height:40px;border:0;border-radius:13px;background:#f1efff;color:#5148c9;font-size:22px;font-weight:900}
+.admin-refund-note{padding:11px 12px;border:1px solid #f0d49b;border-radius:13px;background:#fff8e8;color:#805600;font-size:11px;line-height:1.6;margin:10px 0}
+.admin-refund-manual{padding:12px;border:1px solid #e5e0f6;border-radius:15px;background:#faf9ff;margin:12px 0}.admin-refund-manual label{display:block;font-size:11px;font-weight:900;margin-bottom:7px}.admin-refund-manual input{width:100%;border:1px solid #ddd9ef;border-radius:11px;padding:11px;font-size:14px;background:#fff}.admin-refund-manual .btn{margin-top:8px}
+.admin-refund-list{display:grid;gap:9px;margin-top:12px}.admin-refund-item{border:1px solid #e7e3f5;border-radius:15px;padding:12px;background:#fff}.admin-refund-item.refunded{background:#f7f8fa;opacity:.82}.admin-refund-item-head{display:flex;justify-content:space-between;gap:10px;align-items:flex-start}.admin-refund-item-title{font-size:13px;font-weight:900;line-height:1.45}.admin-refund-item-amount{font-size:16px;font-weight:900;white-space:nowrap}.admin-refund-meta{font-size:10px;color:#73798c;line-height:1.6;margin-top:5px;word-break:break-all}.admin-refund-status{display:inline-block;margin-top:6px;padding:4px 7px;border-radius:999px;font-size:10px;font-weight:900;background:#eefbf4;color:#15844e}.admin-refund-status.refunded{background:#eef0f4;color:#667085}.admin-refund-action{margin-top:9px;width:100%}.admin-refund-action:disabled{opacity:.55}.admin-only-menu.hide{display:none!important}
+
 </style>
 <script>
 if(window.navigator.standalone===true){document.body.classList.add('standalone')}
@@ -762,6 +773,7 @@ body:has(#authPage.on) .tag .line2{
       <div class="main-menu-label">お金</div>
       <button onclick="closeMainMenu();openFinanceCenter('buyer')">💳 支払い内訳</button>
       <button onclick="closeMainMenu();openFinanceCenter('seller')">💰 売上・振込</button>
+      <button id="adminRefundMenuBtn" class="admin-only-menu hide" onclick="closeMainMenu();openAdminRefundCenter()">🛡️ 運営・返金管理</button>
     </div>
 
     <div class="main-menu-section">
@@ -780,6 +792,25 @@ body:has(#authPage.on) .tag .line2{
   </aside>
 </div>
 
+
+
+<div id="adminRefundOverlay" class="admin-refund-overlay" onclick="if(event.target===this)closeAdminRefundCenter()">
+  <div class="admin-refund-box">
+    <div class="admin-refund-head">
+      <div><h3>運営・返金管理</h3><div class="small">運営アカウント専用</div></div>
+      <button class="admin-refund-close" type="button" onclick="closeAdminRefundCenter()">×</button>
+    </div>
+    <div class="admin-refund-note">返金は全額返金です。Stripeの購入者返金・出品者への送金差戻し・プラットフォーム手数料返金をまとめて実行します。実行後は取り消せません。</div>
+    <div id="adminRefundMsg"></div>
+    <div class="admin-refund-manual">
+      <label for="adminRefundPaymentId">Payment ID を指定して返金</label>
+      <input id="adminRefundPaymentId" type="text" autocomplete="off" placeholder="payments テーブルの UUID">
+      <button class="btn full" type="button" onclick="refundPaymentByInput(this)">この決済を全額返金</button>
+    </div>
+    <div class="row" style="margin-top:12px"><b style="font-size:13px">確認できる決済</b><button class="btn secondary" type="button" style="padding:8px 10px;font-size:11px" onclick="loadAdminRefunds()">更新</button></div>
+    <div id="adminRefundList" class="admin-refund-list"><div class="small">読み込み中...</div></div>
+  </div>
+</div>
 
 <div id="favoritesOverlay" class="favorites-overlay" onclick="if(event.target===this)closeFavorites()">
   <div class="favorites-box">
@@ -864,6 +895,7 @@ body:has(#authPage.on) .tag .line2{
 let sb=null,currentUser=null,currentConversationId=null,currentConversationPartner=null,currentConversation=null,currentConversationGroupIds=[];
 const selectedDeliveryFiles=new Map();
 const cfg=window.VOICE_FLEA_CONFIG||{};
+const VOICE_FLEA_ADMIN_USER_ID='6454e07c-ed0b-46b7-a8a1-aa63c555d634';
 const configured=cfg.SUPABASE_URL && cfg.SUPABASE_PUBLISHABLE_KEY && !cfg.SUPABASE_URL.includes('YOUR_PROJECT') && !cfg.SUPABASE_PUBLISHABLE_KEY.includes('YOUR_');
 function esc(s=''){return String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]))}
 function info(el,text,type='ok'){document.getElementById(el).innerHTML=`<div class="${type}">${esc(text)}</div>`}
@@ -982,6 +1014,83 @@ function setShellMode(mode){
 }
 
 
+
+function isVoiceFleaAdmin(){return !!currentUser&&currentUser.id===VOICE_FLEA_ADMIN_USER_ID}
+function setAdminMenuVisibility(){document.getElementById('adminRefundMenuBtn')?.classList.toggle('hide',!isVoiceFleaAdmin())}
+function closeAdminRefundCenter(){document.getElementById('adminRefundOverlay')?.classList.remove('show')}
+async function openAdminRefundCenter(){
+  if(!isVoiceFleaAdmin())return alert('この機能は運営アカウント専用です。');
+  document.getElementById('adminRefundOverlay')?.classList.add('show');
+  await loadAdminRefunds();
+}
+async function loadAdminRefunds(){
+  const list=document.getElementById('adminRefundList');
+  if(!list||!sb||!isVoiceFleaAdmin())return;
+  list.innerHTML='<div class="small">決済情報を読み込み中...</div>';
+  const {data:rows,error}=await sb.from('payments')
+    .select('id,listing_id,buyer_id,seller_id,amount_jpy,platform_fee_jpy,seller_amount_jpy,status,paid_at,refunded_at,stripe_payment_intent_id,created_at')
+    .in('status',['paid','refunded'])
+    .order('created_at',{ascending:false})
+    .limit(50);
+  if(error){
+    list.innerHTML=`<div class="err">決済一覧を取得できませんでした：${esc(error.message)}<br><span class="small">一覧に出ない決済でも、Payment ID が分かれば上の入力欄から返金できます。</span></div>`;
+    return;
+  }
+  const payments=rows||[];
+  if(!payments.length){
+    list.innerHTML='<div class="small">このアカウントから確認できる支払い済み・返金済み決済はありません。Payment ID が分かる場合は上の入力欄から実行できます。</div>';
+    return;
+  }
+  const listingIds=[...new Set(payments.map(p=>p.listing_id).filter(Boolean))];
+  let listingMap=new Map();
+  if(listingIds.length){
+    const {data:ls}=await sb.from('listings').select('id,title').in('id',listingIds);
+    listingMap=new Map((ls||[]).map(x=>[x.id,x.title]));
+  }
+  list.innerHTML=payments.map(p=>{
+    const refunded=p.status==='refunded';
+    const title=listingMap.get(p.listing_id)||'出品取引';
+    return `<div class="admin-refund-item ${refunded?'refunded':''}">
+      <div class="admin-refund-item-head"><div class="admin-refund-item-title">${esc(title)}</div><div class="admin-refund-item-amount">${financeYen(p.amount_jpy||0)}</div></div>
+      <div class="admin-refund-meta">Payment ID: ${esc(p.id)}<br>Stripe: ${esc(p.stripe_payment_intent_id||'-')}<br>支払日時: ${esc(p.paid_at||p.created_at||'-')}</div>
+      <span class="admin-refund-status ${refunded?'refunded':''}">${refunded?'返金済み':'支払い済み'}</span>
+      ${refunded?`<div class="admin-refund-meta">返金日時: ${esc(p.refunded_at||'-')}</div>`:`<button class="btn admin-refund-action" type="button" onclick="adminRefundPayment('${esc(p.id)}',this)">この決済を全額返金</button>`}
+    </div>`;
+  }).join('');
+}
+async function refundPaymentByInput(btn){
+  const id=(document.getElementById('adminRefundPaymentId')?.value||'').trim();
+  if(!id)return alert('Payment IDを入力してください。');
+  await adminRefundPayment(id,btn);
+}
+async function adminRefundPayment(paymentId,btn){
+  if(!isVoiceFleaAdmin())return alert('この操作は運営アカウント専用です。');
+  if(!paymentId)return alert('Payment IDを確認できません。');
+  const ok=window.confirm('この決済を全額返金します。\n\n購入者への返金・出品者への送金差戻し・プラットフォーム手数料返金を実行します。\n\n実行後は取り消せません。続けますか？');
+  if(!ok)return;
+  const msg=document.getElementById('adminRefundMsg');
+  const original=btn?.textContent||'この決済を全額返金';
+  if(btn){btn.disabled=true;btn.textContent='返金処理中...'}
+  if(msg)msg.innerHTML='<div class="notice">Stripeへ返金処理を送信しています...</div>';
+  try{
+    const {data:{session}}=await sb.auth.getSession();
+    if(!session?.access_token)throw new Error('ログイン情報を確認できませんでした。もう一度ログインしてください。');
+    const {data,error}=await sb.functions.invoke('refund-payment',{
+      body:{payment_id:paymentId},
+      headers:{Authorization:`Bearer ${session.access_token}`}
+    });
+    if(error)throw error;
+    if(data?.error)throw new Error(data.error);
+    if(!data?.ok)throw new Error('返金処理の完了を確認できませんでした。');
+    if(msg)msg.innerHTML=`<div class="ok">返金処理を受け付けました。${data?.already_refunded?'すでに返金済みの決済です。':'Stripeの返金処理は成功です。Webhookの反映を確認します。'}</div>`;
+    const input=document.getElementById('adminRefundPaymentId');if(input)input.value='';
+    setTimeout(async()=>{await loadAdminRefunds();try{await loadHome();if(document.getElementById('me')?.classList.contains('on'))await loadMe()}catch(e){}},1800);
+  }catch(e){
+    if(msg)msg.innerHTML=`<div class="err">返金できませんでした：${esc(e?.message||String(e))}</div>`;
+    if(btn){btn.disabled=false;btn.textContent=original}
+  }
+}
+
 function openManualCenter(){
   document.getElementById('manualOverlay')?.classList.add('show');
 }
@@ -1036,7 +1145,7 @@ async function init(){
     configNotice.textContent='サービス接続に失敗しました。右上の更新ボタンで再試行してください。';
   }
 }
-async function renderAuth(){if(currentUser){const menuAccountEmail=document.getElementById('menuAccountEmail');if(menuAccountEmail)menuAccountEmail.textContent=currentUser.email||'-';authPage.classList.remove('on');nav.classList.remove('hide');refreshBtn?.classList.remove('hide');bellBtn?.classList.remove('hide');menuBtn?.classList.remove('hide');cloudStatus.textContent='オンライン';await loadHome();loadJobBadge();loadMessageBadge();loadNotificationBadge();await restoreUI()}else{const menuAccountEmail=document.getElementById('menuAccountEmail');if(menuAccountEmail)menuAccountEmail.textContent='-';document.querySelectorAll('.page').forEach(p=>p.classList.remove('on'));authPage.classList.add('on');nav.classList.add('hide');refreshBtn?.classList.add('hide');bellBtn?.classList.add('hide');menuBtn?.classList.add('hide');closeNotifications();closeMainMenu();document.body.classList.remove('normal-mode','messages-mode','chat-mode');document.querySelector('.topbar')?.classList.remove('force-hide');cloudStatus.textContent=configured?'オンライン':'設定待ち'}}
+async function renderAuth(){setAdminMenuVisibility();if(currentUser){const menuAccountEmail=document.getElementById('menuAccountEmail');if(menuAccountEmail)menuAccountEmail.textContent=currentUser.email||'-';authPage.classList.remove('on');nav.classList.remove('hide');refreshBtn?.classList.remove('hide');bellBtn?.classList.remove('hide');menuBtn?.classList.remove('hide');cloudStatus.textContent='オンライン';await loadHome();loadJobBadge();loadMessageBadge();loadNotificationBadge();await restoreUI()}else{const menuAccountEmail=document.getElementById('menuAccountEmail');if(menuAccountEmail)menuAccountEmail.textContent='-';document.querySelectorAll('.page').forEach(p=>p.classList.remove('on'));authPage.classList.add('on');nav.classList.add('hide');refreshBtn?.classList.add('hide');bellBtn?.classList.add('hide');menuBtn?.classList.add('hide');closeNotifications();closeMainMenu();document.body.classList.remove('normal-mode','messages-mode','chat-mode');document.querySelector('.topbar')?.classList.remove('force-hide');cloudStatus.textContent=configured?'オンライン':'設定待ち'}}
 async function signUp(){if(!sb)return info('authMsg','まず接続設定が必要です','err');if(password.value.length<8)return info('authMsg','パスワードは8文字以上にしてください','err');const {error}=await sb.auth.signUp({email:email.value.trim(),password:password.value,userMetadata:{display_name:displayName.value.trim()||'ユーザー'},options:{data:{display_name:displayName.value.trim()||'ユーザー'}}});if(error)return info('authMsg',error.message,'err');info('authMsg','登録を受け付けました。メール確認が有効な場合は確認後にログインしてください。')}
 function resetLoginZoom(){
   try{
