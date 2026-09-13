@@ -461,6 +461,13 @@ body.normal-mode #nav button{height:46px!important;min-height:46px!important;bor
 .chat-message-row.mine-row{justify-content:flex-end}
 .chat-message-row.theirs-row{justify-content:flex-start}
 .chat-message-row .bubble{margin:0}
+.chat-message-content{display:flex;flex-direction:column;max-width:82%}
+.mine-row .chat-message-content{align-items:flex-end}
+.theirs-row .chat-message-content{align-items:flex-start}
+.chat-message-time{font-size:9px;color:#8a8498;margin-top:3px;padding:0 4px;white-space:nowrap}
+.listing-date{font-size:10px;color:#817a91;margin-top:7px}
+.purchase-guide{margin:-2px 2px 10px;padding:10px 12px;border-radius:12px;background:#f4f1ff;color:#5148c9;font-size:11px;font-weight:700;line-height:1.55}
+.trade-date{font-size:10px;color:#817a91;margin-top:4px}
 .chat-system-row{display:flex;justify-content:center;margin:8px 0}.chat-system-note{max-width:88%;padding:7px 12px;border-radius:999px;background:#f5f5fa;border:1px solid #e7e4f4;color:#667085;font-size:11px;line-height:1.45;text-align:center;box-shadow:0 2px 8px rgba(73,57,130,.04)}
 .public-profile-overlay{position:fixed;inset:0;z-index:100001;display:none;align-items:center;justify-content:center;padding:18px;background:rgba(20,22,35,.42);backdrop-filter:blur(3px)}
 .public-profile-overlay.show{display:flex}
@@ -687,7 +694,7 @@ body:has(#authPage.on) .tag .line2{
 
 <section id="home" class="page"><div class="quickgrid"><button class="quickcard" onclick="go('sell')"><span class="qi">🎙️</span>声を出品<small>自分の声を商品にする</small></button><button class="quickcard" onclick="go('voices')"><span class="qi">🔎</span>声を探す<small>ぴったりの声を見つける</small></button><button class="quickcard" onclick="go('jobs')"><span class="qi">📣</span>仕事を募集<small>欲しい声を依頼する</small></button><button class="quickcard" onclick="go('messages')"><span class="qi">💬</span>メッセージ<small>取引相手とやり取りする</small></button></div><div class="home-summary-title">すぐ確認</div><div class="home-summary-grid"><button class="home-summary-card" type="button" onclick="openFinanceCenter('seller')"><span>💰 売上</span><strong id="homeSalesAmount">¥0</strong></button><button class="home-summary-card" type="button" onclick="go('messages')"><span>💬 未読</span><strong id="homeUnreadCount">0件</strong></button><button class="home-summary-card" type="button" onclick="menuGoMySection('myListings')"><span>🎙️ 出品中</span><strong id="homeMyListingCount">0件</strong></button><button class="home-summary-card favorite-summary-card" type="button" onclick="openFavorites()"><span>♥ お気に入り</span><strong id="homeFavoriteCount">0件</strong></button></div></section>
 
-<section id="voices" class="page"><h2>声を探す</h2><div class="field"><input id="voiceSearch" placeholder="英語、関西弁、YouTube、出品者名..." oninput="scheduleListingSearch()"></div><div class="small" style="margin:-4px 2px 10px">タイトル・カテゴリー・説明・AI条件・出品者名から検索できます。</div><div class="voice-filter-row"><label><input id="hidePurchasedToggle" type="checkbox" onchange="loadListings(true)"> 購入済みを非表示</label><label><input id="hideOwnToggle" type="checkbox" onchange="loadListings(true)"> 自分の出品を除外</label></div><div id="listingSearchMeta" class="small" style="margin:0 2px 10px"></div><div id="listingList"></div><button id="listingLoadMoreBtn" class="btn secondary full hide" type="button" style="margin-top:12px" onclick="loadMoreListings()">さらに表示</button></section>
+<section id="voices" class="page"><h2>声を探す</h2><div class="purchase-guide">気になる声を見つけたら、出品カードの下にある「購入する」からそのまま購入できます。</div><div class="field"><input id="voiceSearch" placeholder="英語、関西弁、YouTube、出品者名..." oninput="scheduleListingSearch()"></div><div class="small" style="margin:-4px 2px 10px">タイトル・カテゴリー・説明・AI条件・出品者名から検索できます。</div><div class="voice-filter-row"><label><input id="hidePurchasedToggle" type="checkbox" onchange="loadListings(true)"> 購入済みを非表示</label><label><input id="hideOwnToggle" type="checkbox" onchange="loadListings(true)"> 自分の出品を除外</label></div><div id="listingSearchMeta" class="small" style="margin:0 2px 10px"></div><div id="listingList"></div><button id="listingLoadMoreBtn" class="btn secondary full hide" type="button" style="margin-top:12px" onclick="loadMoreListings()">さらに表示</button></section>
 
 <section id="sell" class="page"><h2>声を出品する</h2><div class="card"><div class="field"><label>タイトル</label><input id="sellTitle" placeholder="例：自然な日本語を読みます"></div><div class="field"><label>カテゴリー</label><select id="sellCategory"><option>外国語・学習</option><option>日本語・方言</option><option>YouTube・SNS</option><option>ナレーション</option><option>歌</option><option>メッセージ</option><option>その他</option></select></div><div class="field"><label>説明</label><textarea id="sellDesc" placeholder="声の特徴、対応できる内容など"></textarea></div><div class="field"><label>価格（円）</label><input id="sellPrice" type="number" value="1000" min="0"></div><div class="field"><label>納期（日）</label><input id="sellDays" type="number" value="3" min="1"></div><div class="field"><label>AI利用</label><select id="sellAI"><option>禁止</option><option>案件ごとに相談</option><option>許可</option></select></div><div class="field"><label>公開用の声サンプル</label><input id="sellAudio" type="file"><div class="small">対応形式：m4a / mp3 / wav / aac / mp4 などの音声ファイル</div></div><div class="notice">ここへ登録する音声は「公開サンプル」として扱います。取引後の納品音声は別の非公開領域へ保存します。</div><button class="btn full" onclick="createListing()">出品する</button><div id="sellMsg"></div></div></section>
 
@@ -803,8 +810,8 @@ body:has(#authPage.on) .tag .line2{
     <div class="admin-refund-note">返金は全額返金です。Stripeの購入者返金・出品者への送金差戻し・プラットフォーム手数料返金をまとめて実行します。実行後は取り消せません。</div>
     <div id="adminRefundMsg"></div>
     <div class="admin-refund-manual">
-      <label for="adminRefundPaymentId">決済を指定して返金</label>
-      <input id="adminRefundPaymentId" type="text" autocomplete="off" placeholder="決済IDを入力">
+      <label for="adminRefundPaymentId">Payment ID を指定して返金</label>
+      <input id="adminRefundPaymentId" type="text" autocomplete="off" placeholder="payments テーブルの UUID">
       <button class="btn full" type="button" onclick="refundPaymentByInput(this)">この決済を全額返金</button>
     </div>
     <div class="row" style="margin-top:12px"><b style="font-size:13px">確認できる決済</b><button class="btn secondary" type="button" style="padding:8px 10px;font-size:11px" onclick="loadAdminRefunds()">更新</button></div>
@@ -903,6 +910,13 @@ function uiKey(name){return `voice_flea_ui_${currentUser?.id||'guest'}_${name}`}
 function clearChatNotice(){if(window.chatMsg)chatMsg.innerHTML=''}
 const FINANCE_FEE_RATE=0.15;
 function financeYen(n){return `¥${Number(n||0).toLocaleString()}`}
+function formatJpDateTime(value,withTime=true){
+ if(!value)return '';
+ const d=new Date(value);if(Number.isNaN(d.getTime()))return '';
+ const date=`${d.getFullYear()}/${String(d.getMonth()+1).padStart(2,'0')}/${String(d.getDate()).padStart(2,'0')}`;
+ if(!withTime)return date;
+ return `${date} ${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}`;
+}
 function closeFinanceCenter(){document.getElementById('financeOverlay')?.classList.remove('on');document.body.classList.remove('finance-modal-open')}
 function openFinanceCenter(mode='buyer'){document.body.classList.add('finance-modal-open');document.getElementById('financeOverlay')?.classList.add('on');showFinancePanel(mode)}
 function setStripeConnectUI(accountId='',message='',verified=false){
@@ -1033,12 +1047,12 @@ async function loadAdminRefunds(){
     .order('created_at',{ascending:false})
     .limit(50);
   if(error){
-    list.innerHTML=`<div class="err">決済一覧を取得できませんでした：${esc(error.message)}<br><span class="small">一覧に出ない決済でも、決済IDが分かれば上の入力欄から返金できます。</span></div>`;
+    list.innerHTML=`<div class="err">決済一覧を取得できませんでした：${esc(error.message)}<br><span class="small">一覧に出ない決済でも、Payment ID が分かれば上の入力欄から返金できます。</span></div>`;
     return;
   }
   const payments=rows||[];
   if(!payments.length){
-    list.innerHTML='<div class="small">このアカウントから確認できる支払い済み・返金済み決済はありません。決済IDが分かる場合は上の入力欄から実行できます。</div>';
+    list.innerHTML='<div class="small">このアカウントから確認できる支払い済み・返金済み決済はありません。Payment ID が分かる場合は上の入力欄から実行できます。</div>';
     return;
   }
   const listingIds=[...new Set(payments.map(p=>p.listing_id).filter(Boolean))];
@@ -1052,7 +1066,7 @@ async function loadAdminRefunds(){
     const title=listingMap.get(p.listing_id)||'出品取引';
     return `<div class="admin-refund-item ${refunded?'refunded':''}">
       <div class="admin-refund-item-head"><div class="admin-refund-item-title">${esc(title)}</div><div class="admin-refund-item-amount">${financeYen(p.amount_jpy||0)}</div></div>
-      <div class="admin-refund-meta">決済ID：${esc(p.id)}<br>Stripe決済ID：${esc(p.stripe_payment_intent_id||'-')}<br>支払日時: ${esc(p.paid_at||p.created_at||'-')}</div>
+      <div class="admin-refund-meta">Payment ID: ${esc(p.id)}<br>Stripe: ${esc(p.stripe_payment_intent_id||'-')}<br>支払日時: ${esc(p.paid_at||p.created_at||'-')}</div>
       <span class="admin-refund-status ${refunded?'refunded':''}">${refunded?'返金済み':'支払い済み'}</span>
       ${refunded?`<div class="admin-refund-meta">返金日時: ${esc(p.refunded_at||'-')}</div>`:`<button class="btn admin-refund-action" type="button" onclick="adminRefundPayment('${esc(p.id)}',this)">この決済を全額返金</button>`}
     </div>`;
@@ -1060,12 +1074,12 @@ async function loadAdminRefunds(){
 }
 async function refundPaymentByInput(btn){
   const id=(document.getElementById('adminRefundPaymentId')?.value||'').trim();
-  if(!id)return alert('決済IDを入力してください。');
+  if(!id)return alert('Payment IDを入力してください。');
   await adminRefundPayment(id,btn);
 }
 async function adminRefundPayment(paymentId,btn){
   if(!isVoiceFleaAdmin())return alert('この操作は運営アカウント専用です。');
-  if(!paymentId)return alert('決済IDを確認できません。');
+  if(!paymentId)return alert('Payment IDを確認できません。');
   const ok=window.confirm('この決済を全額返金します。\n\n購入者への返金・出品者への送金差戻し・プラットフォーム手数料返金を実行します。\n\n実行後は取り消せません。続けますか？');
   if(!ok)return;
   const msg=document.getElementById('adminRefundMsg');
@@ -1466,7 +1480,7 @@ async function loadListings(reset=true){
     const desc=(v.description||'').trim();
     const descHtml=desc?`<div class="small" style="margin-top:8px;line-height:1.6">${esc(desc.length>120?desc.slice(0,120)+'…':desc)}</div>`:'';
 
-    return `<div class="card voice" data-listing-id="${esc(v.id)}"><div class="row"><div class="listing-seller-wrap">${avatarMarkup(v.profiles,'sm',v.seller_id)}<div><b>${esc(v.title)}</b><button type="button" class="seller-profile-link" onclick="openPublicProfile('${esc(v.seller_id)}')">${esc(v.profiles?.display_name||'出品者')} のプロフィール</button></div></div><div class="listing-card-actions"><button type="button" class="favorite-heart ${favorited?'on':''}" onclick="toggleFavoriteListing('${esc(v.id)}',this)" aria-label="お気に入り">${favorited?'♥':'♡'}</button><div class="price">¥${Number(v.price_jpy).toLocaleString()}</div></div></div><span class="pill">${esc(v.category)}</span><span class="pill">${v.delivery_days}日</span><span class="pill">AI:${esc(v.ai_use)}</span>${descHtml}${audio}${action}</div>`;
+    return `<div class="card voice" data-listing-id="${esc(v.id)}"><div class="row"><div class="listing-seller-wrap">${avatarMarkup(v.profiles,'sm',v.seller_id)}<div><b>${esc(v.title)}</b><button type="button" class="seller-profile-link" onclick="openPublicProfile('${esc(v.seller_id)}')">${esc(v.profiles?.display_name||'出品者')} のプロフィール</button></div></div><div class="listing-card-actions"><button type="button" class="favorite-heart ${favorited?'on':''}" onclick="toggleFavoriteListing('${esc(v.id)}',this)" aria-label="お気に入り">${favorited?'♥':'♡'}</button><div class="price">¥${Number(v.price_jpy).toLocaleString()}</div></div></div><span class="pill">${esc(v.category)}</span><span class="pill">${v.delivery_days}日</span><span class="pill">AI:${esc(v.ai_use)}</span>${descHtml}${audio}<div class="listing-date">出品日：${formatJpDateTime(v.created_at,false)||'-'}</div>${action}</div>`;
   }).join('');
 
   if(reset){
@@ -1640,7 +1654,7 @@ async function loadConversations(){
    const action=allAccepted
      ? `<button type="button" class="history-hide-btn" onclick='event.stopPropagation();hidePartnerConversations(${JSON.stringify(ids)})'>非表示</button>`
      : (unreadCount?`<span class="unread-dot">${unreadCount}</span>`:'');
-   rows.push(`<div class="chatrow" onclick="openConversation('${latestConversation.id}','${esc(name).replace(/'/g,'&#39;')}')"><div class="chathead"><div class="chat-partner">${avatarMarkup(profiles[partner]||{display_name:'ユーザー'},'sm',partner)}<div><b>${esc(name)}</b><div class="small">個別メッセージ</div></div></div>${action}</div><div class="small" style="margin-top:6px">${esc(latestPreview?.body||'チャットを開始できます')}</div>${allAccepted?'<div class="history-hide-note">完了した取引の記録も、この相手とのチャット履歴にまとめて残ります。</div>':''}</div>`);
+   rows.push(`<div class="chatrow" onclick="openConversation('${latestConversation.id}','${esc(name).replace(/'/g,'&#39;')}')"><div class="chathead"><div class="chat-partner">${avatarMarkup(profiles[partner]||{display_name:'ユーザー'},'sm',partner)}<div><b>${esc(name)}</b><div class="small">個別メッセージ</div></div></div>${action}</div><div class="small" style="margin-top:6px">${esc(latestPreview?.body||'チャットを開始できます')}</div>${latestMsg?.created_at?`<div class="trade-date">最終メッセージ：${formatJpDateTime(latestMsg.created_at,true)}</div>`:''}${allAccepted?'<div class="history-hide-note">完了した取引の記録も、この相手とのチャット履歴にまとめて残ります。</div>':''}</div>`);
  }
  conversationList.innerHTML=rows.join('')||'<div class="card small">表示中のメッセージはありません。</div>';loadMessageBadge()
 }
@@ -1685,13 +1699,14 @@ async function loadChatMessages(){
      seenRatingConversations.add(key);
    }
    const isSystem=/^(📦 音声を納品しました。|✅ 納品物を受け取りました。|⭐ 取引評価を送信しました。)/.test(body);
+   const when=formatJpDateTime(m.created_at,true);
    if(isSystem){
      const shortBody=body.startsWith('📦 音声を納品しました。')?'📦 音声を納品しました':body.startsWith('✅ 納品物を受け取りました。')?'✅ 受取確認が完了しました':'⭐ 取引評価が完了しました';
-     return `<div class="chat-system-row"><div class="chat-system-note">${esc(shortBody)}</div></div>`;
+     return `<div class="chat-system-row"><div class="chat-system-note">${esc(shortBody)}${when?`<div class="chat-message-time">${when}</div>`:''}</div></div>`;
    }
    const mine=m.sender_id===currentUser.id;
-   if(mine)return `<div class="chat-message-row mine-row"><div class="bubble mine">${esc(body)}</div></div>`;
-   return `<div class="chat-message-row theirs-row">${avatarMarkup(profileMap[m.sender_id]||{display_name:'ユーザー'},'xs',m.sender_id)}<div class="bubble theirs">${esc(body)}</div></div>`;
+   if(mine)return `<div class="chat-message-row mine-row"><div class="chat-message-content"><div class="bubble mine">${esc(body)}</div>${when?`<div class="chat-message-time">${when}</div>`:''}</div></div>`;
+   return `<div class="chat-message-row theirs-row">${avatarMarkup(profileMap[m.sender_id]||{display_name:'ユーザー'},'xs',m.sender_id)}<div class="chat-message-content"><div class="bubble theirs">${esc(body)}</div>${when?`<div class="chat-message-time">${when}</div>`:''}</div></div>`;
  }).join('')||'<div class="small">まだメッセージはありません。最初のメッセージを送ってみましょう。</div>';
  ids.forEach(markConversationSeen);setTimeout(()=>chatMessages.scrollTop=chatMessages.scrollHeight,0)
 }
@@ -2207,7 +2222,7 @@ async function loadMe(){
     sb.from('conversations').select('id,job_id,listing_id,buyer_id,seller_id,delivery_status,delivered_at,accepted_at,created_at').eq('buyer_id',currentUser.id).order('created_at',{ascending:false})
   ]);
 
-  myListings.innerHTML=`<h3>出品したもの</h3>${(l||[]).map(x=>`<button type="button" class="card mypage-item-card mypage-click-card" onclick="openMyListing('${x.id}')"><b>${esc(x.title)}</b><div class="small">¥${Number(x.price_jpy||0).toLocaleString()}</div><span class="mypage-card-arrow">›</span></button>`).join('')||'<button type="button" class="card small mypage-item-card mypage-empty-card mypage-click-card" onclick="go(\'sell\')">まだ出品がありません。<span class="mypage-card-arrow">›</span></button>'}`;
+  myListings.innerHTML=`<h3>出品したもの</h3>${(l||[]).map(x=>`<button type="button" class="card mypage-item-card mypage-click-card" onclick="openMyListing('${x.id}')"><b>${esc(x.title)}</b><div class="small">¥${Number(x.price_jpy||0).toLocaleString()}</div><div class="trade-date">出品日：${formatJpDateTime(x.created_at,false)||'-'}</div><span class="mypage-card-arrow">›</span></button>`).join('')||'<button type="button" class="card small mypage-item-card mypage-empty-card mypage-click-card" onclick="go(\'sell\')">まだ出品がありません。<span class="mypage-card-arrow">›</span></button>'}`;
 
   // Stripe Webhookで保存された実決済（Sandbox）から出品者売上を集計する。
   const {data:sellerPayments,error:sellerPaymentsError}=await sb
@@ -2232,6 +2247,17 @@ async function loadMe(){
       salesSummary.innerHTML=`<div class="small">まだ支払い済みの売上はありません。</div>`;
     }
   }
+
+  const {data:buyerPayments}=await sb
+    .from('payments')
+    .select('listing_id,status,paid_at,created_at')
+    .eq('buyer_id',currentUser.id)
+    .in('status',['paid','refunded'])
+    .order('paid_at',{ascending:false});
+  const buyerPaymentDateMap=new Map();
+  (buyerPayments||[]).forEach(p=>{if(p.listing_id&&!buyerPaymentDateMap.has(p.listing_id))buyerPaymentDateMap.set(p.listing_id,p.paid_at||p.created_at||null)});
+  const sellerPaymentDateMap=new Map();
+  (sellerPayments||[]).forEach(p=>{if(p.listing_id&&!sellerPaymentDateMap.has(p.listing_id))sellerPaymentDateMap.set(p.listing_id,p.paid_at||null)});
 
   const allConvs=[...(sellerConvs||[]),...(buyerConvs||[])];
   const jobIds=[...new Set(allConvs.map(x=>x.job_id).filter(Boolean))];
@@ -2274,14 +2300,17 @@ async function loadMe(){
     const hideButton=c.delivery_status==='accepted'
       ? `<button type="button" class="history-hide-btn" onclick="event.stopPropagation();hideConversationForMe('${c.id}')">非表示</button>`
       : '';
-    return `<div class="card trade-history-card mypage-item-card mypage-click-card" onclick="go('messages').then(()=>openConversation('${c.id}','${safeTitle}'))"><div class="row"><div><b>${esc(titleOf(c))}</b><div class="small">${role}${amount!=null?`　¥${Number(amount).toLocaleString()}`:''}</div></div><div class="mypage-status-wrap"><span class="delivery-status ${statusClass(c)}">${statusText(c)}</span><span class="mypage-card-arrow">›</span></div></div>${hideButton?`<div style="margin-top:10px;text-align:right">${hideButton}</div><div class="history-hide-note">自分の一覧からだけ非表示になります。決済・納品記録は残ります。</div>`:''}</div>`;
+    const paymentDate=c.listing_id?(role==='購入'?buyerPaymentDateMap.get(c.listing_id):role==='販売'?sellerPaymentDateMap.get(c.listing_id):null):null;
+    const dateLabel=paymentDate?(role==='購入'?'購入日':role==='販売'?'購入された日':'取引日'):'取引開始日';
+    const dateValue=paymentDate||c.created_at;
+    return `<div class="card trade-history-card mypage-item-card mypage-click-card" onclick="go('messages').then(()=>openConversation('${c.id}','${safeTitle}'))"><div class="row"><div><b>${esc(titleOf(c))}</b><div class="small">${role}${amount!=null?`　¥${Number(amount).toLocaleString()}`:''}</div><div class="trade-date">${dateLabel}：${formatJpDateTime(dateValue,false)||'-'}</div></div><div class="mypage-status-wrap"><span class="delivery-status ${statusClass(c)}">${statusText(c)}</span><span class="mypage-card-arrow">›</span></div></div>${hideButton?`<div style="margin-top:10px;text-align:right">${hideButton}</div><div class="history-hide-note">自分の一覧からだけ非表示になります。決済・納品記録は残ります。</div>`:''}</div>`;
   };
 
   const hiddenConvs=allConvs.filter(c=>isConversationHidden(c.id));
   const hiddenCards=hiddenConvs.map(c=>{
     const amount=amountOf(c);
     const safeTitle=esc(titleOf(c)).replace(/'/g,'&#39;');
-    return `<div class="card trade-history-card mypage-item-card"><div class="row"><div><b>${esc(titleOf(c))}</b><div class="small">${c.listing_id?'音声取引':'仕事'}${amount!=null?`　¥${Number(amount).toLocaleString()}`:''}</div></div><span class="delivery-status ${statusClass(c)}">${statusText(c)}</span></div><div style="display:flex;gap:8px;margin-top:10px"><button type="button" class="btn secondary" style="flex:1" onclick="restoreConversationForMe('${c.id}')">再表示</button><button type="button" class="btn secondary" style="flex:1" onclick="restoreConversationForMe('${c.id}');go('messages').then(()=>openConversation('${c.id}','${safeTitle}'))">開く</button></div></div>`;
+    return `<div class="card trade-history-card mypage-item-card"><div class="row"><div><b>${esc(titleOf(c))}</b><div class="small">${c.listing_id?'音声取引':'仕事'}${amount!=null?`　¥${Number(amount).toLocaleString()}`:''}</div><div class="trade-date">取引開始日：${formatJpDateTime(c.created_at,false)||'-'}</div></div><span class="delivery-status ${statusClass(c)}">${statusText(c)}</span></div><div style="display:flex;gap:8px;margin-top:10px"><button type="button" class="btn secondary" style="flex:1" onclick="restoreConversationForMe('${c.id}')">再表示</button><button type="button" class="btn secondary" style="flex:1" onclick="restoreConversationForMe('${c.id}');go('messages').then(()=>openConversation('${c.id}','${safeTitle}'))">開く</button></div></div>`;
   }).join('');
 
   myHiddenTrades.innerHTML=`<h3>非表示にした取引</h3>${hiddenCards||'<div class="card small mypage-item-card">非表示にした取引はありません。</div>'}`;
