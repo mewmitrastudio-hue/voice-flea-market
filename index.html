@@ -697,6 +697,17 @@ body:has(#authPage.on) .tag .line2{
 .refund-confirm-cancel{border:1px solid #ddd9f5;background:#fff;color:#4c4867}
 .refund-confirm-ok{border:0;background:#6553ef;color:#fff}
 </style>
+
+<style id="refund-inline-confirm-style">
+.admin-refund-inline-confirm{margin-top:10px;padding:14px;border:1px solid #e7ddff;border-radius:16px;background:#faf9ff}
+.admin-refund-inline-confirm-title{font-weight:900;font-size:15px;color:#1f2340;margin-bottom:6px}
+.admin-refund-inline-confirm-text{font-size:12px;line-height:1.7;color:#60657b}
+.admin-refund-inline-confirm-note{margin-top:9px;padding:10px 11px;border:1px solid #f2d59c;border-radius:12px;background:#fff8e8;color:#805600;font-size:12px;line-height:1.6}
+.admin-refund-inline-actions{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:12px}
+.admin-refund-inline-actions button{min-height:44px;border-radius:13px;font-weight:800;font-size:14px}
+.admin-refund-inline-cancel{border:1px solid #ddd9f5;background:#fff;color:#4c4867}
+.admin-refund-inline-ok{border:0;background:#6553ef;color:#fff}
+</style>
 </head><body><div id="pullRefreshIndicator" class="pull-refresh-indicator">↓ 引っ張って更新</div><div class="app">
 <div class="topbar"><div class="brandwrap"><div class="brandicon">🎙️</div><div class="brandtext"><div class="brand">声のフリマ</div><div class="tag"><span class="line1">世界に、あなたの声を売る。</span><span class="line2">あなたの声を、世界が買う。</span></div></div></div><div class="topactions"><button id="refreshBtn" class="refreshbtn hide" onclick="refreshAllData()" aria-label="最新情報に更新" title="最新情報に更新">↻</button><button id="bellBtn" class="bellbtn hide" onclick="openNotifications()" aria-label="お知らせ">🔔<span id="bellBadge" class="bellbadge"></span></button><button id="favoriteBtn" class="bellbtn hide" onclick="openFavorites()" aria-label="お気に入り">♡<span id="favoriteBadge" class="bellbadge"></span></button><button id="menuBtn" class="bellbtn hide" onclick="openMainMenu()" aria-label="メニュー">☰</button></div></div>
 
@@ -1091,11 +1102,33 @@ async function refundPaymentByInput(btn){
   if(!id)return alert('Payment IDを入力してください。');
   await adminRefundPayment(id,btn);
 }
-async function adminRefundPayment(paymentId,btn){
+async function adminRefundPayment(paymentId,btn,confirmed=false){
   if(!isVoiceFleaAdmin())return alert('この操作は運営アカウント専用です。');
   if(!paymentId)return alert('Payment IDを確認できません。');
-  const ok=await showRefundConfirm();
-  if(!ok)return;
+
+  if(!confirmed && btn){
+    const host=btn.closest('.admin-refund-item')||btn.closest('.admin-refund-manual')||btn.parentElement;
+    if(host){
+      host.querySelectorAll('.admin-refund-inline-confirm').forEach(el=>el.remove());
+      const panel=document.createElement('div');
+      panel.className='admin-refund-inline-confirm';
+      panel.innerHTML=`
+        <div class="admin-refund-inline-confirm-title">この決済を全額返金しますか？</div>
+        <div class="admin-refund-inline-confirm-text">購入者への返金、出品者への送金差し戻し、プラットフォーム手数料の返金をまとめて実行します。</div>
+        <div class="admin-refund-inline-confirm-note">返金を実行すると取り消せません。対象の決済を確認してから実行してください。</div>
+        <div class="admin-refund-inline-actions">
+          <button class="admin-refund-inline-cancel" type="button">キャンセル</button>
+          <button class="admin-refund-inline-ok" type="button">全額返金する</button>
+        </div>`;
+      btn.insertAdjacentElement('afterend',panel);
+      btn.style.display='none';
+      panel.querySelector('.admin-refund-inline-cancel').onclick=()=>{panel.remove();btn.style.display='';};
+      panel.querySelector('.admin-refund-inline-ok').onclick=()=>{panel.remove();btn.style.display='';adminRefundPayment(paymentId,btn,true);};
+      panel.scrollIntoView({behavior:'smooth',block:'nearest'});
+      return;
+    }
+  }
+
   const msg=document.getElementById('adminRefundMsg');
   const original=btn?.textContent||'この決済を全額返金';
   if(btn){btn.disabled=true;btn.textContent='返金処理中...'}
@@ -2502,40 +2535,5 @@ document.addEventListener('click',function(e){
 },true);
 </script>
 
-<div id="refundConfirmOverlay" class="refund-confirm-overlay" aria-hidden="true">
-  <div class="refund-confirm-card" role="dialog" aria-modal="true" aria-labelledby="refundConfirmTitle">
-    <div class="refund-confirm-icon">↩️</div>
-    <h3 id="refundConfirmTitle">この決済を全額返金しますか？</h3>
-    <p>購入者への返金、出品者への送金差し戻し、プラットフォーム手数料の返金をまとめて実行します。</p>
-    <p class="refund-confirm-note">返金を実行すると取り消せません。対象の決済を確認してから実行してください。</p>
-    <div class="refund-confirm-actions">
-      <button id="refundConfirmCancel" class="refund-confirm-cancel" type="button">キャンセル</button>
-      <button id="refundConfirmOk" class="refund-confirm-ok" type="button">全額返金する</button>
-    </div>
-  </div>
-</div>
 
-<script id="refundConfirmScript">
-function showRefundConfirm(){
-  return new Promise(resolve=>{
-    const overlay=document.getElementById('refundConfirmOverlay');
-    const ok=document.getElementById('refundConfirmOk');
-    const cancel=document.getElementById('refundConfirmCancel');
-    if(!overlay||!ok||!cancel){resolve(window.confirm('この決済を全額返金しますか？'));return;}
-    let done=false;
-    const finish=(value)=>{
-      if(done)return; done=true;
-      overlay.classList.remove('on');
-      overlay.setAttribute('aria-hidden','true');
-      ok.onclick=null; cancel.onclick=null; overlay.onclick=null;
-      resolve(value);
-    };
-    ok.onclick=()=>finish(true);
-    cancel.onclick=()=>finish(false);
-    overlay.onclick=(e)=>{if(e.target===overlay)finish(false)};
-    overlay.classList.add('on');
-    overlay.setAttribute('aria-hidden','false');
-  });
-}
-</script>
 </body></html>
