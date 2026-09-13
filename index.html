@@ -574,6 +574,19 @@ body.normal-mode #nav button{height:46px!important;min-height:46px!important;bor
 .admin-refund-manual{padding:12px;border:1px solid #e5e0f6;border-radius:15px;background:#faf9ff;margin:12px 0}.admin-refund-manual label{display:block;font-size:11px;font-weight:900;margin-bottom:7px}.admin-refund-manual input{width:100%;border:1px solid #ddd9ef;border-radius:11px;padding:11px;font-size:14px;background:#fff}.admin-refund-manual .btn{margin-top:8px}
 .admin-refund-list{display:grid;gap:9px;margin-top:12px}.admin-refund-item{border:1px solid #e7e3f5;border-radius:15px;padding:12px;background:#fff}.admin-refund-item.refunded{background:#f7f8fa;opacity:.82}.admin-refund-item-head{display:flex;justify-content:space-between;gap:10px;align-items:flex-start}.admin-refund-item-title{font-size:13px;font-weight:900;line-height:1.45}.admin-refund-item-amount{font-size:16px;font-weight:900;white-space:nowrap}.admin-refund-meta{font-size:10px;color:#73798c;line-height:1.6;margin-top:5px;word-break:break-all}.admin-refund-status{display:inline-block;margin-top:6px;padding:4px 7px;border-radius:999px;font-size:10px;font-weight:900;background:#eefbf4;color:#15844e}.admin-refund-status.refunded{background:#eef0f4;color:#667085}.admin-refund-action{margin-top:9px;width:100%}.admin-refund-action:disabled{opacity:.55}.admin-only-menu.hide{display:none!important}
 
+
+.trade-info-panel{display:none;margin:12px 14px 2px;padding:14px;border:1px solid #e2defb;border-radius:18px;background:#faf9ff}
+.trade-info-panel.show{display:block}
+.trade-info-head{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:10px}
+.trade-info-title{font-size:14px;font-weight:900;color:#24243a}
+.trade-info-status{font-size:11px;font-weight:800;padding:5px 9px;border-radius:999px;background:#eef0f4;color:#475467;white-space:nowrap}
+.trade-info-status.done{background:#ecfdf3;color:#087443}
+.trade-info-status.submitted{background:#fff8e8;color:#805600}
+.trade-info-grid{display:grid;grid-template-columns:88px 1fr;gap:8px 10px;font-size:12px;line-height:1.45}
+.trade-info-label{color:#7b7f8d}
+.trade-info-value{font-weight:700;color:#25283a;word-break:break-word}
+.trade-info-note{margin-top:10px;padding-top:10px;border-top:1px solid #ebe8fb;font-size:11px;color:#7b7f8d}
+
 </style>
 <script>
 if(window.navigator.standalone===true){document.body.classList.add('standalone')}
@@ -725,7 +738,7 @@ body:has(#authPage.on) .tag .line2{
 
 <section id="jobs" class="page"><h2>仕事を探す / 募集する</h2><div class="card"><div class="field"><label>募集タイトル</label><input id="jobTitle" placeholder="例：英語リスニング30秒"></div><div class="field"><label>依頼内容</label><textarea id="jobDesc"></textarea></div><div class="field"><label>予算（円）</label><input id="jobBudget" type="number" value="1500" min="0"></div><div class="field"><label>AI利用</label><select id="jobAI"><option>禁止</option><option>案件ごとに相談</option><option>許可</option></select></div><button class="btn full" onclick="createJob()">募集を公開</button><div id="jobMsg"></div></div><div id="jobList"></div></section>
 
-<section id="messages" class="page"><div class="messages-list-head"><button class="chatback" onclick="go('home')" aria-label="ホームへ戻る">‹</button><div class="messages-list-title"><b>メッセージ</b><span>取引相手とのやり取り</span></div></div><h2>メッセージ</h2><div id="conversationList" class="chatlist"></div><div id="chatBox" class="card chatbox"><div class="chatroom-head"><button class="chatback" onclick="closeChat()" aria-label="メッセージ一覧へ">‹</button><div class="chatroom-title"><b id="chatTitle">チャット</b><span id="chatSub">取引メッセージ</span></div><button id="chatSafetyBtn" class="safety-chat-btn" onclick="openSafetyCenter('chat')">通報・ブロック</button></div><div id="chatMessages" class="chatmessages"></div><div id="deliveryArea" class="chatdelivery"></div><div class="chatdock"><div class="chatcomposer"><textarea id="chatInput" placeholder="メッセージを入力"></textarea><button class="btn" onclick="sendChatMessage()">送信</button></div><div id="chatMsg"></div></div></div></section>
+<section id="messages" class="page"><div class="messages-list-head"><button class="chatback" onclick="go('home')" aria-label="ホームへ戻る">‹</button><div class="messages-list-title"><b>メッセージ</b><span>取引相手とのやり取り</span></div></div><h2>メッセージ</h2><div id="conversationList" class="chatlist"></div><div id="chatBox" class="card chatbox"><div class="chatroom-head"><button class="chatback" onclick="closeChat()" aria-label="メッセージ一覧へ">‹</button><div class="chatroom-title"><b id="chatTitle">チャット</b><span id="chatSub">取引メッセージ</span></div><button id="chatSafetyBtn" class="safety-chat-btn" onclick="openSafetyCenter('chat')">通報・ブロック</button></div><div id="tradeInfoPanel" class="trade-info-panel"></div><div id="chatMessages" class="chatmessages"></div><div id="deliveryArea" class="chatdelivery"></div><div class="chatdock"><div class="chatcomposer"><textarea id="chatInput" placeholder="メッセージを入力"></textarea><button class="btn" onclick="sendChatMessage()">送信</button></div><div id="chatMsg"></div></div></div></section>
 
 <section id="me" class="page"><h2>マイページ</h2><div class="card profile-compact profile-card-main"><div id="meText">-</div></div><div id="myListings"></div><div id="mySoldVoices"></div><div id="myPurchasedVoices"></div><div id="mySellerJobs"></div><div id="myBuyerJobs"></div><div id="myHiddenTrades"></div><div class="card finance-card compact-finance-card"><b>💰 売上・振込</b><div id="sellerSalesSummary" style="margin-top:10px"></div><button class="btn secondary full" type="button" style="margin-top:10px" onclick="openFinanceCenter('seller')">売上・振込を確認</button><div class="stripe-connect-box"><div id="stripeConnectStatus" class="stripe-connect-status">Stripe受取アカウントの状態を確認中...</div><button id="stripeConnectBtn" class="btn full stripe-connect-btn" type="button" onclick="connectStripeSeller()">Stripe受取アカウントを設定</button></div></div></section>
 
@@ -1711,6 +1724,50 @@ function hidePartnerConversations(ids){
  if(ids.includes(currentConversationId))closeChat();
  loadConversations();loadMe();
 }
+
+async function loadTradeInfoPanel(c){
+ const panel=document.getElementById('tradeInfoPanel');
+ if(!panel||!c||!currentUser)return;
+ try{
+   const isBuyer=currentUser.id===c.buyer_id;
+   const partnerId=isBuyer?c.seller_id:c.buyer_id;
+   let partnerName='ユーザー';
+   if(partnerId){
+     const {data:p}=await sb.from('profiles').select('display_name').eq('id',partnerId).maybeSingle();
+     if(p?.display_name)partnerName=p.display_name;
+   }
+   let itemTitle='取引',amount=null,purchaseDate=null,dateLabel='取引開始日';
+   if(c.listing_id){
+     const {data:l}=await sb.from('listings').select('title,price_jpy').eq('id',c.listing_id).maybeSingle();
+     if(l){itemTitle=l.title||'出品取引';amount=l.price_jpy}
+     const {data:pay}=await sb.from('payments').select('amount_jpy,status,paid_at,created_at').eq('listing_id',c.listing_id).eq('buyer_id',c.buyer_id).in('status',['paid','refunded']).order('paid_at',{ascending:false}).limit(1).maybeSingle();
+     if(pay){amount=pay.amount_jpy??amount;purchaseDate=pay.paid_at||pay.created_at||null;dateLabel='購入日'}
+   }else if(c.job_id){
+     const {data:j}=await sb.from('jobs').select('title,budget_jpy').eq('id',c.job_id).maybeSingle();
+     if(j){itemTitle=j.title||'仕事';amount=j.budget_jpy}
+   }
+   const state=c.delivery_status==='accepted'?'完了':c.delivery_status==='submitted'?'納品済み':'取引中';
+   const stateClass=c.delivery_status==='accepted'?'done':c.delivery_status==='submitted'?'submitted':'';
+   const roleLabel=isBuyer?'出品者':'購入者';
+   const rows=[
+     ['取引',itemTitle],
+     [dateLabel,formatJpDateTime(purchaseDate||c.created_at,false)||'-'],
+     ['金額',amount!=null?`¥${Number(amount).toLocaleString()}`:'-'],
+     [roleLabel,partnerName],
+     ['状態',state],
+     ['納品日時',c.delivered_at?formatJpDateTime(c.delivered_at,true):'-'],
+     ['受取確認日時',c.accepted_at?formatJpDateTime(c.accepted_at,true):'-'],
+     ['取引完了日時',c.accepted_at?formatJpDateTime(c.accepted_at,true):'-']
+   ];
+   panel.innerHTML=`<div class="trade-info-head"><div class="trade-info-title">取引情報</div><span class="trade-info-status ${stateClass}">${state}</span></div><div class="trade-info-grid">${rows.map(([k,v])=>`<div class="trade-info-label">${esc(k)}</div><div class="trade-info-value">${esc(String(v))}</div>`).join('')}</div><div class="trade-info-note">この下に、この相手とのメッセージ・納品履歴が時系列で表示されます。</div>`;
+   panel.classList.add('show');
+ }catch(e){
+   console.warn('trade info load failed',e);
+   panel.classList.remove('show');
+   panel.innerHTML='';
+ }
+}
+
 async function openConversation(id,title='チャット',opts={}){
  clearChatNotice();currentConversationId=id;
  const {data:c,error:ce}=await sb.from('conversations').select('id,buyer_id,seller_id,job_id,listing_id,delivery_path,delivery_status,delivered_at,accepted_at,created_at').eq('id',id).single();
@@ -1723,9 +1780,9 @@ async function openConversation(id,title='チャット',opts={}){
  conversationList.style.display='none';chatBox.classList.add('on');setShellMode('chat');chatTitle.textContent=title;chatSub.textContent='この相手とのメッセージ';
  if(currentUser&&!opts.skipSave){localStorage.setItem(uiKey('page'),'messages');saveChatState(id,title)}
  currentConversationGroupIds.forEach(markConversationSeen);
- await Promise.all([loadChatMessages(),loadDeliveries()]);await applyChatBlockState();loadMessageBadge()
+ await Promise.all([loadTradeInfoPanel(c),loadChatMessages(),loadDeliveries()]);await applyChatBlockState();loadMessageBadge()
 }
-function closeChat(){clearChatNotice();clearChatState();currentConversationId=null;currentConversation=null;currentConversationPartner=null;currentConversationGroupIds=[];setShellMode('messages');chatBox.classList.remove('on');conversationList.style.display='grid';loadConversations()}
+function closeChat(){clearChatNotice();clearChatState();const tip=document.getElementById('tradeInfoPanel');if(tip){tip.classList.remove('show');tip.innerHTML=''}currentConversationId=null;currentConversation=null;currentConversationPartner=null;currentConversationGroupIds=[];setShellMode('messages');chatBox.classList.remove('on');conversationList.style.display='grid';loadConversations()}
 async function loadChatMessages(){
  if(!currentConversationId)return;
  const ids=currentConversationGroupIds.length?currentConversationGroupIds:[currentConversationId];
@@ -2350,7 +2407,7 @@ async function loadMe(){
     const paymentDate=c.listing_id?(role==='購入'?buyerPaymentDateMap.get(c.listing_id):role==='販売'?sellerPaymentDateMap.get(c.listing_id):null):null;
     const dateLabel=paymentDate?(role==='購入'?'購入日':role==='販売'?'購入された日':'取引日'):'取引開始日';
     const dateValue=paymentDate||c.created_at;
-    return `<div class="card trade-history-card mypage-item-card mypage-click-card" onclick="go('messages').then(()=>openConversation('${c.id}','${safeTitle}'))"><div class="row"><div><b>${esc(titleOf(c))}</b><div class="small">${role}${amount!=null?`　¥${Number(amount).toLocaleString()}`:''}</div><div class="trade-date">${dateLabel}：${formatJpDateTime(dateValue,false)||'-'}</div></div><div class="mypage-status-wrap"><span class="delivery-status ${statusClass(c)}">${statusText(c)}</span><span class="mypage-card-arrow">›</span></div></div>${hideButton?`<div style="margin-top:10px;text-align:right">${hideButton}</div><div class="history-hide-note">自分の一覧からだけ非表示になります。決済・納品記録は残ります。</div>`:''}</div>`;
+    return `<div class="card trade-history-card mypage-item-card mypage-click-card" onclick="go('messages').then(()=>openConversation('${c.id}','${safeTitle}'))"><div class="row"><div><b>${esc(titleOf(c))}</b><div class="small">${role}${amount!=null?`　¥${Number(amount).toLocaleString()}`:''}</div><div class="trade-date">${dateLabel}：${formatJpDateTime(dateValue,false)||'-'}</div></div><div class="mypage-status-wrap"><span class="delivery-status ${statusClass(c)}">${statusText(c)}</span><span class="mypage-card-arrow">›</span></div></div><div class="trade-date" style="margin-top:8px;color:#5f55e8;font-weight:800">取引詳細を見る</div>${hideButton?`<div style="margin-top:10px;text-align:right">${hideButton}</div><div class="history-hide-note">自分の一覧からだけ非表示になります。決済・納品記録は残ります。</div>`:''}</div>`;
   };
 
   const hiddenConvs=allConvs.filter(c=>isConversationHidden(c.id));
