@@ -803,8 +803,8 @@ body:has(#authPage.on) .tag .line2{
     <div class="admin-refund-note">返金は全額返金です。Stripeの購入者返金・出品者への送金差戻し・プラットフォーム手数料返金をまとめて実行します。実行後は取り消せません。</div>
     <div id="adminRefundMsg"></div>
     <div class="admin-refund-manual">
-      <label for="adminRefundPaymentId">Payment ID を指定して返金</label>
-      <input id="adminRefundPaymentId" type="text" autocomplete="off" placeholder="payments テーブルの UUID">
+      <label for="adminRefundPaymentId">決済を指定して返金</label>
+      <input id="adminRefundPaymentId" type="text" autocomplete="off" placeholder="決済IDを入力">
       <button class="btn full" type="button" onclick="refundPaymentByInput(this)">この決済を全額返金</button>
     </div>
     <div class="row" style="margin-top:12px"><b style="font-size:13px">確認できる決済</b><button class="btn secondary" type="button" style="padding:8px 10px;font-size:11px" onclick="loadAdminRefunds()">更新</button></div>
@@ -1033,12 +1033,12 @@ async function loadAdminRefunds(){
     .order('created_at',{ascending:false})
     .limit(50);
   if(error){
-    list.innerHTML=`<div class="err">決済一覧を取得できませんでした：${esc(error.message)}<br><span class="small">一覧に出ない決済でも、Payment ID が分かれば上の入力欄から返金できます。</span></div>`;
+    list.innerHTML=`<div class="err">決済一覧を取得できませんでした：${esc(error.message)}<br><span class="small">一覧に出ない決済でも、決済IDが分かれば上の入力欄から返金できます。</span></div>`;
     return;
   }
   const payments=rows||[];
   if(!payments.length){
-    list.innerHTML='<div class="small">このアカウントから確認できる支払い済み・返金済み決済はありません。Payment ID が分かる場合は上の入力欄から実行できます。</div>';
+    list.innerHTML='<div class="small">このアカウントから確認できる支払い済み・返金済み決済はありません。決済IDが分かる場合は上の入力欄から実行できます。</div>';
     return;
   }
   const listingIds=[...new Set(payments.map(p=>p.listing_id).filter(Boolean))];
@@ -1052,7 +1052,7 @@ async function loadAdminRefunds(){
     const title=listingMap.get(p.listing_id)||'出品取引';
     return `<div class="admin-refund-item ${refunded?'refunded':''}">
       <div class="admin-refund-item-head"><div class="admin-refund-item-title">${esc(title)}</div><div class="admin-refund-item-amount">${financeYen(p.amount_jpy||0)}</div></div>
-      <div class="admin-refund-meta">Payment ID: ${esc(p.id)}<br>Stripe: ${esc(p.stripe_payment_intent_id||'-')}<br>支払日時: ${esc(p.paid_at||p.created_at||'-')}</div>
+      <div class="admin-refund-meta">決済ID：${esc(p.id)}<br>Stripe決済ID：${esc(p.stripe_payment_intent_id||'-')}<br>支払日時: ${esc(p.paid_at||p.created_at||'-')}</div>
       <span class="admin-refund-status ${refunded?'refunded':''}">${refunded?'返金済み':'支払い済み'}</span>
       ${refunded?`<div class="admin-refund-meta">返金日時: ${esc(p.refunded_at||'-')}</div>`:`<button class="btn admin-refund-action" type="button" onclick="adminRefundPayment('${esc(p.id)}',this)">この決済を全額返金</button>`}
     </div>`;
@@ -1060,12 +1060,12 @@ async function loadAdminRefunds(){
 }
 async function refundPaymentByInput(btn){
   const id=(document.getElementById('adminRefundPaymentId')?.value||'').trim();
-  if(!id)return alert('Payment IDを入力してください。');
+  if(!id)return alert('決済IDを入力してください。');
   await adminRefundPayment(id,btn);
 }
 async function adminRefundPayment(paymentId,btn){
   if(!isVoiceFleaAdmin())return alert('この操作は運営アカウント専用です。');
-  if(!paymentId)return alert('Payment IDを確認できません。');
+  if(!paymentId)return alert('決済IDを確認できません。');
   const ok=window.confirm('この決済を全額返金します。\n\n購入者への返金・出品者への送金差戻し・プラットフォーム手数料返金を実行します。\n\n実行後は取り消せません。続けますか？');
   if(!ok)return;
   const msg=document.getElementById('adminRefundMsg');
