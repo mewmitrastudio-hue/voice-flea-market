@@ -605,6 +605,16 @@ body.normal-mode #nav button{height:46px!important;min-height:46px!important;bor
 .finance-tx-status.paid{background:#ecfdf3;color:#087443}
 .finance-tx-status.refunded{background:#f2f4f7;color:#667085}
 
+
+.block-confirm-box{display:none;margin-top:10px;padding:14px;border:1px solid #f3c6c0;border-radius:16px;background:#fff8f7}
+.block-confirm-box.show{display:block}
+.block-confirm-note{margin-top:6px;font-size:11px;line-height:1.55;color:#7a5b58}
+.block-confirm-actions{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:12px}
+.danger-btn{background:#c9362b!important;color:#fff!important;border-color:#c9362b!important}
+.safety-success-card{margin-top:12px;padding:14px;border:1px solid #b7ebc6;border-radius:16px;background:#f0fff5;color:#087443}
+.safety-success-card b{display:block;margin-bottom:5px}
+.safety-success-card span{display:block;font-size:11px;line-height:1.55;color:#356b4b}
+
 </style>
 <script>
 if(window.navigator.standalone===true){document.body.classList.add('standalone')}
@@ -951,7 +961,17 @@ body:has(#authPage.on) .tag .line2{
 <div id="financeOverlay" class="finance-overlay" onclick="if(event.target===this)closeFinanceCenter()"><div class="finance-box"><div class="finance-head"><h3>決済・売上</h3><button class="finance-close" onclick="closeFinanceCenter()">×</button></div><div class="finance-beta">Stripe Sandboxで決済・返金・送金差し戻しまで確認済みです。ここにはSupabaseに保存された実際のテスト決済結果を表示します。</div><div class="finance-tabs"><button id="financeTabBuyer" class="finance-tab active" onclick="showFinancePanel('buyer')">支払い確認</button><button id="financeTabSeller" class="finance-tab" onclick="showFinancePanel('seller')">売上・振込</button></div><div id="financeBody"></div></div></div>
 <div id="notifOverlay" class="notif-overlay" onclick="if(event.target===this)closeNotifications()"><aside class="notif-sheet"><div class="notif-head"><h2>お知らせ</h2><div class="notif-actions"><button class="notif-readall" onclick="markAllNotificationsRead()">すべて既読</button><button class="notif-close" onclick="closeNotifications()">×</button></div></div><div class="small">必要な連絡をまとめて確認できます。</div><div id="notifContent"><div class="notif-empty">読み込み中...</div></div></aside></div>
 <div id="rulesOverlay" class="rules-overlay" onclick="if(event.target===this)closeRulesCenter()"><div class="rules-box"><div class="rules-head"><h3>ルール・ポリシー</h3><button class="rules-close" onclick="closeRulesCenter()">×</button></div><div class="rules-beta">現在はWeb MVPのテスト段階です。決済・返金条件などは正式な決済機能を導入する前に確定・更新します。</div><div class="rules-tabs"><button id="ruleTabTerms" class="rules-tab active" onclick="showRuleDoc('terms')">利用規約</button><button id="ruleTabPrivacy" class="rules-tab" onclick="showRuleDoc('privacy')">プライバシーポリシー</button><button id="ruleTabProhibited" class="rules-tab" onclick="showRuleDoc('prohibited')">禁止事項</button><button id="ruleTabCancel" class="rules-tab" onclick="showRuleDoc('cancel')">キャンセル・返金</button><button id="ruleTabAi" class="rules-tab" onclick="showRuleDoc('ai')">音声・AI利用</button><button id="ruleTabCommerce" class="rules-tab" onclick="showRuleDoc('commerce')">特商法・運営者情報</button></div><div id="rulesBody" class="rules-body"></div></div></div>
-<div id="safetyOverlay" class="safety-overlay" onclick="if(event.target===this)closeSafetyCenter()"><div class="safety-box"><div class="safety-head"><h3 id="safetyTitle">お問い合わせ</h3><button class="safety-close" onclick="closeSafetyCenter()">×</button></div><div id="safetyIntro" class="safety-note">使い方、不具合、その他のお問い合わせを運営へ送れます。</div><div id="safetyPartnerActions" class="safety-actions hide"><button id="blockUserBtn" class="safety-action danger" onclick="toggleBlockCurrentPartner()">このユーザーをブロック</button></div><div class="safety-section"><label>内容</label><select id="safetyCategory"><option value="harassment">迷惑行為・嫌がらせ</option><option value="fraud">詐欺・不審な取引</option><option value="rights">権利侵害・無断利用</option><option value="inappropriate">不適切な内容</option><option value="support">使い方・不具合・問い合わせ</option><option value="other">その他</option></select><label>詳細</label><textarea id="safetyDetail" placeholder="状況をできるだけ具体的に書いてください。"></textarea><button class="btn full" onclick="submitSafetyRequest()">運営へ送信</button><div id="safetyMsg" class="safety-msg"></div><div class="safety-note">緊急性のある危険がある場合は、このサービス内だけで対応せず、必要に応じて警察・緊急窓口等へ連絡してください。</div></div></div></div>
+<div id="safetyOverlay" class="safety-overlay" onclick="if(event.target===this)closeSafetyCenter()"><div class="safety-box"><div class="safety-head"><h3 id="safetyTitle">お問い合わせ</h3><button class="safety-close" onclick="closeSafetyCenter()">×</button></div><div id="safetyIntro" class="safety-note">使い方、不具合、その他のお問い合わせを運営へ送れます。</div><div id="safetyPartnerActions" class="safety-actions hide">
+<button id="blockUserBtn" class="safety-action danger" onclick="toggleBlockCurrentPartner()">このユーザーをブロック</button>
+<div id="blockConfirmBox" class="block-confirm-box">
+  <b>このユーザーをブロックしますか？</b>
+  <div class="block-confirm-note">ブロックすると、この取引ではメッセージを送受信できなくなります。あとから解除できます。</div>
+  <div class="block-confirm-actions">
+    <button type="button" class="btn secondary" onclick="cancelBlockConfirm()">キャンセル</button>
+    <button type="button" class="btn danger-btn" onclick="confirmBlockCurrentPartner()">ブロックする</button>
+  </div>
+</div>
+</div><div class="safety-section"><label id="safetyCategoryLabel">お問い合わせ種別</label><select id="safetyCategory"><option value="harassment">迷惑行為・嫌がらせ</option><option value="fraud">詐欺・不審な取引</option><option value="rights">権利侵害・無断利用</option><option value="inappropriate">不適切な内容</option><option value="support">使い方・不具合・問い合わせ</option><option value="other">その他</option></select><label>詳細</label><textarea id="safetyDetail" placeholder="状況をできるだけ具体的に書いてください。"></textarea><button class="btn full" onclick="submitSafetyRequest()">運営へ送信</button><div id="safetyMsg" class="safety-msg"></div><div class="safety-note">緊急性のある危険がある場合は、このサービス内だけで対応せず、必要に応じて警察・緊急窓口等へ連絡してください。</div></div></div></div>
 <nav id="nav" class="nav hide"><button onclick="go('home')">ホーム</button><button onclick="go('voices')">声を探す</button><button onclick="go('sell')">声を出品</button><button onclick="go('jobs')">声を依頼<span id="jobBadge" class="badge"></span></button><button onclick="go('messages')">メッセージ<span id="msgBadge" class="badge"></span></button><button onclick="go('me')">マイページ</button></nav>
 </div>
 <script>
@@ -2096,15 +2116,36 @@ async function markAllNotificationsRead(){if(!currentUser)return;const {items}=a
 
 
 let safetyMode='support';
-function closeSafetyCenter(){document.getElementById('safetyOverlay')?.classList.remove('on');const m=document.getElementById('safetyMsg');if(m)m.innerHTML=''}
+function cancelBlockConfirm(){document.getElementById('blockConfirmBox')?.classList.remove('show')}
+function closeSafetyCenter(){
+ document.getElementById('safetyOverlay')?.classList.remove('on');
+ cancelBlockConfirm();
+ const m=document.getElementById('safetyMsg');if(m)m.innerHTML='';
+}
 async function openSafetyCenter(mode='support'){
- safetyMode=mode;const ov=document.getElementById('safetyOverlay'),actions=document.getElementById('safetyPartnerActions'),title=document.getElementById('safetyTitle'),intro=document.getElementById('safetyIntro');
- if(!ov)return;document.getElementById('safetyDetail').value='';
+ safetyMode=mode;
+ const ov=document.getElementById('safetyOverlay'),actions=document.getElementById('safetyPartnerActions'),title=document.getElementById('safetyTitle'),intro=document.getElementById('safetyIntro'),categoryLabel=document.getElementById('safetyCategoryLabel');
+ if(!ov)return;
+ document.getElementById('safetyDetail').value='';
+ const msg=document.getElementById('safetyMsg');if(msg)msg.innerHTML='';
+ cancelBlockConfirm();
  const catSel=document.getElementById('safetyCategory');
  Array.from(catSel.options).forEach(o=>o.hidden=(mode==='support'?o.value!=='support':o.value==='support'));
  catSel.value=mode==='support'?'support':'harassment';
- if(mode==='chat'&&currentConversationPartner){title.textContent='この取引の通報・ブロック';intro.textContent='相手のブロックや違反報告ができます。';actions.classList.remove('hide');await refreshBlockButton()}else{title.textContent='お問い合わせ';intro.textContent='使い方、不具合、その他のお問い合わせを運営へ送れます。';actions.classList.add('hide');actions.style.display='none'}
- if(mode==='chat'&&currentConversationPartner)actions.style.display='';
+ if(mode==='chat'&&currentConversationPartner){
+   title.textContent='この取引の通報・ブロック';
+   intro.textContent='相手のブロックや違反報告ができます。';
+   if(categoryLabel)categoryLabel.textContent='通報理由';
+   actions.classList.remove('hide');
+   actions.style.display='';
+   await refreshBlockButton();
+ }else{
+   title.textContent='お問い合わせ';
+   intro.textContent='使い方、不具合、その他のお問い合わせを運営へ送れます。';
+   if(categoryLabel)categoryLabel.textContent='お問い合わせ種別';
+   actions.classList.add('hide');
+   actions.style.display='none';
+ }
  ov.classList.add('on')
 }
 async function getBlockRows(){
@@ -2117,10 +2158,27 @@ async function refreshBlockButton(){
  const b=document.getElementById('blockUserBtn');if(!b||!currentConversationPartner)return;const rows=await getBlockRows();const mine=rows.find(x=>x.blocker_id===currentUser.id);b.textContent=mine?'ブロックを解除':'このユーザーをブロック';b.classList.toggle('danger',!mine)
 }
 async function toggleBlockCurrentPartner(){
- if(safetyMode!=='chat'||!currentConversationId||!currentConversationPartner){return info('safetyMsg','ブロックは取引チャットの「安全」から行ってください。','err')}
+ if(safetyMode!=='chat'||!currentConversationId||!currentConversationPartner){return info('safetyMsg','ブロックは取引チャットの「通報・ブロック」から行ってください。','err')}
  const rows=await getBlockRows();const mine=rows.find(x=>x.blocker_id===currentUser.id);
- if(mine){const {error}=await sb.from('user_blocks').delete().eq('id',mine.id);if(error)return info('safetyMsg',error.message,'err');info('safetyMsg','ブロックを解除しました。');}
- else{const {error}=await sb.from('user_blocks').insert({blocker_id:currentUser.id,blocked_user_id:currentConversationPartner});if(error)return info('safetyMsg',error.code==='23505'?'すでにブロックしています。':error.message,'err');info('safetyMsg','このユーザーをブロックしました。今後この取引ではメッセージを送受信できません。');}
+ if(mine){
+   const {error}=await sb.from('user_blocks').delete().eq('id',mine.id);
+   if(error)return info('safetyMsg',error.message,'err');
+   info('safetyMsg','ブロックを解除しました。');
+   await refreshBlockButton();await applyChatBlockState();
+   return;
+ }
+ document.getElementById('blockConfirmBox')?.classList.add('show');
+}
+async function confirmBlockCurrentPartner(){
+ if(safetyMode!=='chat'||!currentConversationId||!currentConversationPartner)return;
+ const rows=await getBlockRows();
+ const mine=rows.find(x=>x.blocker_id===currentUser.id);
+ if(mine){cancelBlockConfirm();await refreshBlockButton();return}
+ const {error}=await sb.from('user_blocks').insert({blocker_id:currentUser.id,blocked_user_id:currentConversationPartner});
+ if(error)return info('safetyMsg',error.code==='23505'?'すでにブロックしています。':error.message,'err');
+ cancelBlockConfirm();
+ const m=document.getElementById('safetyMsg');
+ if(m)m.innerHTML='<div class="safety-success-card"><b>ブロックしました</b><span>この取引ではメッセージを送受信できません。必要になった場合は、ここからブロックを解除できます。</span></div>';
  await refreshBlockButton();await applyChatBlockState();
 }
 async function applyChatBlockState(){
@@ -2129,13 +2187,19 @@ async function applyChatBlockState(){
  if(blocked){if(!notice){notice=document.createElement('div');notice.id='blockedNotice';notice.className='blocked-notice';composer?.parentElement?.insertBefore(notice,composer)}notice.textContent=mine?'このユーザーをブロック中です。ブロックを解除するとメッセージを再開できます。':'この取引ではメッセージを送信できません。'}else if(notice)notice.remove();
 }
 async function submitSafetyRequest(){
- if(!sb||!currentUser)return;const cat=document.getElementById('safetyCategory').value;const detail=document.getElementById('safetyDetail').value.trim();if(detail.length<5)return info('safetyMsg','詳細を5文字以上入力してください。','err');
+ if(!sb||!currentUser)return;
+ const cat=document.getElementById('safetyCategory').value;
+ const detail=document.getElementById('safetyDetail').value.trim();
+ if(detail.length<5)return info('safetyMsg','詳細を5文字以上入力してください。','err');
+ const m=document.getElementById('safetyMsg');
  if(safetyMode==='chat'&&currentConversationPartner&&cat!=='support'){
    const {error}=await sb.from('reports').insert({reporter_id:currentUser.id,target_user_id:currentConversationPartner,conversation_id:currentConversationId,reason:cat,details:detail});
-   if(error)return info('safetyMsg',error.message,'err');info('safetyMsg','通報を受け付けました。運営で確認します。');
+   if(error)return info('safetyMsg',error.message,'err');
+   if(m)m.innerHTML='<div class="safety-success-card"><b>通報を受け付けました</b><span>内容を運営で確認します。必要に応じて対応を行います。</span></div>';
  }else{
    const {error}=await sb.from('support_inquiries').insert({user_id:currentUser.id,category:cat,subject:(cat==='support'?'使い方・不具合・問い合わせ':'安全・サポート問い合わせ'),message:detail});
-   if(error)return info('safetyMsg',error.message,'err');info('safetyMsg','問い合わせを受け付けました。');
+   if(error)return info('safetyMsg',error.message,'err');
+   if(m)m.innerHTML='<div class="safety-success-card"><b>お問い合わせを受け付けました</b><span>内容を確認のうえ、必要に応じて運営からご連絡します。</span></div>';
  }
  document.getElementById('safetyDetail').value='';
 }
