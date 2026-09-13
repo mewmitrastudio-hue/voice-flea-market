@@ -738,9 +738,9 @@ body:has(#authPage.on) .tag .line2{
 
 <section id="voices" class="page"><h2>声を探す</h2><div class="purchase-guide">気になる声を見つけたら、出品カードの下にある「購入する」からそのまま購入できます。</div><div class="field"><input id="voiceSearch" placeholder="英語、関西弁、YouTube、出品者名..." oninput="scheduleListingSearch()"></div><div class="small" style="margin:-4px 2px 10px">タイトル・カテゴリー・説明・AI条件・出品者名から検索できます。</div><div class="voice-filter-row"><label><input id="hidePurchasedToggle" type="checkbox" onchange="loadListings(true)"> 購入済みを非表示</label><label><input id="hideOwnToggle" type="checkbox" onchange="loadListings(true)"> 自分の出品を除外</label></div><div id="listingSearchMeta" class="small" style="margin:0 2px 10px"></div><div id="listingList"></div><button id="listingLoadMoreBtn" class="btn secondary full hide" type="button" style="margin-top:12px" onclick="loadMoreListings()">さらに表示</button></section>
 
-<section id="sell" class="page"><h2>声を声を出品する</h2><div class="card"><div class="field"><label>タイトル</label><input id="sellTitle" placeholder="例：自然な日本語を読みます"></div><div class="field"><label>カテゴリー</label><select id="sellCategory"><option>外国語・学習</option><option>日本語・方言</option><option>YouTube・SNS</option><option>ナレーション</option><option>歌</option><option>メッセージ</option><option>その他</option></select></div><div class="field"><label>説明</label><textarea id="sellDesc" placeholder="声の特徴、対応できる内容など"></textarea></div><div class="field"><label>価格（円）</label><input id="sellPrice" type="number" value="1000" min="0"></div><div class="field"><label>納期（日）</label><input id="sellDays" type="number" value="3" min="1"></div><div class="field"><label>AI利用</label><select id="sellAI"><option>禁止</option><option>案件ごとに相談</option><option>許可</option></select></div><div class="field"><label>公開用の声サンプル</label><input id="sellAudio" type="file"><div class="small">対応形式：m4a / mp3 / wav / aac / mp4 などの音声ファイル</div></div><div class="notice">ここへ登録する音声は「公開サンプル」として扱います。取引後の納品音声は別の非公開領域へ保存します。</div><button class="btn full" onclick="createListing()">声を出品する</button><div id="sellMsg"></div></div></section>
+<section id="sell" class="page"><h2>声を出品する</h2><div class="card"><div class="field"><label>タイトル</label><input id="sellTitle" placeholder="例：自然な日本語を読みます"></div><div class="field"><label>カテゴリー</label><select id="sellCategory"><option>外国語・学習</option><option>日本語・方言</option><option>YouTube・SNS</option><option>ナレーション</option><option>歌</option><option>メッセージ</option><option>その他</option></select></div><div class="field"><label>説明</label><textarea id="sellDesc" placeholder="声の特徴、対応できる内容など"></textarea></div><div class="field"><label>価格（円）</label><input id="sellPrice" type="number" value="1000" min="0"></div><div class="field"><label>納期（日）</label><input id="sellDays" type="number" value="3" min="1"></div><div class="field"><label>AI利用</label><select id="sellAI"><option>禁止</option><option>案件ごとに相談</option><option>許可</option></select></div><div class="field"><label>公開用の声サンプル</label><input id="sellAudio" type="file"><div class="small">対応形式：m4a / mp3 / wav / aac / mp4 などの音声ファイル</div></div><div class="notice">ここへ登録する音声は「公開サンプル」として扱います。取引後の納品音声は別の非公開領域へ保存します。</div><button class="btn full" onclick="createListing()">声を出品する</button><div id="sellMsg"></div></div></section>
 
-<section id="jobs" class="page"><h2>仕事を探す / 募集する</h2><div class="card"><div class="field"><label>募集タイトル</label><input id="jobTitle" placeholder="例：英語リスニング30秒"></div><div class="field"><label>依頼内容</label><textarea id="jobDesc"></textarea></div><div class="field"><label>予算（円）</label><input id="jobBudget" type="number" value="1500" min="0"></div><div class="field"><label>AI利用</label><select id="jobAI"><option>禁止</option><option>案件ごとに相談</option><option>許可</option></select></div><button class="btn full" onclick="createJob()">募集を公開</button><div id="jobMsg"></div></div><div id="jobList"></div></section>
+<section id="jobs" class="page"><h2>声の依頼を探す / 募集する</h2><div class="card"><div class="field"><label>募集タイトル</label><input id="jobTitle" placeholder="例：英語リスニング30秒"></div><div class="field"><label>依頼内容</label><textarea id="jobDesc"></textarea></div><div class="field"><label>予算（円）</label><input id="jobBudget" type="number" value="1500" min="0"></div><div class="field"><label>AI利用</label><select id="jobAI"><option>禁止</option><option>案件ごとに相談</option><option>許可</option></select></div><button class="btn full" onclick="createJob()">募集を公開</button><div id="jobMsg"></div></div><div id="jobList"></div></section>
 
 <section id="messages" class="page"><div class="messages-list-head"><button class="chatback" onclick="go('home')" aria-label="ホームへ戻る">‹</button><div class="messages-list-title"><b>メッセージ</b><span>取引相手とのやり取り</span></div></div><h2>メッセージ</h2><div id="conversationList" class="chatlist"></div><div id="chatBox" class="card chatbox"><div class="chatroom-head"><button class="chatback" onclick="closeChat()" aria-label="メッセージ一覧へ">‹</button><div class="chatroom-title"><b id="chatTitle">チャット</b><span id="chatSub">取引メッセージ</span></div><button id="chatSafetyBtn" class="safety-chat-btn" onclick="openSafetyCenter('chat')">通報・ブロック</button></div><button id="tradeInfoReopen" class="trade-info-reopen" type="button" onclick="showTradeInfoPanel()">取引情報を見る</button><div id="tradeInfoPanel" class="trade-info-panel"></div><div id="chatMessages" class="chatmessages"></div><div id="deliveryArea" class="chatdelivery"></div><div class="chatdock"><div class="chatcomposer"><textarea id="chatInput" placeholder="メッセージを入力"></textarea><button class="btn" onclick="sendChatMessage()">送信</button></div><div id="chatMsg"></div></div></div></section>
 
@@ -801,8 +801,8 @@ body:has(#authPage.on) .tag .line2{
       <div class="main-menu-label">メイン</div>
       <button onclick="menuGo('home')">🏠 ホーム</button>
       <button onclick="menuGo('voices')">🎧 声を探す</button>
-      <button onclick="menuGo('sell')">➕ 出品</button>
-      <button onclick="menuGo('jobs')">💼 仕事</button>
+      <button onclick="menuGo('sell')">🎙️ 声を出品</button>
+      <button onclick="menuGo('jobs')">📣 声を依頼</button>
       <button onclick="menuGo('messages')" class="menu-badge-button">💬 メッセージ<span id="menuMsgBadge" class="menu-count-badge"></span></button>
       <button onclick="menuGo('me')">👤 マイページ</button>
       <button onclick="closeMainMenu();openNotifications()">🔔 お知らせ</button>
@@ -904,13 +904,13 @@ body:has(#authPage.on) .tag .line2{
     </div>
 
     <div class="manual-section">
-      <b>🎙️ 声を声を出品する</b>
-      <p>「出品」からタイトル、カテゴリー、説明、価格、納期、AI利用条件、サンプル音声を登録します。</p>
+      <b>🎙️ 声を出品する</b>
+      <p>「声を出品」からタイトル、カテゴリー、説明、価格、納期、AI利用条件、サンプル音声を登録します。</p>
     </div>
 
     <div class="manual-section">
       <b>💼 声を依頼する</b>
-      <p>欲しい声が見つからない場合は「仕事」から依頼を募集できます。応募者とのやり取りはメッセージで行います。</p>
+      <p>欲しい声が見つからない場合は「声を依頼」から募集できます。応募者とのやり取りはメッセージで行います。</p>
     </div>
 
     <div class="manual-section">
@@ -1595,7 +1595,7 @@ const mineByJob={};myApps.forEach(a=>mineByJob[a.job_id]=a);
 jobList.innerHTML=jobs.map(j=>{
  if(j.buyer_id!==currentUser?.id){
    const mine=mineByJob[j.id];
-   const action=!mine?`<button class="btn full" onclick="applyJob('${j.id}')">この仕事に応募</button>`:mine.status==='accepted'?`<div class="ok">応募が承認されました。</div><button class="btn full" onclick="openJobChat('${j.id}','${j.buyer_id}','${currentUser.id}','${esc(j.title).replace(/'/g,'&#39;')}')">チャットする</button>`:`<div class="${mine.status==='rejected'?'err':'notice'}">応募状況：${statusLabel(mine.status)}</div>`;
+   const action=!mine?`<button class="btn full" onclick="applyJob('${j.id}')">この声の依頼に応募</button>`:mine.status==='accepted'?`<div class="ok">応募が承認されました。</div><button class="btn full" onclick="openJobChat('${j.id}','${j.buyer_id}','${currentUser.id}','${esc(j.title).replace(/'/g,'&#39;')}')">チャットする</button>`:`<div class="${mine.status==='rejected'?'err':'notice'}">応募状況：${statusLabel(mine.status)}</div>`;
    return `<div class="card"><div class="row"><div><b>${esc(j.title)}</b><div class="small">${esc(j.profiles?.display_name||'依頼者')}</div></div><div class="price">¥${Number(j.budget_jpy).toLocaleString()}</div></div><p class="small">${esc(j.description||'')}</p><span class="pill">AI:${esc(j.ai_use)}</span>${action}</div>`;
  }
  const list=byJob[j.id]||[];const pending=list.filter(a=>a.status==='pending').length;
@@ -1616,7 +1616,7 @@ async function ensureConversation(jobId,buyerId,sellerId){
  const {data,error}=await q;if(error)return {error};if(data?.length)return {data:data[0]};
  const r=await sb.from('conversations').insert({job_id:jobId,buyer_id:buyerId,seller_id:sellerId}).select('id,buyer_id,seller_id,job_id').single();return r
 }
-async function openJobChat(jobId,buyerId,sellerId,title='仕事のチャット'){
+async function openJobChat(jobId,buyerId,sellerId,title='声の依頼チャット'){
  const {data,error}=await ensureConversation(jobId,buyerId,sellerId);if(error)return alert(error.message);await go('messages');await openConversation(data.id,title)
 }
 
@@ -1761,7 +1761,7 @@ async function loadTradeInfoPanel(c){
      if(pay){amount=pay.amount_jpy??amount;purchaseDate=pay.paid_at||pay.created_at||null;dateLabel='購入日'}
    }else if(c.job_id){
      const {data:j}=await sb.from('jobs').select('title,budget_jpy').eq('id',c.job_id).maybeSingle();
-     if(j){itemTitle=j.title||'仕事';amount=j.budget_jpy}
+     if(j){itemTitle=j.title||'声の依頼';amount=j.budget_jpy}
    }
    const state=c.delivery_status==='accepted'?'完了':c.delivery_status==='submitted'?'納品済み':'取引中';
    const stateClass=c.delivery_status==='accepted'?'done':c.delivery_status==='submitted'?'submitted':'';
@@ -2031,7 +2031,7 @@ async function getNotificationData(){
  }
  // 自分の応募が承認されたもの（端末で既読管理）
  const {data:accepted}=await sb.from('applications').select('id,job_id,status,created_at,jobs!applications_job_id_fkey(title)').eq('applicant_id',currentUser.id).eq('status','accepted').order('created_at',{ascending:false}).limit(20);
- for(const a of accepted||[]){const k=`voice_flea_notice_seen_${currentUser.id}_accepted_${a.id}`;const unread=!localStorage.getItem(k);if(unread)count++;items.push({kind:'応募結果',title:'応募が承認されました',body:a.jobs?.title||'仕事',target:'jobs',important:unread,unread,seenKey:k,created_at:a.created_at})}
+ for(const a of accepted||[]){const k=`voice_flea_notice_seen_${currentUser.id}_accepted_${a.id}`;const unread=!localStorage.getItem(k);if(unread)count++;items.push({kind:'応募結果',title:'応募が承認されました',body:a.jobs?.title||'声の依頼',target:'jobs',important:unread,unread,seenKey:k,created_at:a.created_at})}
  // 未読メッセージ
  const {data:cs}=await sb.from('conversations').select('id,buyer_id,seller_id,job_id').or(`buyer_id.eq.${currentUser.id},seller_id.eq.${currentUser.id}`);
  for(const c of cs||[]){const sk=seenKey(c.id);const seen=localStorage.getItem(sk)||'1970-01-01T00:00:00.000Z';const {data:msgs}=await sb.from('messages').select('id,sender_id,body,created_at').eq('conversation_id',c.id).neq('sender_id',currentUser.id).gt('created_at',seen).order('created_at',{ascending:false}).limit(1);if(msgs?.length){count++;items.push({kind:'メッセージ',title:'新しいメッセージが届きました',body:msgs[0].body,target:`chat:${c.id}`,important:true,unread:true,seenKey:sk,created_at:msgs[0].created_at})}}
@@ -2406,7 +2406,7 @@ async function loadMe(){
   };
   const statusClass=(c)=>c.delivery_status==='accepted'?'received':'';
   const titleOf=(c)=>{
-    if(c.job_id)return jobMap.get(c.job_id)?.title||'仕事';
+    if(c.job_id)return jobMap.get(c.job_id)?.title||'声の依頼';
     if(c.listing_id)return listingMap.get(c.listing_id)?.title||'出品取引';
     return '取引';
   };
@@ -2432,7 +2432,7 @@ async function loadMe(){
   const hiddenCards=hiddenConvs.map(c=>{
     const amount=amountOf(c);
     const safeTitle=esc(titleOf(c)).replace(/'/g,'&#39;');
-    return `<div class="card trade-history-card mypage-item-card"><div class="row"><div><b>${esc(titleOf(c))}</b><div class="small">${c.listing_id?'音声取引':'仕事'}${amount!=null?`　¥${Number(amount).toLocaleString()}`:''}</div><div class="trade-date">取引開始日：${formatJpDateTime(c.created_at,false)||'-'}</div></div><span class="delivery-status ${statusClass(c)}">${statusText(c)}</span></div><div style="display:flex;gap:8px;margin-top:10px"><button type="button" class="btn secondary" style="flex:1" onclick="restoreConversationForMe('${c.id}')">再表示</button><button type="button" class="btn secondary" style="flex:1" onclick="restoreConversationForMe('${c.id}');go('messages').then(()=>openConversation('${c.id}','${safeTitle}'))">開く</button></div></div>`;
+    return `<div class="card trade-history-card mypage-item-card"><div class="row"><div><b>${esc(titleOf(c))}</b><div class="small">${c.listing_id?'音声取引':'声の依頼'}${amount!=null?`　¥${Number(amount).toLocaleString()}`:''}</div><div class="trade-date">取引開始日：${formatJpDateTime(c.created_at,false)||'-'}</div></div><span class="delivery-status ${statusClass(c)}">${statusText(c)}</span></div><div style="display:flex;gap:8px;margin-top:10px"><button type="button" class="btn secondary" style="flex:1" onclick="restoreConversationForMe('${c.id}')">再表示</button><button type="button" class="btn secondary" style="flex:1" onclick="restoreConversationForMe('${c.id}');go('messages').then(()=>openConversation('${c.id}','${safeTitle}'))">開く</button></div></div>`;
   }).join('');
 
   myHiddenTrades.innerHTML=`<h3>非表示にした取引</h3>${hiddenCards||'<div class="card small mypage-item-card">非表示にした取引はありません。</div>'}`;
