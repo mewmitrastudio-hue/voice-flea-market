@@ -591,6 +591,13 @@ body.normal-mode #nav button{height:46px!important;min-height:46px!important;bor
 .trade-info-value{font-weight:700;color:#25283a;word-break:break-word}
 .trade-info-note{margin-top:10px;padding-top:10px;border-top:1px solid #ebe8fb;font-size:11px;color:#7b7f8d}
 
+
+.main-menu-explained{display:flex!important;flex-direction:column;align-items:flex-start!important;justify-content:center!important;gap:4px;min-height:64px}
+.main-menu-item-title{display:block;font-size:14px;font-weight:900;line-height:1.2}
+.main-menu-item-sub{display:block;font-size:10px;font-weight:600;color:#8a849f;line-height:1.35}
+.menu-badge-button.main-menu-explained{flex-direction:row!important;align-items:center!important;justify-content:space-between!important}
+.menu-badge-button.main-menu-explained>span:first-child{display:flex;flex-direction:column;align-items:flex-start;gap:4px}
+
 </style>
 <script>
 if(window.navigator.standalone===true){document.body.classList.add('standalone')}
@@ -799,12 +806,12 @@ body:has(#authPage.on) .tag .line2{
 
     <div class="main-menu-section">
       <div class="main-menu-label">メイン</div>
-      <button onclick="menuGo('home')">🏠 ホーム</button>
-      <button onclick="menuGo('voices')">🎧 声を探す</button>
-      <button onclick="menuGo('sell')">🎙️ 声を出品</button>
-      <button onclick="menuGo('jobs')">📣 声を依頼</button>
-      <button onclick="menuGo('messages')" class="menu-badge-button">💬 メッセージ<span id="menuMsgBadge" class="menu-count-badge"></span></button>
-      <button onclick="menuGo('me')">👤 マイページ</button>
+      <button onclick="menuGo('home')" class="main-menu-explained"><span class="main-menu-item-title">🏠 ホーム</span><span class="main-menu-item-sub">最初の画面に戻る</span></button>
+      <button onclick="menuGo('voices')" class="main-menu-explained"><span class="main-menu-item-title">🎧 声を探す</span><span class="main-menu-item-sub">ぴったりの声を見つける</span></button>
+      <button onclick="menuGo('sell')" class="main-menu-explained"><span class="main-menu-item-title">🎙️ 声を出品</span><span class="main-menu-item-sub">自分の声を商品にする</span></button>
+      <button onclick="menuGo('jobs')" class="main-menu-explained"><span class="main-menu-item-title">📣 声を依頼</span><span class="main-menu-item-sub">欲しい声を募集する</span></button>
+      <button onclick="menuGo('messages')" class="menu-badge-button main-menu-explained"><span><span class="main-menu-item-title">💬 メッセージ</span><span class="main-menu-item-sub">取引相手とやり取りする</span></span><span id="menuMsgBadge" class="menu-count-badge"></span></button>
+      <button onclick="menuGo('me')" class="main-menu-explained"><span class="main-menu-item-title">👤 マイページ</span><span class="main-menu-item-sub">取引や設定を確認する</span></button>
       <button onclick="closeMainMenu();openNotifications()">🔔 お知らせ</button>
       <button onclick="closeMainMenu();openFavorites()">♡ お気に入り</button>
     </div>
