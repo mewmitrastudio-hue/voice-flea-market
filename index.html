@@ -734,7 +734,7 @@ body:has(#authPage.on) .tag .line2{
 <div id="configNotice" class="notice">現在サービスへ接続できません。時間をおいて再度お試しください。</div>
 </section>
 
-<section id="home" class="page"><div class="quickgrid"><button class="quickcard" onclick="go('sell')"><span class="qi">🎙️</span>声を出品<small>自分の声を商品にする</small></button><button class="quickcard" onclick="go('voices')"><span class="qi">🔎</span>声を探す<small>ぴったりの声を見つける</small></button><button class="quickcard" onclick="go('jobs')"><span class="qi">📣</span>仕事を募集<small>欲しい声を依頼する</small></button><button class="quickcard" onclick="go('messages')"><span class="qi">💬</span>メッセージ<small>取引相手とやり取りする</small></button></div><div class="home-summary-title">すぐ確認</div><div class="home-summary-grid"><button class="home-summary-card" type="button" onclick="openFinanceCenter('seller')"><span>💰 売上</span><strong id="homeSalesAmount">¥0</strong></button><button class="home-summary-card" type="button" onclick="go('messages')"><span>💬 未読</span><strong id="homeUnreadCount">0件</strong></button><button class="home-summary-card" type="button" onclick="menuGoMySection('myListings')"><span>🎙️ 出品中</span><strong id="homeMyListingCount">0件</strong></button><button class="home-summary-card favorite-summary-card" type="button" onclick="openFavorites()"><span>♥ お気に入り</span><strong id="homeFavoriteCount">0件</strong></button></div></section>
+<section id="home" class="page"><div class="quickgrid"><button class="quickcard" onclick="go('sell')"><span class="qi">🎙️</span>声を出品<small>自分の声を商品にする</small></button><button class="quickcard" onclick="go('voices')"><span class="qi">🔎</span>声を探す<small>ぴったりの声を見つける</small></button><button class="quickcard" onclick="go('jobs')"><span class="qi">📣</span>声を依頼<small>欲しい声を依頼する</small></button><button class="quickcard" onclick="go('messages')"><span class="qi">💬</span>メッセージ<small>取引相手とやり取りする</small></button></div><div class="home-summary-title">すぐ確認</div><div class="home-summary-grid"><button class="home-summary-card" type="button" onclick="openFinanceCenter('seller')"><span>💰 売上</span><strong id="homeSalesAmount">¥0</strong></button><button class="home-summary-card" type="button" onclick="go('messages')"><span>💬 未読</span><strong id="homeUnreadCount">0件</strong></button><button class="home-summary-card" type="button" onclick="menuGoMySection('myListings')"><span>🎙️ 出品中</span><strong id="homeMyListingCount">0件</strong></button><button class="home-summary-card favorite-summary-card" type="button" onclick="openFavorites()"><span>♥ お気に入り</span><strong id="homeFavoriteCount">0件</strong></button></div></section>
 
 <section id="voices" class="page"><h2>声を探す</h2><div class="purchase-guide">気になる声を見つけたら、出品カードの下にある「購入する」からそのまま購入できます。</div><div class="field"><input id="voiceSearch" placeholder="英語、関西弁、YouTube、出品者名..." oninput="scheduleListingSearch()"></div><div class="small" style="margin:-4px 2px 10px">タイトル・カテゴリー・説明・AI条件・出品者名から検索できます。</div><div class="voice-filter-row"><label><input id="hidePurchasedToggle" type="checkbox" onchange="loadListings(true)"> 購入済みを非表示</label><label><input id="hideOwnToggle" type="checkbox" onchange="loadListings(true)"> 自分の出品を除外</label></div><div id="listingSearchMeta" class="small" style="margin:0 2px 10px"></div><div id="listingList"></div><button id="listingLoadMoreBtn" class="btn secondary full hide" type="button" style="margin-top:12px" onclick="loadMoreListings()">さらに表示</button></section>
 
@@ -813,8 +813,8 @@ body:has(#authPage.on) .tag .line2{
       <div class="main-menu-label">取引</div>
       <button onclick="menuGoMySection('myPurchasedVoices')">🛒 購入した音声</button>
       <button onclick="menuGoMySection('mySoldVoices')">🎙️ 販売した音声</button>
-      <button onclick="menuGoMySection('myBuyerJobs')">📨 依頼した仕事</button>
-      <button onclick="menuGoMySection('mySellerJobs')">📥 受注した仕事</button>
+      <button onclick="menuGoMySection('myBuyerJobs')">📨 依頼した声</button>
+      <button onclick="menuGoMySection('mySellerJobs')">📥 受注した声</button>
       <button onclick="menuGoMySection('myHiddenTrades')">🙈 非表示にした取引</button>
     </div>
 
@@ -909,7 +909,7 @@ body:has(#authPage.on) .tag .line2{
     </div>
 
     <div class="manual-section">
-      <b>💼 仕事を募集する</b>
+      <b>💼 声を依頼する</b>
       <p>欲しい声が見つからない場合は「仕事」から依頼を募集できます。応募者とのやり取りはメッセージで行います。</p>
     </div>
 
@@ -938,7 +938,7 @@ body:has(#authPage.on) .tag .line2{
 <div id="notifOverlay" class="notif-overlay" onclick="if(event.target===this)closeNotifications()"><aside class="notif-sheet"><div class="notif-head"><h2>お知らせ</h2><div class="notif-actions"><button class="notif-readall" onclick="markAllNotificationsRead()">すべて既読</button><button class="notif-close" onclick="closeNotifications()">×</button></div></div><div class="small">必要な連絡をまとめて確認できます。</div><div id="notifContent"><div class="notif-empty">読み込み中...</div></div></aside></div>
 <div id="rulesOverlay" class="rules-overlay" onclick="if(event.target===this)closeRulesCenter()"><div class="rules-box"><div class="rules-head"><h3>ルール・ポリシー</h3><button class="rules-close" onclick="closeRulesCenter()">×</button></div><div class="rules-beta">現在はWeb MVPのテスト段階です。決済・返金条件などは正式な決済機能を導入する前に確定・更新します。</div><div class="rules-tabs"><button id="ruleTabTerms" class="rules-tab active" onclick="showRuleDoc('terms')">利用規約</button><button id="ruleTabPrivacy" class="rules-tab" onclick="showRuleDoc('privacy')">プライバシーポリシー</button><button id="ruleTabProhibited" class="rules-tab" onclick="showRuleDoc('prohibited')">禁止事項</button><button id="ruleTabCancel" class="rules-tab" onclick="showRuleDoc('cancel')">キャンセル・返金</button><button id="ruleTabAi" class="rules-tab" onclick="showRuleDoc('ai')">音声・AI利用</button><button id="ruleTabCommerce" class="rules-tab" onclick="showRuleDoc('commerce')">特商法・運営者情報</button></div><div id="rulesBody" class="rules-body"></div></div></div>
 <div id="safetyOverlay" class="safety-overlay" onclick="if(event.target===this)closeSafetyCenter()"><div class="safety-box"><div class="safety-head"><h3 id="safetyTitle">お問い合わせ</h3><button class="safety-close" onclick="closeSafetyCenter()">×</button></div><div id="safetyIntro" class="safety-note">使い方、不具合、その他のお問い合わせを運営へ送れます。</div><div id="safetyPartnerActions" class="safety-actions hide"><button id="blockUserBtn" class="safety-action danger" onclick="toggleBlockCurrentPartner()">このユーザーをブロック</button></div><div class="safety-section"><label>内容</label><select id="safetyCategory"><option value="harassment">迷惑行為・嫌がらせ</option><option value="fraud">詐欺・不審な取引</option><option value="rights">権利侵害・無断利用</option><option value="inappropriate">不適切な内容</option><option value="support">使い方・不具合・問い合わせ</option><option value="other">その他</option></select><label>詳細</label><textarea id="safetyDetail" placeholder="状況をできるだけ具体的に書いてください。"></textarea><button class="btn full" onclick="submitSafetyRequest()">運営へ送信</button><div id="safetyMsg" class="safety-msg"></div><div class="safety-note">緊急性のある危険がある場合は、このサービス内だけで対応せず、必要に応じて警察・緊急窓口等へ連絡してください。</div></div></div></div>
-<nav id="nav" class="nav hide"><button onclick="go('home')">ホーム</button><button onclick="go('voices')">声を探す</button><button onclick="go('sell')">出品</button><button onclick="go('jobs')">仕事<span id="jobBadge" class="badge"></span></button><button onclick="go('messages')">メッセージ<span id="msgBadge" class="badge"></span></button><button onclick="go('me')">マイページ</button></nav>
+<nav id="nav" class="nav hide"><button onclick="go('home')">ホーム</button><button onclick="go('voices')">声を探す</button><button onclick="go('sell')">出品</button><button onclick="go('jobs')">声を依頼<span id="jobBadge" class="badge"></span></button><button onclick="go('messages')">メッセージ<span id="msgBadge" class="badge"></span></button><button onclick="go('me')">マイページ</button></nav>
 </div>
 <script>
 let sb=null,currentUser=null,currentConversationId=null,currentConversationPartner=null,currentConversation=null,currentConversationGroupIds=[];
@@ -2462,18 +2462,18 @@ async function loadMe(){
 
   if(sellerErr){
     mySoldVoices.innerHTML=`<h3>販売した音声</h3><div class="card err">${esc(sellerErr.message)}</div>`;
-    mySellerJobs.innerHTML=`<h3>受注した仕事</h3><div class="card err">${esc(sellerErr.message)}</div>`;
+    mySellerJobs.innerHTML=`<h3>受注した声</h3><div class="card err">${esc(sellerErr.message)}</div>`;
   }else{
     mySoldVoices.innerHTML=`<h3>販売した音声</h3>${sellerVoiceConvs.map(c=>historyCard(c,'販売')).join('')||'<div class="card small mypage-item-card">まだ販売した音声はありません。</div>'}`;
-    mySellerJobs.innerHTML=`<h3>受注した仕事</h3>${sellerJobConvs.map(c=>historyCard(c,'受注')).join('')||'<button type="button" class="card small mypage-item-card mypage-empty-card mypage-click-card" onclick="go(\'jobs\')">まだ受注した仕事はありません。<span class="mypage-card-arrow">›</span></button>'}`;
+    mySellerJobs.innerHTML=`<h3>受注した声</h3>${sellerJobConvs.map(c=>historyCard(c,'受注')).join('')||'<button type="button" class="card small mypage-item-card mypage-empty-card mypage-click-card" onclick="go(\'jobs\')">まだ受注した声はありません。<span class="mypage-card-arrow">›</span></button>'}`;
   }
 
   if(buyerErr){
     myPurchasedVoices.innerHTML=`<h3>購入した音声</h3><div class="card err">${esc(buyerErr.message)}</div>`;
-    myBuyerJobs.innerHTML=`<h3>依頼した仕事</h3><div class="card err">${esc(buyerErr.message)}</div>`;
+    myBuyerJobs.innerHTML=`<h3>依頼した声</h3><div class="card err">${esc(buyerErr.message)}</div>`;
   }else{
     myPurchasedVoices.innerHTML=`<h3>購入した音声</h3>${buyerVoiceConvs.map(c=>historyCard(c,'購入')).join('')||'<button type="button" class="card small mypage-item-card mypage-empty-card mypage-click-card" onclick="go(\'browse\')">まだ購入した音声はありません。<span class="mypage-card-arrow">›</span></button>'}`;
-    myBuyerJobs.innerHTML=`<h3>依頼した仕事</h3>${buyerJobConvs.map(c=>historyCard(c,'依頼')).join('')||'<button type="button" class="card small mypage-item-card mypage-empty-card mypage-click-card" onclick="go(\'jobs\')">まだ依頼した仕事はありません。<span class="mypage-card-arrow">›</span></button>'}`;
+    myBuyerJobs.innerHTML=`<h3>依頼した声</h3>${buyerJobConvs.map(c=>historyCard(c,'依頼')).join('')||'<button type="button" class="card small mypage-item-card mypage-empty-card mypage-click-card" onclick="go(\'jobs\')">まだ依頼した声はありません。<span class="mypage-card-arrow">›</span></button>'}`;
   }
 }
 
