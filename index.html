@@ -598,6 +598,13 @@ body.normal-mode #nav button{height:46px!important;min-height:46px!important;bor
 .menu-badge-button.main-menu-explained{flex-direction:row!important;align-items:center!important;justify-content:space-between!important}
 .menu-badge-button.main-menu-explained>span:first-child{display:flex;flex-direction:column;align-items:flex-start;gap:4px}
 
+
+.finance-history-heading{font-size:13px;font-weight:900;margin:14px 0 8px;color:#25283a}
+.finance-history-side{display:flex;flex-direction:column;align-items:flex-end;gap:5px}
+.finance-tx-status{display:inline-block;font-size:10px;font-weight:900;padding:4px 8px;border-radius:999px}
+.finance-tx-status.paid{background:#ecfdf3;color:#087443}
+.finance-tx-status.refunded{background:#f2f4f7;color:#667085}
+
 </style>
 <script>
 if(window.navigator.standalone===true){document.body.classList.add('standalone')}
@@ -941,7 +948,7 @@ body:has(#authPage.on) .tag .line2{
     </div>
   </div>
 </div>
-<div id="financeOverlay" class="finance-overlay" onclick="if(event.target===this)closeFinanceCenter()"><div class="finance-box"><div class="finance-head"><h3>決済・売上</h3><button class="finance-close" onclick="closeFinanceCenter()">×</button></div><div class="finance-beta">Stripe Sandboxで決済連携を確認中です。ここにはSupabaseに保存された実際のテスト決済結果を表示します。</div><div class="finance-tabs"><button id="financeTabBuyer" class="finance-tab active" onclick="showFinancePanel('buyer')">支払い確認</button><button id="financeTabSeller" class="finance-tab" onclick="showFinancePanel('seller')">売上・振込</button></div><div id="financeBody"></div></div></div>
+<div id="financeOverlay" class="finance-overlay" onclick="if(event.target===this)closeFinanceCenter()"><div class="finance-box"><div class="finance-head"><h3>決済・売上</h3><button class="finance-close" onclick="closeFinanceCenter()">×</button></div><div class="finance-beta">Stripe Sandboxで決済・返金・送金差し戻しまで確認済みです。ここにはSupabaseに保存された実際のテスト決済結果を表示します。</div><div class="finance-tabs"><button id="financeTabBuyer" class="finance-tab active" onclick="showFinancePanel('buyer')">支払い確認</button><button id="financeTabSeller" class="finance-tab" onclick="showFinancePanel('seller')">売上・振込</button></div><div id="financeBody"></div></div></div>
 <div id="notifOverlay" class="notif-overlay" onclick="if(event.target===this)closeNotifications()"><aside class="notif-sheet"><div class="notif-head"><h2>お知らせ</h2><div class="notif-actions"><button class="notif-readall" onclick="markAllNotificationsRead()">すべて既読</button><button class="notif-close" onclick="closeNotifications()">×</button></div></div><div class="small">必要な連絡をまとめて確認できます。</div><div id="notifContent"><div class="notif-empty">読み込み中...</div></div></aside></div>
 <div id="rulesOverlay" class="rules-overlay" onclick="if(event.target===this)closeRulesCenter()"><div class="rules-box"><div class="rules-head"><h3>ルール・ポリシー</h3><button class="rules-close" onclick="closeRulesCenter()">×</button></div><div class="rules-beta">現在はWeb MVPのテスト段階です。決済・返金条件などは正式な決済機能を導入する前に確定・更新します。</div><div class="rules-tabs"><button id="ruleTabTerms" class="rules-tab active" onclick="showRuleDoc('terms')">利用規約</button><button id="ruleTabPrivacy" class="rules-tab" onclick="showRuleDoc('privacy')">プライバシーポリシー</button><button id="ruleTabProhibited" class="rules-tab" onclick="showRuleDoc('prohibited')">禁止事項</button><button id="ruleTabCancel" class="rules-tab" onclick="showRuleDoc('cancel')">キャンセル・返金</button><button id="ruleTabAi" class="rules-tab" onclick="showRuleDoc('ai')">音声・AI利用</button><button id="ruleTabCommerce" class="rules-tab" onclick="showRuleDoc('commerce')">特商法・運営者情報</button></div><div id="rulesBody" class="rules-body"></div></div></div>
 <div id="safetyOverlay" class="safety-overlay" onclick="if(event.target===this)closeSafetyCenter()"><div class="safety-box"><div class="safety-head"><h3 id="safetyTitle">お問い合わせ</h3><button class="safety-close" onclick="closeSafetyCenter()">×</button></div><div id="safetyIntro" class="safety-note">使い方、不具合、その他のお問い合わせを運営へ送れます。</div><div id="safetyPartnerActions" class="safety-actions hide"><button id="blockUserBtn" class="safety-action danger" onclick="toggleBlockCurrentPartner()">このユーザーをブロック</button></div><div class="safety-section"><label>内容</label><select id="safetyCategory"><option value="harassment">迷惑行為・嫌がらせ</option><option value="fraud">詐欺・不審な取引</option><option value="rights">権利侵害・無断利用</option><option value="inappropriate">不適切な内容</option><option value="support">使い方・不具合・問い合わせ</option><option value="other">その他</option></select><label>詳細</label><textarea id="safetyDetail" placeholder="状況をできるだけ具体的に書いてください。"></textarea><button class="btn full" onclick="submitSafetyRequest()">運営へ送信</button><div id="safetyMsg" class="safety-msg"></div><div class="safety-note">緊急性のある危険がある場合は、このサービス内だけで対応せず、必要に応じて警察・緊急窓口等へ連絡してください。</div></div></div></div>
@@ -1045,11 +1052,28 @@ function showFinancePanel(mode='buyer'){
    const amount=Number(d.latestBuyerAmount||1500);const fee=Math.round(amount*FINANCE_FEE_RATE);const payout=Math.max(0,amount-fee);const title=esc(d.latestBuyerTitle||'取引例');
    body.innerHTML=`<div class="finance-summary"><div class="small">${title}</div><div class="finance-line"><span>購入者の支払予定</span><strong class="finance-total">${financeYen(amount)}</strong></div><div class="finance-line"><span>サービス手数料（15%）</span><strong>${financeYen(fee)}</strong></div><div class="finance-line"><span>出品者の受取予定</span><strong>${financeYen(payout)}</strong></div><span class="finance-status">Stripe Connect連携予定</span></div><div class="finance-muted">手数料は出品者売上から差し引く想定です。正式公開前にStripeの実費・返金時の扱い・税表示を再確認して確定します。</div><button class="btn full disabled-preview" type="button">正式決済導入後に利用できます</button>`;
  }else{
-   const gross=Number(d.sellerAcceptedGross||0);const fee=Number(d.sellerAcceptedFee||0);const payout=Number(d.sellerAcceptedPayout||0);const count=Number(d.sellerAcceptedCount||0);
-   const txs=Array.isArray(d.sellerAcceptedTransactions)?d.sellerAcceptedTransactions:[];
-   const txHtml=txs.length?`<div class="finance-history">${txs.map(t=>`<div class="finance-history-item"><div class="top"><div><b>${esc(t.title||'取引')}</b><div class="small">支払い済み</div></div><div class="amt">${financeYen(t.payout||0)}</div></div><div class="finance-caption">売上 ${financeYen(t.gross||0)} / 手数料 −${financeYen(t.fee||0)}</div></div>`).join('')}</div>`:`<div class="finance-caption">現在、このアカウントには支払い済みの売上がありません。</div>`;
-   const step1=count>0?'active':'future';const step2=count>0?'active':'future';
-   body.innerHTML=`<div class="finance-summary"><div class="small">Stripe決済済み ${count}件</div><div class="finance-line"><span>売上総額</span><strong>${financeYen(gross)}</strong></div><div class="finance-line"><span>サービス手数料（15%）</span><strong>− ${financeYen(fee)}</strong></div><div class="finance-line"><span>出品者受取額</span><strong class="finance-total">${financeYen(payout)}</strong></div><div class="finance-line"><span>決済状況</span><strong>支払い済み</strong></div><span class="finance-status">Stripe Sandbox確認済み</span></div><div class="finance-flow"><div class="finance-step ${step1}">① 支払い</div><div class="finance-step ${step2}">② 売上記録</div><div class="finance-step future">③ 振込処理</div><div class="finance-step future">④ 振込完了</div></div>${txHtml}<div class="finance-muted">現在はSandbox決済の表示です。本番モード移行後に実際の振込状況表示まで接続します。</div>`;
+   const gross=Number(d.sellerAcceptedGross||0);
+   const refundTotal=Number(d.sellerRefundTotal||0);
+   const fee=Number(d.sellerAcceptedFee||0);
+   const payout=Number(d.sellerAcceptedPayout||0);
+   const count=Number(d.sellerAcceptedCount||0);
+   const refundedCount=Number(d.sellerRefundedCount||0);
+   const txs=(Array.isArray(d.sellerAcceptedTransactions)?d.sellerAcceptedTransactions:[])
+     .slice()
+     .sort((a,b)=>new Date(b.paidAt||0)-new Date(a.paidAt||0));
+   const txHtml=txs.length?`<div class="finance-history"><div class="finance-history-heading">取引履歴（新しい順）</div>${txs.map(t=>{
+     const refunded=t.status==='refunded';
+     const statusLabel=refunded?'返金済み':'支払い済み';
+     const statusClass=refunded?'refunded':'paid';
+     const date=formatJpDateTime(t.paidAt,false)||'-';
+     const refundLine=refunded&&t.refundedAt?`<div class="finance-caption">返金日 ${formatJpDateTime(t.refundedAt,false)||'-'}</div>`:'';
+     return `<div class="finance-history-item"><div class="top"><div><b>${esc(t.title||'取引')}</b><div class="small">${esc(date)}</div></div><div class="finance-history-side"><span class="finance-tx-status ${statusClass}">${statusLabel}</span><div class="amt">${financeYen(t.gross||0)}</div></div></div><div class="finance-caption">売上 ${financeYen(t.gross||0)} / 手数料 ${refunded?'返金済み':`−${financeYen(t.fee||0)}`} / 受取 ${refunded?'¥0':financeYen(t.payout||0)}</div>${refundLine}</div>`;
+   }).join('')}</div>`:`<div class="finance-caption">まだ売上・返金履歴はありません。</div>`;
+   const activeCount=count;
+   const step1=(count+refundedCount)>0?'active':'future';
+   const step2=(count+refundedCount)>0?'active':'future';
+   const currentStatus=activeCount>0?'支払い済み売上あり':'現在の売上なし';
+   body.innerHTML=`<div class="finance-summary"><div class="small">支払い済み ${count}件 / 返金済み ${refundedCount}件</div><div class="finance-line"><span>売上総額</span><strong>${financeYen(gross)}</strong></div><div class="finance-line"><span>返金額</span><strong>− ${financeYen(refundTotal)}</strong></div><div class="finance-line"><span>サービス手数料（現在）</span><strong>− ${financeYen(fee)}</strong></div><div class="finance-line"><span>出品者受取額（現在）</span><strong class="finance-total">${financeYen(payout)}</strong></div><div class="finance-line"><span>現在の状況</span><strong>${currentStatus}</strong></div><span class="finance-status">Stripe Sandbox確認済み</span></div><div class="finance-flow"><div class="finance-step ${step1}">① 支払い</div><div class="finance-step ${step2}">② 売上記録</div><div class="finance-step future">③ 振込処理</div><div class="finance-step future">④ 振込完了</div></div>${txHtml}<div class="finance-muted">取引履歴は購入日が新しい順に表示します。返金済みの取引も削除せず履歴として残します。本番モード移行後に実際の振込状況表示まで接続します。</div>`;
  }
 }
 
@@ -2353,15 +2377,19 @@ async function loadMe(){
 
   myListings.innerHTML=`<h3>出品したもの</h3>${(l||[]).map(x=>`<button type="button" class="card mypage-item-card mypage-click-card" onclick="openMyListing('${x.id}')"><b>${esc(x.title)}</b><div class="small">¥${Number(x.price_jpy||0).toLocaleString()}</div><div class="trade-date">出品日：${formatJpDateTime(x.created_at,false)||'-'}</div><span class="mypage-card-arrow">›</span></button>`).join('')||'<button type="button" class="card small mypage-item-card mypage-empty-card mypage-click-card" onclick="go(\'sell\')">まだ出品がありません。<span class="mypage-card-arrow">›</span></button>'}`;
 
-  // Stripe Webhookで保存された実決済（Sandbox）から出品者売上を集計する。
+  // Stripe Webhookで保存された実決済（Sandbox）から出品者売上・返金を集計する。
   const {data:sellerPayments,error:sellerPaymentsError}=await sb
     .from('payments')
-    .select('listing_id,amount_jpy,platform_fee_jpy,seller_amount_jpy,status,paid_at')
+    .select('listing_id,amount_jpy,platform_fee_jpy,seller_amount_jpy,status,paid_at,refunded_at,created_at')
     .eq('seller_id',currentUser.id)
-    .eq('status','paid')
+    .in('status',['paid','refunded'])
     .order('paid_at',{ascending:false});
 
-  const paidSales=sellerPayments||[];
+  const allSellerSales=sellerPayments||[];
+  const paidSales=allSellerSales.filter(p=>p.status==='paid');
+  const refundedSales=allSellerSales.filter(p=>p.status==='refunded');
+  const allGross=allSellerSales.reduce((sum,p)=>sum+Number(p.amount_jpy||0),0);
+  const refundTotal=refundedSales.reduce((sum,p)=>sum+Number(p.amount_jpy||0),0);
   const paidGross=paidSales.reduce((sum,p)=>sum+Number(p.amount_jpy||0),0);
   const paidFee=paidSales.reduce((sum,p)=>sum+Number(p.platform_fee_jpy||0),0);
   const paidPayout=paidSales.reduce((sum,p)=>sum+Number(p.seller_amount_jpy||0),0);
@@ -2370,10 +2398,10 @@ async function loadMe(){
   if(salesSummary){
     if(sellerPaymentsError){
       salesSummary.innerHTML=`<div class="small" style="color:#b42318">売上情報を取得できませんでした：${esc(sellerPaymentsError.message)}</div>`;
-    }else if(paidSales.length){
-      salesSummary.innerHTML=`<div class="finance-summary" style="margin:0"><div class="small">支払い済み ${paidSales.length}件</div><div class="finance-line"><span>売上総額</span><strong>${financeYen(paidGross)}</strong></div><div class="finance-line"><span>サービス手数料（15%）</span><strong>− ${financeYen(paidFee)}</strong></div><div class="finance-line"><span>出品者受取額</span><strong class="finance-total">${financeYen(paidPayout)}</strong></div><span class="finance-status">支払い済み</span></div>`;
+    }else if(allSellerSales.length){
+      salesSummary.innerHTML=`<div class="finance-summary" style="margin:0"><div class="small">支払い済み ${paidSales.length}件 / 返金済み ${refundedSales.length}件</div><div class="finance-line"><span>売上総額</span><strong>${financeYen(allGross)}</strong></div><div class="finance-line"><span>返金額</span><strong>− ${financeYen(refundTotal)}</strong></div><div class="finance-line"><span>サービス手数料（現在）</span><strong>− ${financeYen(paidFee)}</strong></div><div class="finance-line"><span>出品者受取額（現在）</span><strong class="finance-total">${financeYen(paidPayout)}</strong></div><span class="finance-status">Stripe Sandbox確認済み</span></div>`;
     }else{
-      salesSummary.innerHTML=`<div class="small">まだ支払い済みの売上はありません。</div>`;
+      salesSummary.innerHTML=`<div class="small">まだ売上・返金履歴はありません。</div>`;
     }
   }
 
@@ -2447,16 +2475,20 @@ async function loadMe(){
   const sellerListingMap=new Map((l||[]).map(x=>[x.id,x]));
   const latestBuyer=(buyerConvs||[])[0]||null;
   window.voiceFleaFinanceData={
-    sellerAcceptedGross:paidGross,
+    sellerAcceptedGross:allGross,
+    sellerRefundTotal:refundTotal,
     sellerAcceptedFee:paidFee,
     sellerAcceptedPayout:paidPayout,
     sellerAcceptedCount:paidSales.length,
-    sellerAcceptedTransactions:paidSales.map(p=>({
+    sellerRefundedCount:refundedSales.length,
+    sellerAcceptedTransactions:allSellerSales.map(p=>({
       title:sellerListingMap.get(p.listing_id)?.title||'出品取引',
       gross:Number(p.amount_jpy||0),
       fee:Number(p.platform_fee_jpy||0),
       payout:Number(p.seller_amount_jpy||0),
-      paidAt:p.paid_at||null
+      status:p.status||'paid',
+      paidAt:p.paid_at||p.created_at||null,
+      refundedAt:p.refunded_at||null
     })),
     latestBuyerAmount:latestBuyer?Number(amountOf(latestBuyer)||0):1500,
     latestBuyerTitle:latestBuyer?titleOf(latestBuyer):'取引例'
