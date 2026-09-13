@@ -683,6 +683,20 @@ body:has(#authPage.on) .tag .line2{
   body:has(#authPage.on) .tag .line2{font-size:12px!important;}
 }
 </style>
+
+<style id="refundConfirmStyle">
+.refund-confirm-overlay{position:fixed;inset:0;background:rgba(20,18,45,.48);display:none;align-items:center;justify-content:center;padding:24px;z-index:9999;backdrop-filter:blur(4px)}
+.refund-confirm-overlay.on{display:flex}
+.refund-confirm-card{width:min(390px,100%);background:#fff;border-radius:24px;padding:22px;box-shadow:0 24px 70px rgba(30,25,80,.24);border:1px solid #ece9ff}
+.refund-confirm-icon{width:52px;height:52px;border-radius:16px;display:flex;align-items:center;justify-content:center;background:#fff3e6;font-size:26px;margin-bottom:14px}
+.refund-confirm-card h3{margin:0 0 10px;font-size:20px;color:#25243a}
+.refund-confirm-card p{margin:0 0 10px;font-size:14px;line-height:1.7;color:#55536b}
+.refund-confirm-note{background:#fff8e8;border:1px solid #f2d59c;border-radius:14px;padding:11px 12px;color:#805600!important;font-size:12px!important}
+.refund-confirm-actions{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:18px}
+.refund-confirm-actions button{min-height:48px;border-radius:14px;font-weight:800;font-size:15px}
+.refund-confirm-cancel{border:1px solid #ddd9f5;background:#fff;color:#4c4867}
+.refund-confirm-ok{border:0;background:#6553ef;color:#fff}
+</style>
 </head><body><div id="pullRefreshIndicator" class="pull-refresh-indicator">↓ 引っ張って更新</div><div class="app">
 <div class="topbar"><div class="brandwrap"><div class="brandicon">🎙️</div><div class="brandtext"><div class="brand">声のフリマ</div><div class="tag"><span class="line1">世界に、あなたの声を売る。</span><span class="line2">あなたの声を、世界が買う。</span></div></div></div><div class="topactions"><button id="refreshBtn" class="refreshbtn hide" onclick="refreshAllData()" aria-label="最新情報に更新" title="最新情報に更新">↻</button><button id="bellBtn" class="bellbtn hide" onclick="openNotifications()" aria-label="お知らせ">🔔<span id="bellBadge" class="bellbadge"></span></button><button id="favoriteBtn" class="bellbtn hide" onclick="openFavorites()" aria-label="お気に入り">♡<span id="favoriteBadge" class="bellbadge"></span></button><button id="menuBtn" class="bellbtn hide" onclick="openMainMenu()" aria-label="メニュー">☰</button></div></div>
 
@@ -1080,7 +1094,7 @@ async function refundPaymentByInput(btn){
 async function adminRefundPayment(paymentId,btn){
   if(!isVoiceFleaAdmin())return alert('この操作は運営アカウント専用です。');
   if(!paymentId)return alert('Payment IDを確認できません。');
-  const ok=window.confirm('この決済を全額返金します。\n\n購入者への返金・出品者への送金差戻し・プラットフォーム手数料返金を実行します。\n\n実行後は取り消せません。続けますか？');
+  const ok=await showRefundConfirm();
   if(!ok)return;
   const msg=document.getElementById('adminRefundMsg');
   const original=btn?.textContent||'この決済を全額返金';
@@ -2486,5 +2500,42 @@ document.addEventListener('click',function(e){
   e.stopPropagation();
   openAvatarPreviewFromElement(trigger);
 },true);
+</script>
+
+<div id="refundConfirmOverlay" class="refund-confirm-overlay" aria-hidden="true">
+  <div class="refund-confirm-card" role="dialog" aria-modal="true" aria-labelledby="refundConfirmTitle">
+    <div class="refund-confirm-icon">↩️</div>
+    <h3 id="refundConfirmTitle">この決済を全額返金しますか？</h3>
+    <p>購入者への返金、出品者への送金差し戻し、プラットフォーム手数料の返金をまとめて実行します。</p>
+    <p class="refund-confirm-note">返金を実行すると取り消せません。対象の決済を確認してから実行してください。</p>
+    <div class="refund-confirm-actions">
+      <button id="refundConfirmCancel" class="refund-confirm-cancel" type="button">キャンセル</button>
+      <button id="refundConfirmOk" class="refund-confirm-ok" type="button">全額返金する</button>
+    </div>
+  </div>
+</div>
+
+<script id="refundConfirmScript">
+function showRefundConfirm(){
+  return new Promise(resolve=>{
+    const overlay=document.getElementById('refundConfirmOverlay');
+    const ok=document.getElementById('refundConfirmOk');
+    const cancel=document.getElementById('refundConfirmCancel');
+    if(!overlay||!ok||!cancel){resolve(window.confirm('この決済を全額返金しますか？'));return;}
+    let done=false;
+    const finish=(value)=>{
+      if(done)return; done=true;
+      overlay.classList.remove('on');
+      overlay.setAttribute('aria-hidden','true');
+      ok.onclick=null; cancel.onclick=null; overlay.onclick=null;
+      resolve(value);
+    };
+    ok.onclick=()=>finish(true);
+    cancel.onclick=()=>finish(false);
+    overlay.onclick=(e)=>{if(e.target===overlay)finish(false)};
+    overlay.classList.add('on');
+    overlay.setAttribute('aria-hidden','false');
+  });
+}
 </script>
 </body></html>
