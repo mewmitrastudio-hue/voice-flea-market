@@ -756,7 +756,7 @@ body:has(#authPage.on) .tag .line2{
 
 <section id="jobs" class="page"><h2>声の依頼を探す / 募集する</h2><div class="card"><div class="field"><label>募集タイトル</label><input id="jobTitle" placeholder="例：英語リスニング30秒"></div><div class="field"><label>依頼内容</label><textarea id="jobDesc"></textarea></div><div class="field"><label>予算（円）</label><input id="jobBudget" type="number" value="1500" min="0"></div><div class="field"><label>AI利用</label><select id="jobAI"><option>禁止</option><option>案件ごとに相談</option><option>許可</option></select></div><button class="btn full" onclick="createJob()">募集を公開</button><div id="jobMsg"></div></div><div id="jobList"></div></section>
 
-<section id="messages" class="page"><div class="messages-list-head"><button class="chatback" onclick="go('home')" aria-label="ホームへ戻る">‹</button><div class="messages-list-title"><b>メッセージ</b><span>取引相手とのやり取り</span></div></div><h2>メッセージ</h2><div id="conversationList" class="chatlist"></div><div id="chatBox" class="card chatbox"><div class="chatroom-head"><button class="chatback" onclick="closeChat()" aria-label="メッセージ一覧へ">‹</button><div class="chatroom-title"><b id="chatTitle">チャット</b><span id="chatSub">取引メッセージ</span></div><button id="chatSafetyBtn" class="safety-chat-btn" onclick="openSafetyCenter('chat')">通報・ブロック</button></div><button id="tradeInfoReopen" class="trade-info-reopen" type="button" onclick="showTradeInfoPanel()">取引情報を見る</button><div id="tradeInfoPanel" class="trade-info-panel"></div><div id="chatMessages" class="chatmessages"></div><div id="deliveryArea" class="chatdelivery"></div><div class="chatdock"><div class="chatcomposer"><textarea id="chatInput" placeholder="メッセージを入力"></textarea><button class="btn" onclick="sendChatMessage()">送信</button></div><div id="chatMsg"></div></div></div></section>
+<section id="messages" class="page"><div class="messages-list-head"><button class="chatback" onclick="go('home')" aria-label="ホームへ戻る">‹</button><div class="messages-list-title"><b>メッセージ</b><span>取引相手とのやり取り</span></div></div><h2>メッセージ</h2><div id="conversationList" class="chatlist"></div><div id="chatBox" class="card chatbox"><div class="chatroom-head"><button class="chatback" onclick="closeChat()" aria-label="メッセージ一覧へ">‹</button><div class="chatroom-title"><b id="chatTitle">チャット</b><span id="chatSub">取引メッセージ</span></div><button id="chatSafetyBtn" class="safety-chat-btn" onclick="openSafetyCenter('chat')">通報・ブロック</button></div><button id="tradeInfoReopen" class="trade-info-reopen" type="button" onclick="showTradeInfoPanel()" aria-label="確認済みの取引情報をもう一度見る">取引情報を見る</button><div id="tradeInfoPanel" class="trade-info-panel"></div><div id="chatMessages" class="chatmessages"></div><div id="deliveryArea" class="chatdelivery"></div><div class="chatdock"><div class="chatcomposer"><textarea id="chatInput" placeholder="メッセージを入力"></textarea><button class="btn" onclick="sendChatMessage()">送信</button></div><div id="chatMsg"></div></div></div></section>
 
 <section id="me" class="page"><h2>マイページ</h2><div class="card profile-compact profile-card-main"><div id="meText">-</div></div><div id="myListings"></div><div id="mySoldVoices"></div><div id="myPurchasedVoices"></div><div id="mySellerJobs"></div><div id="myBuyerJobs"></div><div id="myHiddenTrades"></div><div class="card finance-card compact-finance-card"><b>💰 売上・振込</b><div id="sellerSalesSummary" style="margin-top:10px"></div><button class="btn secondary full" type="button" style="margin-top:10px" onclick="openFinanceCenter('seller')">売上・振込を確認</button><div class="stripe-connect-box"><div id="stripeConnectStatus" class="stripe-connect-status">Stripe受取アカウントの状態を確認中...</div><button id="stripeConnectBtn" class="btn full stripe-connect-btn" type="button" onclick="connectStripeSeller()">Stripe受取アカウントを設定</button></div></div></section>
 
@@ -1760,9 +1760,21 @@ function hidePartnerConversations(ids){
  loadConversations();loadMe();
 }
 
+function tradeInfoSeenKey(conversationId){
+ if(!currentUser||!conversationId)return '';
+ return `voice_flea_trade_info_seen_${currentUser.id}_${conversationId}`;
+}
+function isTradeInfoSeen(conversationId){
+ const key=tradeInfoSeenKey(conversationId);
+ return key?localStorage.getItem(key)==='1':false;
+}
 function hideTradeInfoPanel(){
  const panel=document.getElementById('tradeInfoPanel');
  const reopen=document.getElementById('tradeInfoReopen');
+ if(currentConversationId){
+   const key=tradeInfoSeenKey(currentConversationId);
+   if(key)localStorage.setItem(key,'1');
+ }
  if(panel)panel.classList.remove('show');
  if(reopen)reopen.classList.add('show');
 }
@@ -1807,9 +1819,15 @@ async function loadTradeInfoPanel(c){
      ['受取確認日時',c.accepted_at?formatJpDateTime(c.accepted_at,true):'-'],
      ['取引完了日時',c.accepted_at?formatJpDateTime(c.accepted_at,true):'-']
    ];
-   panel.innerHTML=`<div class="trade-info-head"><div class="trade-info-title">取引情報</div><div class="trade-info-head-right"><span class="trade-info-status ${stateClass}">${state}</span><button class="trade-info-close" type="button" onclick="hideTradeInfoPanel()" aria-label="取引情報を閉じる">×</button></div></div><div class="trade-info-grid">${rows.map(([k,v])=>`<div class="trade-info-label">${esc(k)}</div><div class="trade-info-value">${esc(String(v))}</div>`).join('')}</div><div class="trade-info-note">この下に、この相手とのメッセージ・納品履歴が時系列で表示されます。</div>`;
-   panel.classList.add('show');
-   const reopen=document.getElementById('tradeInfoReopen');if(reopen)reopen.classList.remove('show');
+   panel.innerHTML=`<div class="trade-info-head"><div class="trade-info-title">取引情報</div><div class="trade-info-head-right"><span class="trade-info-status ${stateClass}">${state}</span><button class="trade-info-close" type="button" onclick="hideTradeInfoPanel()" aria-label="取引情報を確認済みにして閉じる">×</button></div></div><div class="trade-info-grid">${rows.map(([k,v])=>`<div class="trade-info-label">${esc(k)}</div><div class="trade-info-value">${esc(String(v))}</div>`).join('')}</div><div class="trade-info-note">この下に、この相手とのメッセージ・納品履歴が時系列で表示されます。</div>`;
+   const reopen=document.getElementById('tradeInfoReopen');
+   if(isTradeInfoSeen(c.id)){
+     panel.classList.remove('show');
+     if(reopen)reopen.classList.add('show');
+   }else{
+     panel.classList.add('show');
+     if(reopen)reopen.classList.remove('show');
+   }
  }catch(e){
    console.warn('trade info load failed',e);
    panel.classList.remove('show');
