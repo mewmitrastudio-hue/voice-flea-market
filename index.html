@@ -796,7 +796,7 @@ body:has(#authPage.on) .tag .line2{
 <div id="configNotice" class="notice">現在サービスへ接続できません。時間をおいて再度お試しください。</div>
 </section>
 
-<section id="home" class="page"><div class="quickgrid"><button class="quickcard" onclick="go('sell')"><span class="qi">🎙️</span>声を出品<small>自分の声を商品にする</small></button><button class="quickcard" onclick="go('voices')"><span class="qi">🔎</span>声を探す・購入<small>ぴったりの声を見つけて購入する</small></button><button class="quickcard" onclick="go('jobs')"><span class="qi">📣</span>声を依頼<small>欲しい声を依頼する</small></button><button class="quickcard" onclick="go('messages')"><span class="qi">💬</span>メッセージ<small>取引相手とやり取りする</small></button></div><div class="home-summary-title">すぐ確認</div><div class="home-summary-grid"><button class="home-summary-card" type="button" onclick="openFinanceCenter('seller')"><span>💰 売上</span><strong id="homeSalesAmount">¥0</strong></button><button class="home-summary-card" type="button" onclick="go('messages')"><span>💬 未読</span><strong id="homeUnreadCount">0件</strong></button><button class="home-summary-card" type="button" onclick="menuGoMySection('myListings')"><span>🎙️ 声を出品中</span><strong id="homeMyListingCount">0件</strong></button><button class="home-summary-card favorite-summary-card" type="button" onclick="openFavorites()"><span>♥ お気に入り</span><strong id="homeFavoriteCount">0件</strong></button></div></section>
+<section id="home" class="page"><div class="quickgrid"><button class="quickcard" onclick="go('sell')"><span class="qi">🎙️</span>声を出品<small>自分の声を商品にする</small></button><button class="quickcard" onclick="go('voices')"><span class="qi">🔎</span>声を探す・購入<small>ぴったりの声を見つけて購入する</small></button><button class="quickcard" onclick="go('jobs')"><span class="qi">📣</span>声を依頼<small>欲しい声を依頼する</small></button><button class="quickcard" onclick="go('messages')"><span class="qi">💬</span>メッセージ<small>取引相手とやり取りする</small></button></div><div class="home-summary-title">すぐ確認</div><div class="home-summary-grid"><button class="home-summary-card" type="button" onclick="openFinanceCenter('seller')"><span>💰 売上</span><strong id="homeSalesAmount">¥0</strong></button><button class="home-summary-card" type="button" onclick="go('messages')"><span>💬 未読</span><strong id="homeUnreadCount">0件</strong></button><button class="home-summary-card" type="button" onclick="menuGoMySection('myListings')"><span>🎙️ 出品を確認</span><strong id="homeMyListingCount">0件</strong></button><button class="home-summary-card favorite-summary-card" type="button" onclick="openFavorites()"><span>♥ お気に入り</span><strong id="homeFavoriteCount">0件</strong></button></div></section>
 
 <section id="voices" class="page"><h2>声を探す・購入</h2><div class="purchase-guide">気になる声を見つけたら、出品カードの下にある「購入する」からそのまま購入できます。</div><div class="field"><input id="voiceSearch" placeholder="英語、関西弁、YouTube、出品者名..." oninput="scheduleListingSearch()"></div><div class="small" style="margin:-4px 2px 10px">タイトル・カテゴリー・説明・AI条件・出品者名から検索できます。</div><div class="voice-filter-row"><label><input id="hidePurchasedToggle" type="checkbox" onchange="loadListings(true)"> 購入済みを非表示</label><label><input id="hideOwnToggle" type="checkbox" onchange="loadListings(true)"> 自分の出品を除外</label></div><div id="listingSearchMeta" class="small" style="margin:0 2px 10px"></div><div id="listingList"></div><button id="listingLoadMoreBtn" class="btn secondary full hide" type="button" style="margin-top:12px" onclick="loadMoreListings()">さらに表示</button></section>
 
@@ -1277,8 +1277,15 @@ async function menuGo(id){
   closeMainMenu();
   await go(id);
 }
+function myListingsSeenKey(){return currentUser?`voice_flea_my_listings_seen_${currentUser.id}`:'voice_flea_my_listings_seen'}
+function markMyListingsSeen(){
+  try{localStorage.setItem(myListingsSeenKey(),new Date().toISOString())}catch(e){}
+  const el=document.getElementById('homeMyListingCount');
+  if(el)el.textContent='0件';
+}
 async function menuGoMySection(sectionId){
   closeMainMenu();
+  if(sectionId==='myListings')markMyListingsSeen();
   await go('me');
   setTimeout(()=>{
     const el=document.getElementById(sectionId);
@@ -1344,10 +1351,10 @@ async function signOut(){document.body.classList.remove('normal-mode','chat-mode
 async function loadHome(){
   if(!sb||!currentUser)return;
 
-  const [{data:sales},{data:convs},{count:myListingCount},{count:favoriteCount}]=await Promise.all([
+  const [{data:sales},{data:convs},{data:activeMyListings},{count:favoriteCount}]=await Promise.all([
     sb.from('payments').select('seller_amount_jpy,status').eq('seller_id',currentUser.id).eq('status','paid'),
     sb.from('conversations').select('id,delivery_status').or(`buyer_id.eq.${currentUser.id},seller_id.eq.${currentUser.id}`),
-    sb.from('listings').select('*',{count:'exact',head:true}).eq('seller_id',currentUser.id).eq('is_active',true),
+    sb.from('listings').select('id,created_at').eq('seller_id',currentUser.id).eq('is_active',true),
     sb.from('favorite_listings').select('*',{count:'exact',head:true}).eq('user_id',currentUser.id)
   ]);
 
@@ -1370,7 +1377,12 @@ async function loadHome(){
 
   if(salesEl)salesEl.textContent=`¥${salesAmount.toLocaleString()}`;
   if(unreadEl)unreadEl.textContent=`${unread}件`;
-  if(myListingEl)myListingEl.textContent=`${myListingCount||0}件`;
+  let myListingNoticeCount=0;
+  try{
+    const seenAt=localStorage.getItem(myListingsSeenKey())||'1970-01-01T00:00:00.000Z';
+    myListingNoticeCount=(activeMyListings||[]).filter(x=>(x.created_at||'')>seenAt).length;
+  }catch(e){myListingNoticeCount=(activeMyListings||[]).length}
+  if(myListingEl)myListingEl.textContent=`${myListingNoticeCount}件`;
   if(favoriteEl)favoriteEl.textContent=`${favoriteCount||0}件`;
 
   loadFavoriteBadge();
