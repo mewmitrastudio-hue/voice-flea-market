@@ -632,6 +632,17 @@ body.normal-mode #nav button{height:46px!important;min-height:46px!important;bor
 .payment-success-overlay{position:fixed;inset:0;z-index:10050;background:rgba(15,23,42,.48);display:none;align-items:center;justify-content:center;padding:20px}.payment-success-overlay.show{display:flex}.payment-success-card{width:min(92vw,420px);background:#fff;border-radius:18px;padding:24px 20px;box-shadow:0 18px 50px rgba(0,0,0,.22);text-align:center}.payment-success-card h3{margin:0 0 10px;font-size:20px}.payment-success-card p{margin:6px 0;color:#475569;line-height:1.65}.payment-success-card button{width:100%;min-height:46px;margin-top:16px;border:0;border-radius:12px;background:#6d28d9;color:#fff;font-weight:800;font-size:16px}
 
 .receipt-success-overlay{position:fixed;inset:0;z-index:21000;display:none;align-items:center;justify-content:center;padding:24px;background:rgba(20,24,42,.42);backdrop-filter:blur(2px);-webkit-backdrop-filter:blur(2px)}.receipt-success-overlay.show{display:flex}.receipt-success-card{width:min(100%,360px);background:#fff;border-radius:24px;padding:26px 20px 20px;text-align:center;box-shadow:0 24px 70px rgba(28,25,60,.28)}.receipt-success-card .icon{font-size:42px}.receipt-success-card h3{font-size:22px;margin:8px 0}.receipt-success-card p{color:#6b6780;line-height:1.7;margin:0 0 16px}.receipt-success-card .btn{width:100%}
+
+/* 2026-09-16: iPhone-safe message member rows */
+body.messages-mode .chatlist{width:100%;min-width:0;overflow:hidden}
+body.messages-mode .chatrow{width:100%;max-width:100%;min-width:0;overflow:hidden}
+body.messages-mode .chathead{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:8px;width:100%;min-width:0}
+body.messages-mode .chat-partner{min-width:0;max-width:100%;overflow:hidden}
+body.messages-mode .chat-partner>div:last-child{min-width:0;overflow:hidden}
+body.messages-mode .chatrow .small{display:block;max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+body.messages-mode .conversation-time{max-width:86px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;text-align:right}
+body.messages-mode .unread-dot{flex:0 0 auto;align-self:flex-end}
+@media(max-width:390px){body.messages-mode .chatrow{padding:11px}body.messages-mode .conversation-time{max-width:72px;font-size:9px}}
 </style>
 <script>
 if(window.navigator.standalone===true){document.body.classList.add('standalone')}
@@ -2756,7 +2767,8 @@ async function loadMe(){
     mySellerJobs.innerHTML=`<h3>受注した声</h3><div class="card err">${esc(sellerErr.message)}</div>`;
   }else{
     const sellerVoiceActive=sellerVoiceConvs.filter(c=>statusText(c)!=='完了').length;
-    mySoldVoices.innerHTML=`<h3>販売した音声${sellerVoiceActive?`（対応中 ${sellerVoiceActive}件）`:''}</h3>${sellerVoiceConvs.map(c=>historyCard(c,'販売')).join('')||'<div class="card small mypage-item-card">まだ販売した音声はありません。</div>'}`;
+    const sellerVoiceCurrent=sellerVoiceConvs.filter(c=>statusText(c)!=='完了');
+    mySoldVoices.innerHTML=`<h3>販売した音声${sellerVoiceActive?`（対応中 ${sellerVoiceActive}件）`:''}</h3>${sellerVoiceCurrent.map(c=>historyCard(c,'販売')).join('')||'<div class="card small mypage-item-card">現在対応中の販売取引はありません。</div>'}`;
     mySellerJobs.innerHTML=`<h3>受注した声</h3>${sellerJobConvs.map(c=>historyCard(c,'受注')).join('')||'<button type="button" class="card small mypage-item-card mypage-empty-card mypage-click-card" onclick="go(\'jobs\')">まだ受注した声はありません。<span class="mypage-card-arrow">›</span></button>'}`;
   }
 
