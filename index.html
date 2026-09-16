@@ -617,7 +617,7 @@ body.normal-mode #nav button{height:46px!important;min-height:46px!important;bor
 
 
 /* 2026-09-16: LINE型メッセージ一覧・取引区切り */
-.chatrow{cursor:pointer}.chathead{align-items:flex-start}.chat-partner{display:flex;align-items:center;gap:10px;min-width:0}.chatrow .small{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.conversation-time{font-size:10px;color:var(--sub);white-space:nowrap;margin-left:auto}.trade-separator{align-self:stretch;display:flex;align-items:center;gap:8px;margin:12px 0 4px;color:#77718f;font-size:10px;font-weight:900}.trade-separator:before,.trade-separator:after{content:"";height:1px;background:#e7e4f4;flex:1}.trade-separator span{max-width:76%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.purchase-sync{background:#f0edff;color:#5147b8;border:1px solid #ded8ff;border-radius:12px;padding:10px 12px;font-size:11px;margin:8px 0}
+.chatrow{cursor:pointer}.chathead{align-items:flex-start}.chat-partner{display:flex;align-items:center;gap:10px;min-width:0}.chatrow .small{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.conversation-time{font-size:10px;color:var(--sub);white-space:nowrap;margin-left:auto}.trade-separator{align-self:stretch;display:flex;align-items:center;gap:8px;margin:18px 0 8px;color:#5146a8;font-size:11px;font-weight:900}.trade-separator span{background:#f1efff;border:1px solid #ded8ff;border-radius:999px;padding:6px 10px}.trade-separator:before,.trade-separator:after{content:"";height:1px;background:#e7e4f4;flex:1}.trade-separator span{max-width:76%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.purchase-sync{background:#f0edff;color:#5147b8;border:1px solid #ded8ff;border-radius:12px;padding:10px 12px;font-size:11px;margin:8px 0}
 
 /* 2026-09-16: メッセージ画面のホーム導線 */
 .messages-list-head .messages-list-title{flex:1}
@@ -630,6 +630,8 @@ body.normal-mode #nav button{height:46px!important;min-height:46px!important;bor
 
 /* Stripe支払い完了メッセージ */
 .payment-success-overlay{position:fixed;inset:0;z-index:10050;background:rgba(15,23,42,.48);display:none;align-items:center;justify-content:center;padding:20px}.payment-success-overlay.show{display:flex}.payment-success-card{width:min(92vw,420px);background:#fff;border-radius:18px;padding:24px 20px;box-shadow:0 18px 50px rgba(0,0,0,.22);text-align:center}.payment-success-card h3{margin:0 0 10px;font-size:20px}.payment-success-card p{margin:6px 0;color:#475569;line-height:1.65}.payment-success-card button{width:100%;min-height:46px;margin-top:16px;border:0;border-radius:12px;background:#6d28d9;color:#fff;font-weight:800;font-size:16px}
+
+.receipt-success-overlay{position:fixed;inset:0;z-index:21000;display:none;align-items:center;justify-content:center;padding:24px;background:rgba(20,24,42,.42);backdrop-filter:blur(2px);-webkit-backdrop-filter:blur(2px)}.receipt-success-overlay.show{display:flex}.receipt-success-card{width:min(100%,360px);background:#fff;border-radius:24px;padding:26px 20px 20px;text-align:center;box-shadow:0 24px 70px rgba(28,25,60,.28)}.receipt-success-card .icon{font-size:42px}.receipt-success-card h3{font-size:22px;margin:8px 0}.receipt-success-card p{color:#6b6780;line-height:1.7;margin:0 0 16px}.receipt-success-card .btn{width:100%}
 </style>
 <script>
 if(window.navigator.standalone===true){document.body.classList.add('standalone')}
@@ -1281,8 +1283,8 @@ async function goBackPage(){
   const prev=pageHistory.pop()||'home';
   await go(prev,{fromHistory:true});
 }
-async function go(id,opts={}){const allowed=['home','voices','sell','jobs','messages','me'];if(!allowed.includes(id))id='home';const current=document.querySelector('.page.on')?.id;if(current&&allowed.includes(current)&&current!==id&&!opts.fromHistory&&!opts.skipHistory)pageHistory.push(current);if(pageHistory.length>20)pageHistory=pageHistory.slice(-20);setShellMode(id==='messages'?'messages':'normal');document.querySelectorAll('.page').forEach(p=>p.classList.remove('on'));document.getElementById(id).classList.add('on');updateGlobalPageNav(id);document.querySelectorAll('#nav button').forEach((b,i)=>b.classList.toggle('on',allowed[i]===id));if(currentUser&&!opts.skipSave)localStorage.setItem(uiKey('page'),id);if(id==='voices')await loadListings();if(id==='jobs')await loadJobs();if(id==='messages')await loadConversations();if(id==='me')await loadMe();if(!opts.keepScroll){if(id==='messages'){document.getElementById('messages').scrollTop=0}else{document.querySelector('.app').scrollTop=0;window.scrollTo(0,0)}}}
-async function restoreUI(){let page=localStorage.getItem(uiKey('page'))||'home';await go(page,{skipSave:true,skipHistory:true});if(page==='messages'){try{const saved=JSON.parse(localStorage.getItem(uiKey('chat'))||'null');if(saved?.id)await openConversation(saved.id,saved.title||'チャット',{skipSave:true})}catch(e){clearChatState()}}}
+async function go(id,opts={}){const allowed=['home','voices','sell','jobs','messages','me'];if(!allowed.includes(id))id='home';const current=document.querySelector('.page.on')?.id;if(current&&allowed.includes(current)&&current!==id&&!opts.fromHistory&&!opts.skipHistory)pageHistory.push(current);if(pageHistory.length>20)pageHistory=pageHistory.slice(-20);setShellMode(id==='messages'?'messages':'normal');document.querySelectorAll('.page').forEach(p=>p.classList.remove('on'));document.getElementById(id).classList.add('on');updateGlobalPageNav(id);document.querySelectorAll('#nav button').forEach((b,i)=>b.classList.toggle('on',allowed[i]===id));if(currentUser&&!opts.skipSave)localStorage.setItem(uiKey('page'),id);if(id==='voices')await loadListings();if(id==='jobs')await loadJobs();if(id==='messages'&&!opts.skipList)await loadConversations();if(id==='me')await loadMe();if(!opts.keepScroll){if(id==='messages'){document.getElementById('messages').scrollTop=0}else{document.querySelector('.app').scrollTop=0;window.scrollTo(0,0)}}}
+async function restoreUI(){let page=localStorage.getItem(uiKey('page'))||'home';if(page==='messages'){try{const saved=JSON.parse(localStorage.getItem(uiKey('chat'))||'null');if(saved?.id){await go('messages',{skipSave:true,skipHistory:true,skipList:true});await openConversation(saved.id,saved.title||'チャット',{skipSave:true});return}}catch(e){clearChatState()}}await go(page,{skipSave:true,skipHistory:true});}
 async function init(){
   cloudStatus.textContent='接続中';
   cloudStatus.classList.remove('live');
@@ -1889,14 +1891,13 @@ async function loadConversations(){
      if(last && (!latestMsg || new Date(last.created_at)>new Date(latestMsg.created_at))){latestMsg=last;latestConversation=c;}
      if(preview && (!latestPreview || new Date(preview.created_at)>new Date(latestPreview.created_at)))latestPreview=preview;
      const seen=localStorage.getItem(seenKey(c.id))||'1970-01-01T00:00:00.000Z';
-     if(last&&last.sender_id!==currentUser.id&&last.created_at>seen)unreadCount++;
+     const {count:uc}=await sb.from('messages').select('*',{count:'exact',head:true}).eq('conversation_id',c.id).neq('sender_id',currentUser.id).gt('created_at',seen);
+     unreadCount+=uc||0;
    }
    const name=profiles[partner]?.display_name||'ユーザー';
    const ids=group.map(c=>c.id);
    const allAccepted=group.every(c=>c.delivery_status==='accepted');
-   const action=allAccepted
-     ? `<button type="button" class="history-hide-btn" onclick='event.stopPropagation();hidePartnerConversations(${JSON.stringify(ids)})'>非表示</button>`
-     : (unreadCount?`<span class="unread-dot">${unreadCount}</span>`:'');
+   const action=unreadCount?`<span class="unread-dot">${unreadCount}</span>`:(allAccepted?`<button type="button" class="history-hide-btn" onclick='event.stopPropagation();hidePartnerConversations(${JSON.stringify(ids)})'>非表示</button>`:'');
    rows.push(`<div class="chatrow" onclick="openConversation('${latestConversation.id}','${esc(name).replace(/'/g,'&#39;')}')"><div class="chathead"><div class="chat-partner">${avatarMarkup(profiles[partner]||{display_name:'ユーザー'},'sm',partner)}<div style="min-width:0"><b>${esc(name)}</b><div class="small" style="margin-top:4px">${esc(latestPreview?.body||'チャットを開始できます')}</div></div></div><div style="display:flex;flex-direction:column;align-items:flex-end;gap:6px">${latestMsg?.created_at?`<span class="conversation-time">${formatJpDateTime(latestMsg.created_at,true)}</span>`:''}${action}</div></div>${allAccepted?'<div class="history-hide-note">完了した取引の記録も、この相手とのチャット履歴にまとめて残ります。</div>':''}</div>`);
  }
  conversationList.innerHTML=rows.join('')||'<div class="card small">表示中のメッセージはありません。</div>';loadMessageBadge()
@@ -1956,8 +1957,9 @@ async function loadTradeInfoPanel(c){
    }
    let reviewedByMe=false;
    if(c.delivery_status==='accepted'){
-     const {data:rv}=await sb.from('reviews').select('id').eq('conversation_id',c.id).eq('reviewer_id',currentUser.id).limit(1);
+     const {data:rv}=await sb.from('reviews').select('id,created_at').eq('conversation_id',c.id).eq('reviewer_id',currentUser.id).order('created_at',{ascending:false}).limit(1);
      reviewedByMe=!!rv?.length;
+     var myReviewAt=rv?.[0]?.created_at||null;
    }
    const state=c.delivery_status==='accepted'?(reviewedByMe?'完了':'評価待ち'):c.delivery_status==='submitted'?'受取確認待ち':'納品待ち';
    const stateClass=c.delivery_status==='accepted'&&reviewedByMe?'done':c.delivery_status==='submitted'?'submitted':'';
@@ -1970,7 +1972,7 @@ async function loadTradeInfoPanel(c){
      ['状態',state],
      ['納品日時',c.delivered_at?formatJpDateTime(c.delivered_at,true):'-'],
      ['受取確認日時',c.accepted_at?formatJpDateTime(c.accepted_at,true):'-'],
-     ['取引完了日時',reviewedByMe&&c.accepted_at?formatJpDateTime(c.accepted_at,true):'-']
+     ['取引完了日時',reviewedByMe&&myReviewAt?formatJpDateTime(myReviewAt,true):'-']
    ];
    panel.innerHTML=`<div class="trade-info-head"><div class="trade-info-title">取引情報</div><div class="trade-info-head-right"><span class="trade-info-status ${stateClass}">${state}</span><button class="trade-info-close" type="button" onclick="hideTradeInfoPanel()" aria-label="取引情報を確認済みにして閉じる">×</button></div></div><div class="trade-info-grid">${rows.map(([k,v])=>`<div class="trade-info-label">${esc(k)}</div><div class="trade-info-value">${esc(String(v))}</div>`).join('')}</div><div class="trade-info-note">この下に、この相手とのメッセージ・納品履歴が時系列で表示されます。</div>`;
    const reopen=document.getElementById('tradeInfoReopen');
@@ -2166,7 +2168,7 @@ async function submitReview(){
  const targetName=await tradeDisplayName(target);
  await addTradeSystemMessage(currentConversationId,currentUser.id,`⭐ ${reviewerName}さんが ${targetName}さんを評価しました。`);
  selectedReviewRating=0;
- await Promise.all([loadReviewPanel(),loadChatMessages(),loadMe()]);
+ await Promise.all([loadReviewPanel(),loadChatMessages(),loadTradeInfoPanel(currentConversation),loadMe()]);
 }
 function rememberDeliveryFile(input){
  const f=input?.files?.[0]||null;
@@ -2186,7 +2188,7 @@ async function uploadDelivery(){
  currentConversation=updated;
  const [sellerName,buyerName]=await Promise.all([tradeDisplayName(currentConversation.seller_id),tradeDisplayName(currentConversation.buyer_id)]);
  await addTradeSystemMessage(currentConversationId,currentUser.id,`📦 ${sellerName}さんが ${buyerName}さんへ音声を納品しました。`);
- selectedDeliveryFiles.delete(currentConversationId);info('deliveryMsg','納品しました。');await Promise.all([loadDeliveries(),loadChatMessages()]);loadMessageBadge();loadNotificationBadge();
+ selectedDeliveryFiles.delete(currentConversationId);info('deliveryMsg','納品しました。');await Promise.all([loadDeliveries(),loadChatMessages(),loadTradeInfoPanel(currentConversation)]);loadMessageBadge();loadNotificationBadge();
 }
 function openDeliveryConfirm(){
  if(!currentConversation||currentUser.id!==currentConversation.buyer_id)return;
@@ -2204,6 +2206,12 @@ function closeDeliveryConfirm(){
 async function confirmDelivery(){
  openDeliveryConfirm();
 }
+function showReceiptSuccess(){
+ let el=document.getElementById('receiptSuccessOverlay');
+ if(!el){el=document.createElement('div');el.id='receiptSuccessOverlay';el.className='receipt-success-overlay';el.innerHTML=`<div class="receipt-success-card"><div class="icon">✅</div><h3>受け取りが完了しました</h3><p>納品の受け取りを確認しました。<br>続いて、取引相手の評価をお願いします。</p><button type="button" class="btn full" onclick="closeReceiptSuccessAndReview()">評価する</button></div>`;document.body.appendChild(el)}
+ el.classList.add('show');
+}
+async function closeReceiptSuccessAndReview(){const el=document.getElementById('receiptSuccessOverlay');el?.classList.remove('show');await loadReviewPanel();document.getElementById('reviewArea')?.scrollIntoView({behavior:'smooth',block:'center'});}
 async function acceptDeliveryConfirmed(){
  if(!currentConversation||currentUser.id!==currentConversation.buyer_id)return;
  closeDeliveryConfirm();
@@ -2218,7 +2226,8 @@ async function acceptDeliveryConfirmed(){
  const [buyerName,sellerName]=await Promise.all([tradeDisplayName(currentConversation.buyer_id),tradeDisplayName(currentConversation.seller_id)]);
  await addTradeSystemMessage(currentConversationId,currentUser.id,`✅ ${buyerName}さんが ${sellerName}さんの納品を受け取りました。`);
  if(currentConversation.job_id)await sb.from('jobs').update({status:'closed'}).eq('id',currentConversation.job_id);
- await Promise.all([loadDeliveries(),loadChatMessages()]);
+ await Promise.all([loadDeliveries(),loadChatMessages(),loadTradeInfoPanel(currentConversation),loadReviewPanel()]);
+ showReceiptSuccess();
  loadHome();
  loadNotificationBadge();
 }
