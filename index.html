@@ -1671,6 +1671,21 @@ async function openJobChat(jobId,buyerId,sellerId,title='声の依頼チャッ�
  const {data,error}=await ensureConversation(jobId,buyerId,sellerId);if(error)return alert(error.message);await go('messages');await openConversation(data.id,title)
 }
 
+async function tradeDisplayName(userId){
+  if(!userId)return 'ユーザー';
+  const {data}=await sb.from('profiles').select('display_name').eq('id',userId).maybeSingle();
+  return data?.display_name||'ユーザー';
+}
+async function listingDisplayTitle(listingId){
+  if(!listingId)return '商品';
+  const {data}=await sb.from('listings').select('title').eq('id',listingId).maybeSingle();
+  return data?.title||'商品';
+}
+async function addTradeSystemMessage(conversationId,senderId,body){
+  if(!conversationId||!senderId||!body)return;
+  await sb.from('messages').insert({conversation_id:conversationId,sender_id:senderId,body});
+}
+
 async function ensureListingConversation(listingId,buyerId,sellerId){
   // Always bind the chat to the latest paid purchase.
   // A repeat purchase of the same listing must start a fresh trade instead of
@@ -1709,7 +1724,7 @@ async function ensureListingConversation(listingId,buyerId,sellerId){
 
   if(conversationIsForLatestPurchase)return {data:latestConversation};
 
-  return await sb
+  const created=await sb
     .from('conversations')
     .insert({
       listing_id:listingId,
@@ -1722,6 +1737,11 @@ async function ensureListingConversation(listingId,buyerId,sellerId){
     })
     .select('id,buyer_id,seller_id,listing_id,delivery_status,delivered_at,accepted_at,created_at')
     .single();
+  if(!created.error&&created.data){
+    const [buyerName,sellerName,itemTitle]=await Promise.all([tradeDisplayName(buyerId),tradeDisplayName(sellerId),listingDisplayTitle(listingId)]);
+    await addTradeSystemMessage(created.data.id,buyerId,`🛒 ${buyerName}さんが ${sellerName}さんの商品「${itemTitle}」を購入しました。`);
+  }
+  return created;
 }
 
 async function openPurchasedListingChat(listingId,sellerId,title='購入した音声'){
@@ -1843,8 +1863,13 @@ async function loadTradeInfoPanel(c){
      const {data:j}=await sb.from('jobs').select('title,budget_jpy').eq('id',c.job_id).maybeSingle();
      if(j){itemTitle=j.title||'声の依頼';amount=j.budget_jpy}
    }
-   const state=c.delivery_status==='accepted'?'完了':c.delivery_status==='submitted'?'納品済み':'取引中';
-   const stateClass=c.delivery_status==='accepted'?'done':c.delivery_status==='submitted'?'submitted':'';
+   let reviewedByMe=false;
+   if(c.delivery_status==='accepted'){
+     const {data:rv}=await sb.from('reviews').select('id').eq('conversation_id',c.id).eq('reviewer_id',currentUser.id).limit(1);
+     reviewedByMe=!!rv?.length;
+   }
+   const state=c.delivery_status==='accepted'?(reviewedByMe?'完了':'評価待ち'):c.delivery_status==='submitted'?'受取確認待ち':'納品待ち';
+   const stateClass=c.delivery_status==='accepted'&&reviewedByMe?'done':c.delivery_status==='submitted'?'submitted':'';
    const roleLabel=isBuyer?'出品者':'購入者';
    const rows=[
      ['取引',itemTitle],
@@ -1854,7 +1879,7 @@ async function loadTradeInfoPanel(c){
      ['状態',state],
      ['納品日時',c.delivered_at?formatJpDateTime(c.delivered_at,true):'-'],
      ['受取確認日時',c.accepted_at?formatJpDateTime(c.accepted_at,true):'-'],
-     ['取引完了日時',c.accepted_at?formatJpDateTime(c.accepted_at,true):'-']
+     ['取引完了日時',reviewedByMe&&c.accepted_at?formatJpDateTime(c.accepted_at,true):'-']
    ];
    panel.innerHTML=`<div class="trade-info-head"><div class="trade-info-title">取引情報</div><div class="trade-info-head-right"><span class="trade-info-status ${stateClass}">${state}</span><button class="trade-info-close" type="button" onclick="hideTradeInfoPanel()" aria-label="取引情報を確認済みにして閉じる">×</button></div></div><div class="trade-info-grid">${rows.map(([k,v])=>`<div class="trade-info-label">${esc(k)}</div><div class="trade-info-value">${esc(String(v))}</div>`).join('')}</div><div class="trade-info-note">この下に、この相手とのメッセージ・納品履歴が時系列で表示されます。</div>`;
    const reopen=document.getElementById('tradeInfoReopen');
@@ -1898,7 +1923,7 @@ async function loadChatMessages(){
  const seenRatingConversations=new Set();
  chatMessages.innerHTML=(data||[]).map(m=>{
    const body=String(m.body||'');
-   const isRatingNotice=body.startsWith('⭐ 取引評価を送信しました。');
+   const isRatingNotice=body.startsWith('⭐ 取引評価を送信しました。') || (body.startsWith('⭐ ') && body.includes('さんを評価しました。'));
    // 同じ取引で双方が評価しても、完了通知はチャット上1回だけ表示する。
    // 取引ごとの履歴自体はDBに残したまま、表示だけ重複をまとめる。
    if(isRatingNotice){
@@ -1906,10 +1931,13 @@ async function loadChatMessages(){
      if(seenRatingConversations.has(key))return '';
      seenRatingConversations.add(key);
    }
-   const isSystem=/^(📦 音声を納品しました。|✅ 納品物を受け取りました。|⭐ 取引評価を送信しました。)/.test(body);
+   const isSystem=/^(🛒 |📦 |✅ |⭐ )/.test(body);
    const when=formatJpDateTime(m.created_at,true);
    if(isSystem){
-     const shortBody=body.startsWith('📦 音声を納品しました。')?'📦 音声を納品しました':body.startsWith('✅ 納品物を受け取りました。')?'✅ 受取確認が完了しました':'⭐ 取引評価が完了しました';
+     let shortBody=body;
+     if(body.startsWith('📦 音声を納品しました。'))shortBody='📦 音声を納品しました';
+     else if(body.startsWith('✅ 納品物を受け取りました。'))shortBody='✅ 受取確認が完了しました';
+     else if(body.startsWith('⭐ 取引評価を送信しました。'))shortBody='⭐ 取引評価が完了しました';
      return `<div class="chat-system-row"><div class="chat-system-note">${esc(shortBody)}${when?`<div class="chat-message-time">${when}</div>`:''}</div></div>`;
    }
    const mine=m.sender_id===currentUser.id;
@@ -2024,7 +2052,9 @@ async function submitReview(){
    if(String(error.code)==='23505')return info('reviewMsg','この取引はすでに評価済みです。','err');
    return info('reviewMsg',error.message,'err');
  }
- await sb.from('messages').insert({conversation_id:currentConversationId,sender_id:currentUser.id,body:'⭐ 取引評価を送信しました。'});
+ const reviewerName=await tradeDisplayName(currentUser.id);
+ const targetName=await tradeDisplayName(target);
+ await addTradeSystemMessage(currentConversationId,currentUser.id,`⭐ ${reviewerName}さんが ${targetName}さんを評価しました。`);
  selectedReviewRating=0;
  await Promise.all([loadReviewPanel(),loadChatMessages(),loadMe()]);
 }
@@ -2044,7 +2074,8 @@ async function uploadDelivery(){
  const {data:updated,error:ce}=await sb.from('conversations').update({delivery_path:path,delivery_status:'submitted',delivered_at:new Date().toISOString(),accepted_at:null}).eq('id',currentConversationId).select('id,buyer_id,seller_id,job_id,listing_id,delivery_path,delivery_status,delivered_at,accepted_at').single();
  if(ce){await sb.storage.from('deliveries').remove([path]);return info('deliveryMsg',ce.message,'err')}
  currentConversation=updated;
- await sb.from('messages').insert({conversation_id:currentConversationId,sender_id:currentUser.id,body:'📦 音声を納品しました。チャット内の納品欄から確認できます。'});
+ const [sellerName,buyerName]=await Promise.all([tradeDisplayName(currentConversation.seller_id),tradeDisplayName(currentConversation.buyer_id)]);
+ await addTradeSystemMessage(currentConversationId,currentUser.id,`📦 ${sellerName}さんが ${buyerName}さんへ音声を納品しました。`);
  selectedDeliveryFiles.delete(currentConversationId);info('deliveryMsg','納品しました。');await Promise.all([loadDeliveries(),loadChatMessages()]);loadMessageBadge();loadNotificationBadge();
 }
 function openDeliveryConfirm(){
@@ -2074,11 +2105,8 @@ async function acceptDeliveryConfirmed(){
    .single();
  if(error)return alert(error.message);
  currentConversation=updated;
- await sb.from('messages').insert({
-   conversation_id:currentConversationId,
-   sender_id:currentUser.id,
-   body:'✅ 納品物を受け取りました。'
- });
+ const [buyerName,sellerName]=await Promise.all([tradeDisplayName(currentConversation.buyer_id),tradeDisplayName(currentConversation.seller_id)]);
+ await addTradeSystemMessage(currentConversationId,currentUser.id,`✅ ${buyerName}さんが ${sellerName}さんの納品を受け取りました。`);
  if(currentConversation.job_id)await sb.from('jobs').update({status:'closed'}).eq('id',currentConversation.job_id);
  await Promise.all([loadDeliveries(),loadChatMessages()]);
  loadHome();
@@ -2516,6 +2544,12 @@ async function loadMe(){
   (sellerPayments||[]).forEach(p=>{if(p.listing_id&&!sellerPaymentDateMap.has(p.listing_id))sellerPaymentDateMap.set(p.listing_id,p.paid_at||null)});
 
   const allConvs=[...(sellerConvs||[]),...(buyerConvs||[])];
+  const allConvIds=[...new Set(allConvs.map(c=>c.id).filter(Boolean))];
+  const myReviewedConversationIds=new Set();
+  if(allConvIds.length){
+    const {data:myReviews}=await sb.from('reviews').select('conversation_id').eq('reviewer_id',currentUser.id).in('conversation_id',allConvIds);
+    (myReviews||[]).forEach(r=>myReviewedConversationIds.add(r.conversation_id));
+  }
   const jobIds=[...new Set(allConvs.map(x=>x.job_id).filter(Boolean))];
   const listingIds=[...new Set(allConvs.map(x=>x.listing_id).filter(Boolean))];
 
@@ -2534,11 +2568,11 @@ async function loadMe(){
   // 取引状態は決済後の実際の進行に合わせて表示する。
   // 購入者が受取確認した時点で、この取引は「完了」とする。
   const statusText=(c)=>{
-    if(c.delivery_status==='accepted')return '完了';
-    if(c.delivery_status==='submitted')return '納品済み';
-    return '取引中';
+    if(c.delivery_status==='accepted')return myReviewedConversationIds.has(c.id)?'完了':'評価待ち';
+    if(c.delivery_status==='submitted')return currentUser.id===c.buyer_id?'受取確認待ち':'受取確認待ち';
+    return currentUser.id===c.seller_id?'納品待ち':'納品待ち';
   };
-  const statusClass=(c)=>c.delivery_status==='accepted'?'received':'';
+  const statusClass=(c)=>c.delivery_status==='accepted'&&myReviewedConversationIds.has(c.id)?'received':'';
   const titleOf=(c)=>{
     if(c.job_id)return jobMap.get(c.job_id)?.title||'声の依頼';
     if(c.listing_id)return listingMap.get(c.listing_id)?.title||'出品取引';
@@ -2602,7 +2636,8 @@ async function loadMe(){
     mySoldVoices.innerHTML=`<h3>販売した音声</h3><div class="card err">${esc(sellerErr.message)}</div>`;
     mySellerJobs.innerHTML=`<h3>受注した声</h3><div class="card err">${esc(sellerErr.message)}</div>`;
   }else{
-    mySoldVoices.innerHTML=`<h3>販売した音声</h3>${sellerVoiceConvs.map(c=>historyCard(c,'販売')).join('')||'<div class="card small mypage-item-card">まだ販売した音声はありません。</div>'}`;
+    const sellerVoiceActive=sellerVoiceConvs.filter(c=>statusText(c)!=='完了').length;
+    mySoldVoices.innerHTML=`<h3>販売した音声${sellerVoiceActive?`（対応中 ${sellerVoiceActive}件）`:''}</h3>${sellerVoiceConvs.map(c=>historyCard(c,'販売')).join('')||'<div class="card small mypage-item-card">まだ販売した音声はありません。</div>'}`;
     mySellerJobs.innerHTML=`<h3>受注した声</h3>${sellerJobConvs.map(c=>historyCard(c,'受注')).join('')||'<button type="button" class="card small mypage-item-card mypage-empty-card mypage-click-card" onclick="go(\'jobs\')">まだ受注した声はありません。<span class="mypage-card-arrow">›</span></button>'}`;
   }
 
@@ -2610,7 +2645,8 @@ async function loadMe(){
     myPurchasedVoices.innerHTML=`<h3>購入した音声</h3><div class="card err">${esc(buyerErr.message)}</div>`;
     myBuyerJobs.innerHTML=`<h3>依頼した声</h3><div class="card err">${esc(buyerErr.message)}</div>`;
   }else{
-    myPurchasedVoices.innerHTML=`<h3>購入した音声</h3>${buyerVoiceConvs.map(c=>historyCard(c,'購入')).join('')||'<button type="button" class="card small mypage-item-card mypage-empty-card mypage-click-card" onclick="go(\'browse\')">まだ購入した音声はありません。<span class="mypage-card-arrow">›</span></button>'}`;
+    const buyerVoiceActive=buyerVoiceConvs.filter(c=>statusText(c)!=='完了').length;
+    myPurchasedVoices.innerHTML=`<h3>購入した音声${buyerVoiceActive?`（対応中 ${buyerVoiceActive}件）`:''}</h3>${buyerVoiceConvs.map(c=>historyCard(c,'購入')).join('')||'<button type="button" class="card small mypage-item-card mypage-empty-card mypage-click-card" onclick="go(\'browse\')">まだ購入した音声はありません。<span class="mypage-card-arrow">›</span></button>'}`;
     myBuyerJobs.innerHTML=`<h3>依頼した声</h3>${buyerJobConvs.map(c=>historyCard(c,'依頼')).join('')||'<button type="button" class="card small mypage-item-card mypage-empty-card mypage-click-card" onclick="go(\'jobs\')">まだ依頼した声はありません。<span class="mypage-card-arrow">›</span></button>'}`;
   }
 }
@@ -2699,37 +2735,7 @@ function closeRulesCenter(){document.getElementById('rulesOverlay')?.classList.r
 function showRuleDoc(kind){const body=document.getElementById('rulesBody');if(body)body.innerHTML=RULE_DOCS[kind]||RULE_DOCS.terms;['terms','privacy','prohibited','cancel','ai','commerce'].forEach(k=>{const id='ruleTab'+k.charAt(0).toUpperCase()+k.slice(1);document.getElementById(id)?.classList.toggle('active',k===kind)})}
 </script>
 <script id="chat-rating-behavior">
-(function(){
-  function cleanupChatRating(){
-    if(!document.body.classList.contains('chat-mode')) return;
-    const candidates=[...document.querySelectorAll('button,div,section,article')];
-    for(const el of candidates){
-      const t=(el.textContent||'').trim();
-      if(!t) continue;
-      if(t.includes('取引相手を評価する') || t.includes('取引相手を評価')){
-        const card=el.closest('.card,.panel,.chatrow,.section,section,article,div');
-        if(card && !t.includes('評価済み')) card.style.display='none';
-      }
-    }
-    // If transaction is completed, reveal only a compact review button.
-    const bodyText=document.body.innerText||'';
-    if(bodyText.includes('取引完了') || bodyText.includes('完了')){
-      for(const el of document.querySelectorAll('button')){
-        const t=(el.textContent||'').trim();
-        if(t.includes('取引相手を評価する')){
-          el.style.display='';
-          const p=el.closest('.card,.panel,.chatrow,.section,section,article,div');
-          if(p){ p.style.display=''; p.classList.add('rating-completed-only'); }
-        }
-      }
-    }
-  }
-  const mo=new MutationObserver(cleanupChatRating);
-  mo.observe(document.documentElement,{subtree:true,childList:true,attributes:true,attributeFilter:['class']});
-  window.addEventListener('load',cleanupChatRating);
-  document.addEventListener('click',()=>setTimeout(cleanupChatRating,50),true);
-  window.cleanupChatRating=cleanupChatRating;
-})();
+// 評価欄は受取確認後に loadReviewPanel() が表示管理します。
 </script>
 
 
