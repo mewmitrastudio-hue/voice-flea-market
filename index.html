@@ -627,6 +627,9 @@ body.normal-mode #nav button{height:46px!important;min-height:46px!important;bor
 .message-home-btn.compact{font-size:11px;min-height:38px;padding:0 9px}
 .chatroom-actions .safety-chat-btn{margin-left:0;white-space:nowrap}
 @media(max-width:390px){.chatroom-head{gap:7px;padding-left:10px;padding-right:10px}.chatroom-actions{gap:5px}.message-home-btn.compact{font-size:10px;padding:0 7px}.chatroom-actions .safety-chat-btn{font-size:10px;padding-left:8px;padding-right:8px}}
+
+/* Stripe支払い完了メッセージ */
+.payment-success-overlay{position:fixed;inset:0;z-index:10050;background:rgba(15,23,42,.48);display:none;align-items:center;justify-content:center;padding:20px}.payment-success-overlay.show{display:flex}.payment-success-card{width:min(92vw,420px);background:#fff;border-radius:18px;padding:24px 20px;box-shadow:0 18px 50px rgba(0,0,0,.22);text-align:center}.payment-success-card h3{margin:0 0 10px;font-size:20px}.payment-success-card p{margin:6px 0;color:#475569;line-height:1.65}.payment-success-card button{width:100%;min-height:46px;margin-top:16px;border:0;border-radius:12px;background:#6d28d9;color:#fff;font-weight:800;font-size:16px}
 </style>
 <script>
 if(window.navigator.standalone===true){document.body.classList.add('standalone')}
@@ -1476,9 +1479,21 @@ async function reconcilePendingPurchase(){
   const {data:conversation,error}=await ensureListingConversation(pending.listingId,currentUser.id,sellerId);
   if(error||!conversation)return null;
   localStorage.removeItem(key);
-  // 支払い成功後は、新しい取引を自動でメッセージに反映してその取引を開く。
-  await go('messages');
-  await openConversation(conversation.id,title||'購入した音声');
+  // 支払い確認後は、まず安心できる完了メッセージを表示し、
+  // 購入者がボタンを押したら今回の取引メッセージへ直接移動する。
+  const overlay=document.getElementById('paymentSuccessOverlay');
+  const messageBtn=document.getElementById('paymentSuccessMessageBtn');
+  if(overlay&&messageBtn){
+    overlay.classList.add('show');
+    messageBtn.onclick=async()=>{
+      overlay.classList.remove('show');
+      await go('messages');
+      await openConversation(conversation.id,title||'購入した音声');
+    };
+  }else{
+    await go('messages');
+    await openConversation(conversation.id,title||'購入した音声');
+  }
   return conversation;
 }
 
@@ -2883,4 +2898,12 @@ document.addEventListener('click',function(e){
 </script>
 
 
+
+<div id="paymentSuccessOverlay" class="payment-success-overlay" role="dialog" aria-modal="true" aria-labelledby="paymentSuccessTitle">
+  <div class="payment-success-card">
+    <h3 id="paymentSuccessTitle">✅ お支払いが完了しました</h3>
+    <p>お支払いを確認しました。<br>新しい取引を開始しました。</p>
+    <button type="button" id="paymentSuccessMessageBtn">メッセージを確認する</button>
+  </div>
+</div>
 </body></html>
