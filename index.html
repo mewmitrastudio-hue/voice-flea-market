@@ -2738,18 +2738,18 @@ async function loadMe(){
     return `<div class="card trade-history-card mypage-item-card mypage-click-card" onclick="go('messages').then(()=>openConversation('${c.id}','${safeTitle}'))"><div class="row"><div><b>${esc(titleOf(c))}</b><div class="small">${role}${amount!=null?`　¥${Number(amount).toLocaleString()}`:''}</div><div class="trade-date">${dateLabel}：${formatJpDateTime(dateValue,false)||'-'}</div></div><div class="mypage-status-wrap"><span class="delivery-status ${statusClass(c)}">${statusText(c)}</span><span class="mypage-card-arrow">›</span></div></div><div class="trade-date" style="margin-top:8px;color:#5f55e8;font-weight:800">取引詳細を見る</div>${hideButton?`<div style="margin-top:10px;text-align:right">${hideButton}</div><div class="history-hide-note">自分の一覧からだけ非表示になります。決済・納品記録は残ります。</div>`:''}</div>`;
   };
 
-  const hiddenConvs=allConvs.filter(c=>isConversationHidden(c.id)||(c.listing_id&&statusText(c)==='完了'));
+  const hiddenConvs=allConvs.filter(c=>isConversationHidden(c.id)||statusText(c)==='完了');
   const hiddenCards=hiddenConvs.map(c=>{
     const amount=amountOf(c);
     const safeTitle=esc(titleOf(c)).replace(/'/g,'&#39;');
-    const completed=c.listing_id&&statusText(c)==='完了';
+    const completed=statusText(c)==='完了';
     const actions=completed
       ? `<button type="button" class="btn secondary full" onclick="go('messages').then(()=>openConversation('${c.id}','${safeTitle}'))">取引詳細を見る</button>`
       : `<div style="display:flex;gap:8px"><button type="button" class="btn secondary" style="flex:1" onclick="restoreConversationForMe('${c.id}')">再表示</button><button type="button" class="btn secondary" style="flex:1" onclick="restoreConversationForMe('${c.id}');go('messages').then(()=>openConversation('${c.id}','${safeTitle}'))">開く</button></div>`;
     return `<div class="card trade-history-card mypage-item-card"><div class="row"><div><b>${esc(titleOf(c))}</b><div class="small">${c.listing_id?'音声取引':'声の依頼'}${amount!=null?`　¥${Number(amount).toLocaleString()}`:''}</div><div class="trade-date">取引開始日：${formatJpDateTime(c.created_at,false)||'-'}</div></div><span class="delivery-status ${statusClass(c)}">${statusText(c)}</span></div><div style="margin-top:10px">${actions}</div></div>`;
   }).join('');
 
-  myHiddenTrades.innerHTML=`<h3>取引履歴</h3><div class="small" style="margin:-4px 2px 10px">完了した購入・販売は通常一覧から自動で移動します。決済・納品記録は削除されません。</div>${hiddenCards||'<div class="card small mypage-item-card">完了した取引はありません。</div>'}`;
+  myHiddenTrades.innerHTML=`<h3>取引履歴</h3><div class="small" style="margin:-4px 2px 10px">完了した購入・販売・依頼・受注は通常一覧から自動で移動します。取引・決済・納品記録は削除されません。</div>${hiddenCards||'<div class="card small mypage-item-card">完了した取引はありません。</div>'}`;
 
   const sellerListingMap=new Map((l||[]).map(x=>[x.id,x]));
   const latestBuyer=(buyerConvs||[])[0]||null;
@@ -2774,9 +2774,9 @@ async function loadMe(){
   };
 
   const sellerVoiceConvs=(sellerConvs||[]).filter(c=>c.listing_id);
-  const sellerJobConvs=(sellerConvs||[]).filter(c=>c.job_id);
+  const sellerJobConvs=(sellerConvs||[]).filter(c=>c.job_id&&statusText(c)!=='完了');
   const buyerVoiceConvs=(buyerConvs||[]).filter(c=>c.listing_id);
-  const buyerJobConvs=(buyerConvs||[]).filter(c=>c.job_id);
+  const buyerJobConvs=(buyerConvs||[]).filter(c=>c.job_id&&statusText(c)!=='完了');
 
   if(sellerErr){
     mySoldVoices.innerHTML=`<h3>販売した音声</h3><div class="card err">${esc(sellerErr.message)}</div>`;
