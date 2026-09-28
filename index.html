@@ -653,6 +653,13 @@ body.messages-mode .unread-dot{flex:0 0 auto;align-self:flex-end}
 .mylisting-info span{font-weight:800;color:#36334f}
 .mylisting-info small{width:100%;color:#8a849f;font-size:11px}
 .mylisting-delete{flex:0 0 auto;border:1px solid #eadff6;background:#fff;border-radius:12px;padding:8px 9px;color:#7567c9;font-weight:800;font-size:11px;display:flex;align-items:center;gap:3px}
+
+.manage-visibility-card{margin-top:16px}
+.manage-row{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:10px 0;border-bottom:1px solid #eee9fa}
+.manage-row:last-child{border-bottom:0}
+.manage-row span{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.manage-row button{flex:0 0 auto;border:1px solid #d9d0f7;background:#fff;color:#6655d8;border-radius:10px;padding:7px 12px;font-weight:800}
+.manage-empty{padding:9px 0;color:#8a849f}
 </style>
 <script>
 if(window.navigator.standalone===true){document.body.classList.add('standalone')}
@@ -852,7 +859,14 @@ body:has(#authPage.on) .tag .line2{
 
 <section id="messages" class="page"><div class="messages-list-head"><div class="messages-list-title"><b>メッセージ</b><span>取引相手とのやり取り</span></div><button type="button" class="message-home-btn" onclick="goHomeNow()" aria-label="ホームへ戻る">🏠 ホーム</button></div><h2>メッセージ</h2><div id="conversationList" class="chatlist"></div><div id="chatBox" class="card chatbox"><div class="chatroom-head"><button class="chatback" onclick="closeChat()" aria-label="メッセージ一覧へ">‹</button><div class="chatroom-title"><b id="chatTitle">チャット</b><span id="chatSub">取引メッセージ</span></div><div class="chatroom-actions"><button type="button" class="message-home-btn compact" onclick="goHomeNow()" aria-label="ホームへ戻る">🏠 ホーム</button><button id="chatSafetyBtn" class="safety-chat-btn" onclick="openSafetyCenter('chat')">通報・ブロック</button></div></div><button id="tradeInfoReopen" class="trade-info-reopen" type="button" onclick="showTradeInfoPanel()" aria-label="確認済みの取引情報をもう一度見る">取引情報を見る</button><div id="tradeInfoPanel" class="trade-info-panel"></div><div id="chatMessages" class="chatmessages"></div><div id="deliveryArea" class="chatdelivery"></div><div class="chatdock"><div class="chatcomposer"><textarea id="chatInput" placeholder="メッセージを入力"></textarea><button class="btn" onclick="sendChatMessage()">送信</button></div><div id="chatMsg"></div></div></div></section>
 
-<section id="me" class="page"><h2>マイページ</h2><div class="card profile-compact profile-card-main"><div id="meText">-</div></div><div id="myListings"></div><div id="mySoldVoices"></div><div id="myPurchasedVoices"></div><div id="mySellerJobs"></div><div id="myBuyerJobs"></div><div id="myHiddenTrades"></div><div class="card finance-card compact-finance-card"><b>💰 売上金</b><div id="sellerSalesSummary" style="margin-top:10px"></div><button class="btn secondary full" type="button" style="margin-top:10px" onclick="openFinanceCenter('seller')">売上金を確認</button><div class="stripe-connect-box"><div id="stripeConnectStatus" class="stripe-connect-status">Stripe受取アカウントの状態を確認中...</div><button id="stripeConnectBtn" class="btn full stripe-connect-btn" type="button" onclick="connectStripeSeller()">Stripe受取アカウントを設定</button></div></div></section>
+<section id="me" class="page"><h2>マイページ</h2><div class="card profile-compact profile-card-main"><div id="meText">-</div></div><div id="myListings"></div><div id="mySoldVoices"></div><div id="myPurchasedVoices"></div><div id="mySellerJobs"></div><div id="myBuyerJobs"></div><div id="myHiddenTrades"></div>
+<div id="visibilityBlockManager" class="card manage-visibility-card">
+  <h3 style="margin-top:0">非表示・ブロック管理</h3>
+  <div class="small">非表示にした会話の再表示や、ブロックしたユーザーの解除ができます。</div>
+  <div id="hiddenConversationManager" style="margin-top:12px"></div>
+  <div id="blockedUserManager" style="margin-top:14px"></div>
+</div>
+<div class="card finance-card compact-finance-card"><b>💰 売上金</b><div id="sellerSalesSummary" style="margin-top:10px"></div><button class="btn secondary full" type="button" style="margin-top:10px" onclick="openFinanceCenter('seller')">売上金を確認</button><div class="stripe-connect-box"><div id="stripeConnectStatus" class="stripe-connect-status">Stripe受取アカウントの状態を確認中...</div><button id="stripeConnectBtn" class="btn full stripe-connect-btn" type="button" onclick="connectStripeSeller()">Stripe受取アカウントを設定</button></div></div></section>
 
 
 
@@ -2116,6 +2130,71 @@ function restoreConversationForMe(id){
   loadMe();
 }
 
+
+function getHiddenConversationIdsForCurrentUser(){
+  if(!currentUser)return [];
+  const prefix=`vf_hidden_conversation_${currentUser.id}_`;
+  const ids=[];
+  for(let i=0;i<localStorage.length;i++){
+    const k=localStorage.key(i)||'';
+    if(k.startsWith(prefix)&&localStorage.getItem(k)==='1')ids.push(k.slice(prefix.length));
+  }
+  return ids;
+}
+async function renderVisibilityBlockManager(){
+  if(!sb||!currentUser)return;
+  const hiddenEl=document.getElementById('hiddenConversationManager');
+  const blockedEl=document.getElementById('blockedUserManager');
+  if(!hiddenEl||!blockedEl)return;
+
+  const hiddenIds=getHiddenConversationIdsForCurrentUser();
+  hiddenEl.innerHTML='<b>非表示にした会話</b><div class="small">読み込み中...</div>';
+  if(!hiddenIds.length){
+    hiddenEl.innerHTML='<b>非表示にした会話</b><div class="small manage-empty">現在ありません。</div>';
+  }else{
+    const {data:cs,error}=await sb.from('conversations').select('id,buyer_id,seller_id,created_at').in('id',hiddenIds);
+    if(error){
+      hiddenEl.innerHTML=`<b>非表示にした会話</b><div class="err">${esc(error.message)}</div>`;
+    }else{
+      const partnerIds=[...new Set((cs||[]).map(c=>c.buyer_id===currentUser.id?c.seller_id:c.buyer_id).filter(Boolean))];
+      const names={};
+      if(partnerIds.length){
+        const r=await sb.from('profiles').select('id,display_name').in('id',partnerIds);
+        (r.data||[]).forEach(x=>names[x.id]=x.display_name||'ユーザー');
+      }
+      hiddenEl.innerHTML='<b>非表示にした会話</b>'+((cs||[]).map(c=>{
+        const partner=c.buyer_id===currentUser.id?c.seller_id:c.buyer_id;
+        return `<div class="manage-row"><span>💬 ${esc(names[partner]||'ユーザー')}との会話</span><button type="button" onclick="restoreConversationForMe('${c.id}')">再表示</button></div>`;
+      }).join('')||'<div class="small manage-empty">現在ありません。</div>');
+    }
+  }
+
+  blockedEl.innerHTML='<b>ブロック中のユーザー</b><div class="small">読み込み中...</div>';
+  const {data:blocks,error:blockErr}=await sb.from('user_blocks').select('id,blocked_user_id').eq('blocker_id',currentUser.id);
+  if(blockErr){
+    blockedEl.innerHTML=`<b>ブロック中のユーザー</b><div class="err">${esc(blockErr.message)}</div>`;
+    return;
+  }
+  if(!(blocks||[]).length){
+    blockedEl.innerHTML='<b>ブロック中のユーザー</b><div class="small manage-empty">現在ありません。</div>';
+    return;
+  }
+  const blockedIds=[...new Set(blocks.map(x=>x.blocked_user_id).filter(Boolean))];
+  const names={};
+  if(blockedIds.length){
+    const r=await sb.from('profiles').select('id,display_name').in('id',blockedIds);
+    (r.data||[]).forEach(x=>names[x.id]=x.display_name||'ユーザー');
+  }
+  blockedEl.innerHTML='<b>ブロック中のユーザー</b>'+blocks.map(x=>`<div class="manage-row"><span>🚫 ${esc(names[x.blocked_user_id]||'ユーザー')}</span><button type="button" onclick="unblockUserFromManager('${x.id}')">解除</button></div>`).join('');
+}
+async function unblockUserFromManager(blockId){
+  if(!sb||!currentUser||!blockId)return;
+  if(!confirm('このユーザーのブロックを解除しますか？'))return;
+  const {error}=await sb.from('user_blocks').delete().eq('id',blockId).eq('blocker_id',currentUser.id);
+  if(error)return alert('ブロックを解除できませんでした：'+error.message);
+  await renderVisibilityBlockManager();
+  loadConversations();
+}
 async function loadConversations(){
  if(!sb||!currentUser)return;setShellMode('messages');chatBox.classList.remove('on');conversationList.style.display='grid';
  const {data,error}=await sb.from('conversations').select('id,buyer_id,seller_id,job_id,listing_id,delivery_status,created_at').or(`buyer_id.eq.${currentUser.id},seller_id.eq.${currentUser.id}`).order('created_at',{ascending:false});
@@ -2856,6 +2935,7 @@ async function openPublicProfile(userId){
 
 
 async function loadMe(){
+ setTimeout(()=>renderVisibilityBlockManager().catch(e=>console.warn('manager',e)),0);
   const {data:profile}=await sb.from('profiles').select('*').eq('id',currentUser.id).maybeSingle();
   let p=profile||{};
   const {data:receivedReviews}=await sb.from('reviews').select('rating').eq('target_user_id',currentUser.id);
