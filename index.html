@@ -667,6 +667,42 @@ body.messages-mode .unread-dot{flex:0 0 auto;align-self:flex-end}
 .message-action-sheet button:last-child{border-bottom:0}
 .message-action-sheet button.danger{color:#c93c57}
 .bubble.mine[data-message-id]{touch-action:pan-y;-webkit-user-select:none;user-select:none}
+
+/* === 2026-09-29 取引履歴：声のフリマ専用確認モーダル + 10件ずつ表示 === */
+.trade-hide-confirm-overlay{
+  position:fixed;inset:0;z-index:130000;display:none;
+  align-items:center;justify-content:center;padding:22px;
+  background:rgba(31,27,62,.46);backdrop-filter:blur(4px);-webkit-backdrop-filter:blur(4px)
+}
+.trade-hide-confirm-overlay.show{display:flex}
+.trade-hide-confirm-card{
+  width:min(100%,400px);background:linear-gradient(180deg,#fff,#fbf9ff);
+  border:1px solid #e5defb;border-radius:26px;padding:24px 20px 20px;
+  box-shadow:0 24px 70px rgba(54,40,112,.28);text-align:center
+}
+.trade-hide-confirm-icon{
+  width:58px;height:58px;margin:0 auto 12px;border-radius:18px;
+  display:grid;place-items:center;font-size:27px;color:#fff;
+  background:linear-gradient(145deg,#6558ef,#8b6df6 58%,#d56ab9);
+  box-shadow:0 10px 24px rgba(101,88,239,.24)
+}
+.trade-hide-confirm-card h3{margin:0 0 9px;font-size:21px;color:#282650}
+.trade-hide-confirm-card p{margin:0 0 18px;font-size:12px;line-height:1.7;color:#667085}
+.trade-hide-confirm-primary{
+  width:100%;border:0;border-radius:14px;padding:13px 14px;font-size:14px;font-weight:900;color:#fff;
+  background:linear-gradient(135deg,#6558ef,#8b6df6 58%,#c45fae);
+  box-shadow:0 8px 18px rgba(101,88,239,.20)
+}
+.trade-hide-confirm-cancel{
+  width:100%;margin-top:9px;border:1px solid #d8d1fa;border-radius:14px;padding:12px 14px;
+  font-size:14px;font-weight:900;color:#5d52c9;background:#fff
+}
+.trade-history-more{
+  width:100%;margin:10px 0 2px;border:1px solid #d8d1fa;border-radius:14px;padding:12px 14px;
+  background:#fff;color:#5d52c9;font-size:13px;font-weight:900
+}
+.trade-history-count{margin:4px 2px 8px;color:#8a849f;font-size:10px;text-align:right}
+
 </style>
 <script>
 if(window.navigator.standalone===true){document.body.classList.add('standalone')}
@@ -2990,15 +3026,40 @@ async function openPublicProfile(userId){
 
 function hiddenTradeKey(id){return `vf_hidden_trade_${currentUser?.id||'none'}_${id}`}
 function isTradeHiddenForMe(id){return !!id&&localStorage.getItem(hiddenTradeKey(id))==='1'}
+
+let pendingTradeHideId=null;
+let tradeHistoryVisibleCount=10;
+
 function hideTradeForMe(id){
   if(!currentUser||!id)return;
-  if(!confirm('この取引履歴を自分の画面から非表示にしますか？\n決済・納品などの記録は削除されません。'))return;
-  localStorage.setItem(hiddenTradeKey(id),'1');
+  pendingTradeHideId=id;
+  const ov=document.getElementById('tradeHideConfirmOverlay');
+  if(ov){
+    ov.classList.add('show');
+    ov.setAttribute('aria-hidden','false');
+  }
+}
+function closeTradeHideConfirm(){
+  pendingTradeHideId=null;
+  const ov=document.getElementById('tradeHideConfirmOverlay');
+  if(ov){
+    ov.classList.remove('show');
+    ov.setAttribute('aria-hidden','true');
+  }
+}
+function confirmHideTradeForMe(){
+  if(!currentUser||!pendingTradeHideId)return closeTradeHideConfirm();
+  localStorage.setItem(hiddenTradeKey(pendingTradeHideId),'1');
+  closeTradeHideConfirm();
   loadMe();
 }
 function restoreTradeForMe(id){
   if(!currentUser||!id)return;
   localStorage.removeItem(hiddenTradeKey(id));
+  loadMe();
+}
+function loadMoreTradeHistory(){
+  tradeHistoryVisibleCount+=10;
   loadMe();
 }
 async function loadMe(){
@@ -3140,7 +3201,8 @@ async function loadMe(){
   const completedConvs=allConvs.filter(c=>statusText(c)==='完了');
   const visibleCompletedConvs=completedConvs.filter(c=>!isTradeHiddenForMe(c.id));
   const hiddenCompletedConvs=completedConvs.filter(c=>isTradeHiddenForMe(c.id));
-  const hiddenCards=visibleCompletedConvs.map(c=>{
+  const pagedVisibleCompletedConvs=visibleCompletedConvs.slice(0,tradeHistoryVisibleCount);
+  const hiddenCards=pagedVisibleCompletedConvs.map(c=>{
     const amount=amountOf(c);
     const safeTitle=esc(titleOf(c)).replace(/'/g,'&#39;');
     const completed=statusText(c)==='完了';
@@ -3151,7 +3213,13 @@ async function loadMe(){
   }).join('');
 
   const hiddenTradeManager=hiddenCompletedConvs.map(c=>`<div class="manage-row"><span>🧾 ${esc(titleOf(c))}</span><button type="button" onclick="restoreTradeForMe('${c.id}')">再表示</button></div>`).join('');
-  myHiddenTrades.innerHTML=`<h3>取引履歴</h3><div class="small" style="margin:-4px 2px 10px">完了した取引です。「非表示」で自分の一覧から隠せます。決済・納品記録は削除されません。</div>${hiddenCards||'<div class="card small mypage-item-card">表示中の完了取引はありません。</div>'}${hiddenTradeManager?`<div class="card manage-visibility-card" style="margin-top:12px"><b>非表示にした取引</b>${hiddenTradeManager}</div>`:''}`;
+  const tradeMoreButton=visibleCompletedConvs.length>tradeHistoryVisibleCount
+    ? `<button type="button" class="trade-history-more" onclick="loadMoreTradeHistory()">もっと見る（次の10件）</button>`
+    : '';
+  const tradeCount=visibleCompletedConvs.length
+    ? `<div class="trade-history-count">${Math.min(tradeHistoryVisibleCount,visibleCompletedConvs.length)} / ${visibleCompletedConvs.length}件を表示</div>`
+    : '';
+  myHiddenTrades.innerHTML=`<h3>取引履歴</h3><div class="small" style="margin:-4px 2px 10px">完了した取引です。「非表示」で自分の一覧から隠せます。決済・納品記録は削除されません。</div>${hiddenCards||'<div class="card small mypage-item-card">表示中の完了取引はありません。</div>'}${tradeCount}${tradeMoreButton}${hiddenTradeManager?`<div class="card manage-visibility-card" style="margin-top:12px"><b>非表示にした取引</b>${hiddenTradeManager}</div>`:''}`;
 
   const sellerListingMap=new Map((l||[]).map(x=>[x.id,x]));
   const latestBuyer=(buyerConvs||[])[0]||null;
@@ -3346,4 +3414,16 @@ document.addEventListener('click',function(e){
     <button type="button" id="paymentSuccessMessageBtn">メッセージを確認する</button>
   </div>
 </div>
+
+<div id="tradeHideConfirmOverlay" class="trade-hide-confirm-overlay" aria-hidden="true"
+     onclick="if(event.target===this)closeTradeHideConfirm()">
+  <div class="trade-hide-confirm-card" role="dialog" aria-modal="true" aria-labelledby="tradeHideConfirmTitle">
+    <div class="trade-hide-confirm-icon">🧾</div>
+    <h3 id="tradeHideConfirmTitle">取引履歴を非表示にしますか？</h3>
+    <p>この取引履歴を自分の画面から非表示にします。<br>決済・納品などの記録は削除されません。</p>
+    <button class="trade-hide-confirm-primary" type="button" onclick="confirmHideTradeForMe()">非表示にする</button>
+    <button class="trade-hide-confirm-cancel" type="button" onclick="closeTradeHideConfirm()">キャンセル</button>
+  </div>
+</div>
+
 </body></html>
