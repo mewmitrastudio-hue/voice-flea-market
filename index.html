@@ -645,6 +645,14 @@ body.messages-mode .unread-dot{flex:0 0 auto;align-self:flex-end}
 @media(max-width:390px){body.messages-mode .chatrow{padding:11px}body.messages-mode .conversation-time{max-width:72px;font-size:9px}}
  
 .chat-cancel-btn{border:0;background:transparent;color:#8a849f;font-size:10px;padding:4px 2px 0;cursor:pointer;text-decoration:underline}
+
+.mylisting-compact{display:flex;align-items:center;gap:8px;padding:12px 10px!important;margin-bottom:8px}
+.mylisting-main{flex:1;min-width:0;border:0;background:transparent;text-align:left;padding:0!important;display:flex;align-items:center;justify-content:space-between}
+.mylisting-info{min-width:0;display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.mylisting-info b{color:#1f9bd1;max-width:180px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.mylisting-info span{font-weight:800;color:#36334f}
+.mylisting-info small{width:100%;color:#8a849f;font-size:11px}
+.mylisting-delete{flex:0 0 auto;border:1px solid #eadff6;background:#fff;border-radius:12px;padding:8px 9px;color:#7567c9;font-weight:800;font-size:11px;display:flex;align-items:center;gap:3px}
 </style>
 <script>
 if(window.navigator.standalone===true){document.body.classList.add('standalone')}
@@ -2888,7 +2896,7 @@ async function loadMe(){
     sb.from('conversations').select('id,job_id,listing_id,buyer_id,seller_id,delivery_status,delivered_at,accepted_at,created_at').eq('buyer_id',currentUser.id).order('created_at',{ascending:false})
   ]);
 
-  myListings.innerHTML=`<h3>出品したもの</h3>${(l||[]).map(x=>`<div class="card mypage-item-card"><button type="button" class="mypage-click-card" style="width:100%;border:0;background:transparent;text-align:left;padding:0" onclick="openMyListing('${x.id}')"><b>${esc(x.title)}</b><div class="small">${Number(x.price_jpy||0).toLocaleString()}円</div><div class="trade-date">出品日：${formatJpDateTime(x.created_at,false)||'-'}</div><span class="mypage-card-arrow">›</span></button><button type="button" class="btn secondary full" style="margin-top:10px" onclick="deleteMyListing('${x.id}')">この出品を削除</button></div>`).join('')||'<button type="button" class="card small mypage-item-card mypage-empty-card mypage-click-card" onclick="go(\'sell\')">まだ出品がありません。<span class="mypage-card-arrow">›</span></button>'}`;
+  myListings.innerHTML=`<h3>出品したもの</h3>${(l||[]).map(x=>`<div class="card mypage-item-card mylisting-compact"><button type="button" class="mypage-click-card mylisting-main" onclick="openMyListing('${x.id}')"><div class="mylisting-info"><b>${esc(x.title)}</b><span>${Number(x.price_jpy||0).toLocaleString()}円</span><small>出品日：${formatJpDateTime(x.created_at,false)||'-'}</small></div><span class="mypage-card-arrow">›</span></button><button type="button" class="mylisting-delete" aria-label="この出品を削除" onclick="deleteMyListing('${x.id}')">🗑️<span>削除</span></button></div>`).join('')||'<button type="button" class="card small mypage-item-card mypage-empty-card mypage-click-card" onclick="go(\'sell\')">まだ出品がありません。<span class="mypage-card-arrow">›</span></button>'}`;
 
   // Stripe Webhookで保存された実決済（Sandbox）から出品者売上・返金を集計する。
   const {data:sellerPayments,error:sellerPaymentsError}=await sb
