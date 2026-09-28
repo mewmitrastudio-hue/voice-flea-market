@@ -660,6 +660,13 @@ body.messages-mode .unread-dot{flex:0 0 auto;align-self:flex-end}
 .manage-row span{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .manage-row button{flex:0 0 auto;border:1px solid #d9d0f7;background:#fff;color:#6655d8;border-radius:10px;padding:7px 12px;font-weight:800}
 .manage-empty{padding:9px 0;color:#8a849f}
+
+.message-action-overlay{position:fixed;inset:0;background:rgba(20,18,35,.28);z-index:99999;display:flex;align-items:flex-end;justify-content:center;padding:18px}
+.message-action-sheet{width:min(520px,100%);background:#fff;border-radius:18px;padding:8px;box-shadow:0 18px 60px rgba(0,0,0,.22)}
+.message-action-sheet button{display:block;width:100%;border:0;background:#fff;padding:16px;font-size:16px;font-weight:800;color:#5f55e8;border-bottom:1px solid #eee}
+.message-action-sheet button:last-child{border-bottom:0}
+.message-action-sheet button.danger{color:#c93c57}
+.bubble.mine[data-message-id]{touch-action:pan-y;-webkit-user-select:none;user-select:none}
 </style>
 <script>
 if(window.navigator.standalone===true){document.body.classList.add('standalone')}
@@ -1061,7 +1068,7 @@ body:has(#authPage.on) .tag .line2{
 
     <div class="manual-section">
       <b>💬 メッセージ・取引をする</b>
-      <p>取引チャットでは、仕事内容・原稿・納期・声のイメージなどを確認しながら進められます。自分が送った通常メッセージは「送信を取り消す」から取り消せます。不要になった会話は自分の一覧から非表示にできます。</p>
+      <p>取引チャットでは、仕事内容・原稿・納期・声のイメージなどを確認しながら進められます。自分が送った通常メッセージを長押しすると「送信を取り消す」と「削除」が表示されます。「送信を取り消す」は相手側にも取り消し表示を残し、「削除」は自分の画面だけから隠します。不要になった会話は自分の一覧から非表示にできます。</p>
     </div>
 
     <div class="manual-section">
@@ -1086,7 +1093,7 @@ body:has(#authPage.on) .tag .line2{
 
     <div class="manual-section">
       <b>🧹 出品・会話・取引履歴を整理する</b>
-      <p>未取引の自分の出品はマイページの「削除」から削除できます。購入・取引履歴がある出品や完了した取引は、決済・返金などの記録を守るためデータそのものは削除せず、画面上から非表示にして整理する方式です。非表示にした会話や取引は、あとから再表示できます。</p>
+      <p>未取引の自分の出品はマイページの「削除」から削除できます。購入・取引履歴がある出品や完了した取引は、決済・返金などの記録を守るためデータそのものは削除せず、画面上から非表示にして整理する方式です。非表示にした会話や取引は、あとから再表示できます。取引履歴は「取引履歴」の「非表示」から隠し、「非表示にした取引」の「再表示」で戻せます。</p>
     </div>
 
     <div class="manual-section">
@@ -2380,7 +2387,7 @@ async function loadChatMessages(){
  }
  const seenConversationSeparators=new Set();
  const seenRatingConversations=new Set();
- chatMessages.innerHTML=(data||[]).map(m=>{
+ chatMessages.innerHTML=(data||[]).filter(m=>!isMessageHiddenForMe(m.id)).map(m=>{
    let separator='';
    if(!seenConversationSeparators.has(m.conversation_id)){
      seenConversationSeparators.add(m.conversation_id);
@@ -2408,12 +2415,49 @@ async function loadChatMessages(){
    const mine=m.sender_id===currentUser.id;
    if(mine){
      const cancelled=body==='送信を取り消しました';
-     return separator+`<div class="chat-message-row mine-row"><div class="chat-message-content"><div class="bubble mine">${esc(body)}</div>${when?`<div class="chat-message-time">${when}</div>`:''}${cancelled?'':`<button type="button" class="chat-cancel-btn" onclick="cancelSentMessage('${m.id}')">送信を取り消す</button>`}</div></div>`;
+     return separator+`<div class="chat-message-row mine-row"><div class="chat-message-content"><div class="bubble mine${cancelled?' cancelled-message':''}" ${cancelled?'':`data-message-id="${m.id}" oncontextmenu="return false"`}>${esc(body)}</div>${when?`<div class="chat-message-time">${when}</div>`:''}</div></div>`;
    }
    return separator+`<div class="chat-message-row theirs-row">${avatarMarkup(profileMap[m.sender_id]||{display_name:'ユーザー'},'xs',m.sender_id)}<div class="chat-message-content"><div class="bubble theirs">${esc(body)}</div>${when?`<div class="chat-message-time">${when}</div>`:''}</div></div>`;
  }).join('')||'<div class="small">まだメッセージはありません。最初のメッセージを送ってみましょう。</div>';
  ids.forEach(markConversationSeen);setTimeout(()=>chatMessages.scrollTop=chatMessages.scrollHeight,0)
 }
+
+function hiddenMessageKey(id){return `vf_hidden_message_${currentUser?.id||'none'}_${id}`}
+function isMessageHiddenForMe(id){return !!id&&localStorage.getItem(hiddenMessageKey(id))==='1'}
+function deleteMessageForMe(messageId){
+  if(!currentUser||!messageId)return;
+  localStorage.setItem(hiddenMessageKey(messageId),'1');
+  closeMessageActionSheet();
+  loadChatMessages();
+}
+function closeMessageActionSheet(){document.getElementById('messageActionOverlay')?.remove()}
+function openMessageActionSheet(messageId){
+  if(!messageId)return;
+  closeMessageActionSheet();
+  const ov=document.createElement('div');
+  ov.id='messageActionOverlay';
+  ov.className='message-action-overlay';
+  ov.innerHTML=`<div class="message-action-sheet" role="dialog" aria-modal="true">
+    <button type="button" onclick="cancelSentMessage('${messageId}');closeMessageActionSheet()">送信を取り消す</button>
+    <button type="button" class="danger" onclick="deleteMessageForMe('${messageId}')">削除</button>
+  </div>`;
+  ov.addEventListener('click',e=>{if(e.target===ov)closeMessageActionSheet()});
+  document.body.appendChild(ov);
+}
+(function setupMessageLongPress(){
+  let timer=null,startX=0,startY=0;
+  const clear=()=>{if(timer){clearTimeout(timer);timer=null}};
+  document.addEventListener('pointerdown',e=>{
+    const b=e.target.closest?.('.bubble.mine[data-message-id]');
+    if(!b)return;
+    startX=e.clientX;startY=e.clientY;
+    clear();
+    timer=setTimeout(()=>{timer=null;openMessageActionSheet(b.dataset.messageId)},520);
+  });
+  document.addEventListener('pointermove',e=>{if(timer&&(Math.abs(e.clientX-startX)>12||Math.abs(e.clientY-startY)>12))clear()});
+  document.addEventListener('pointerup',clear);
+  document.addEventListener('pointercancel',clear);
+})();
 async function cancelSentMessage(messageId){
   if(!sb||!currentUser||!messageId)return;
   if(!confirm('このメッセージの送信を取り消しますか？'))return;
@@ -2943,6 +2987,20 @@ async function openPublicProfile(userId){
 }
 
 
+
+function hiddenTradeKey(id){return `vf_hidden_trade_${currentUser?.id||'none'}_${id}`}
+function isTradeHiddenForMe(id){return !!id&&localStorage.getItem(hiddenTradeKey(id))==='1'}
+function hideTradeForMe(id){
+  if(!currentUser||!id)return;
+  if(!confirm('この取引履歴を自分の画面から非表示にしますか？\n決済・納品などの記録は削除されません。'))return;
+  localStorage.setItem(hiddenTradeKey(id),'1');
+  loadMe();
+}
+function restoreTradeForMe(id){
+  if(!currentUser||!id)return;
+  localStorage.removeItem(hiddenTradeKey(id));
+  loadMe();
+}
 async function loadMe(){
  setTimeout(()=>renderVisibilityBlockManager().catch(e=>console.warn('manager',e)),0);
   const {data:profile}=await sb.from('profiles').select('*').eq('id',currentUser.id).maybeSingle();
@@ -3079,18 +3137,21 @@ async function loadMe(){
     return `<div class="card trade-history-card mypage-item-card mypage-click-card" onclick="go('messages').then(()=>openConversation('${c.id}','${safeTitle}'))"><div class="row"><div><b>${esc(titleOf(c))}</b><div class="small">${role}${amount!=null?`　${Number(amount).toLocaleString()}円`:''}</div><div class="trade-date">${dateLabel}：${formatJpDateTime(dateValue,false)||'-'}</div></div><div class="mypage-status-wrap"><span class="delivery-status ${statusClass(c)}">${statusText(c)}</span><span class="mypage-card-arrow">›</span></div></div><div class="trade-date" style="margin-top:8px;color:#5f55e8;font-weight:800">取引詳細を見る</div>${hideButton?`<div style="margin-top:10px;text-align:right">${hideButton}</div><div class="history-hide-note">自分の一覧からだけ非表示になります。決済・納品記録は残ります。</div>`:''}</div>`;
   };
 
-  const hiddenConvs=allConvs.filter(c=>isConversationHidden(c.id)||statusText(c)==='完了');
-  const hiddenCards=hiddenConvs.map(c=>{
+  const completedConvs=allConvs.filter(c=>statusText(c)==='完了');
+  const visibleCompletedConvs=completedConvs.filter(c=>!isTradeHiddenForMe(c.id));
+  const hiddenCompletedConvs=completedConvs.filter(c=>isTradeHiddenForMe(c.id));
+  const hiddenCards=visibleCompletedConvs.map(c=>{
     const amount=amountOf(c);
     const safeTitle=esc(titleOf(c)).replace(/'/g,'&#39;');
     const completed=statusText(c)==='完了';
     const actions=completed
-      ? `<button type="button" class="btn secondary full" onclick="go('messages').then(()=>openConversation('${c.id}','${safeTitle}'))">取引詳細を見る</button>`
-      : `<div style="display:flex;gap:8px"><button type="button" class="btn secondary" style="flex:1" onclick="restoreConversationForMe('${c.id}')">再表示</button><button type="button" class="btn secondary" style="flex:1" onclick="restoreConversationForMe('${c.id}');go('messages').then(()=>openConversation('${c.id}','${safeTitle}'))">開く</button></div>`;
+      ? `<div style="display:flex;gap:8px"><button type="button" class="btn secondary" style="flex:1" onclick="go('messages').then(()=>openConversation('${c.id}','${safeTitle}'))">取引詳細を見る</button><button type="button" class="btn secondary" style="flex:0 0 auto" onclick="hideTradeForMe('${c.id}')">非表示</button></div>`
+      : '';
     return `<div class="card trade-history-card mypage-item-card"><div class="row"><div><b>${esc(titleOf(c))}</b><div class="small">${c.listing_id?'音声取引':'声の依頼'}${amount!=null?`　${Number(amount).toLocaleString()}円`:''}</div><div class="trade-date">取引開始日：${formatJpDateTime(c.created_at,false)||'-'}</div></div><span class="delivery-status ${statusClass(c)}">${statusText(c)}</span></div><div style="margin-top:10px">${actions}</div></div>`;
   }).join('');
 
-  myHiddenTrades.innerHTML=`<h3>取引履歴</h3><div class="small" style="margin:-4px 2px 10px">完了した購入・販売・依頼・受注は通常一覧から自動で移動します。取引・決済・納品記録は削除されません。</div>${hiddenCards||'<div class="card small mypage-item-card">完了した取引はありません。</div>'}`;
+  const hiddenTradeManager=hiddenCompletedConvs.map(c=>`<div class="manage-row"><span>🧾 ${esc(titleOf(c))}</span><button type="button" onclick="restoreTradeForMe('${c.id}')">再表示</button></div>`).join('');
+  myHiddenTrades.innerHTML=`<h3>取引履歴</h3><div class="small" style="margin:-4px 2px 10px">完了した取引です。「非表示」で自分の一覧から隠せます。決済・納品記録は削除されません。</div>${hiddenCards||'<div class="card small mypage-item-card">表示中の完了取引はありません。</div>'}${hiddenTradeManager?`<div class="card manage-visibility-card" style="margin-top:12px"><b>非表示にした取引</b>${hiddenTradeManager}</div>`:''}`;
 
   const sellerListingMap=new Map((l||[]).map(x=>[x.id,x]));
   const latestBuyer=(buyerConvs||[])[0]||null;
