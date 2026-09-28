@@ -1934,7 +1934,32 @@ async function loadJobBadge(){if(!sb||!currentUser)return;const {data:jobs}=awai
 async function reviewApplication(appId,status){const text=status==='accepted'?'この応募を承認しますか？':'この応募を見送りますか？';if(!confirm(text))return;const {data:app,error:ae}=await sb.from('applications').select('id,job_id,applicant_id').eq('id',appId).single();if(ae)return alert(ae.message);const {error}=await sb.from('applications').update({status}).eq('id',appId);if(error)return alert(error.message);if(status==='accepted'){const {data:j,error:je}=await sb.from('jobs').select('buyer_id').eq('id',app.job_id).single();if(!je&&j){await ensureConversation(app.job_id,j.buyer_id,app.applicant_id)}}alert(status==='accepted'?'応募を承認しました。':'見送りにしました。');loadJobs();loadJobBadge();loadMessageBadge()}
 
 function seenKey(id){return `voice_flea_seen_${currentUser?.id||'none'}_${id}`}
-function markConversationSeen(id){localStorage.setItem(seenKey(id),new Date().toISOString())}
+/* 2026-09-28: 未読が復活する問題の修正
+   端末時刻ではなく、Supabase上の最新受信メッセージ created_at を既読基準にする。
+   端末とサーバーの時刻差で、既読済みメッセージが再び未読になるのを防ぐ。 */
+async function markConversationSeen(id){
+ if(!currentUser||!sb)return;
+ try{
+   const {data,error}=await sb.from('messages')
+     .select('created_at')
+     .eq('conversation_id',id)
+     .neq('sender_id',currentUser.id)
+     .order('created_at',{ascending:false})
+     .limit(1);
+   if(error)throw error;
+   const latest=data?.[0]?.created_at;
+   if(latest){
+     const latestMs=new Date(latest).getTime();
+     const seenIso=Number.isFinite(latestMs)?new Date(latestMs+1).toISOString():latest;
+     localStorage.setItem(seenKey(id),seenIso);
+   }else{
+     localStorage.setItem(seenKey(id),new Date().toISOString());
+   }
+ }catch(e){
+   console.warn('markConversationSeen fallback',e);
+   localStorage.setItem(seenKey(id),new Date().toISOString());
+ }
+}
 async function ensureConversation(jobId,buyerId,sellerId){
  let q=sb.from('conversations').select('id,buyer_id,seller_id,job_id').eq('job_id',jobId).eq('buyer_id',buyerId).eq('seller_id',sellerId).limit(1);
  const {data,error}=await q;if(error)return {error};if(data?.length)return {data:data[0]};
@@ -2181,8 +2206,8 @@ async function openConversation(id,title='チャット',opts={}){
  if(!currentConversationGroupIds.includes(c.id))currentConversationGroupIds.push(c.id);
  conversationList.style.display='none';chatBox.classList.add('on');setShellMode('chat');chatTitle.textContent=title;chatSub.textContent='この相手とのメッセージ';
  if(currentUser&&!opts.skipSave){localStorage.setItem(uiKey('page'),'messages');saveChatState(id,title)}
- currentConversationGroupIds.forEach(markConversationSeen);
- await Promise.all([loadTradeInfoPanel(c),loadChatMessages(),loadDeliveries()]);await applyChatBlockState();loadMessageBadge()
+ await Promise.all(currentConversationGroupIds.map(markConversationSeen));
+ await Promise.all([loadTradeInfoPanel(c),loadChatMessages(),loadDeliveries()]);await applyChatBlockState();await loadMessageBadge();await loadHome()
 }
 function closeChat(){clearChatNotice();clearChatState();const tip=document.getElementById('tradeInfoPanel');if(tip){tip.classList.remove('show');tip.innerHTML=''}const tr=document.getElementById('tradeInfoReopen');if(tr)tr.classList.remove('show');currentConversationId=null;currentConversation=null;currentConversationPartner=null;currentConversationGroupIds=[];setShellMode('messages');chatBox.classList.remove('on');conversationList.style.display='grid';loadConversations()}
 async function loadChatMessages(){
