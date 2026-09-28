@@ -823,14 +823,14 @@ body:has(#authPage.on) .tag .line2{
 <section id="home" class="page"><div class="quickgrid"><button class="quickcard" onclick="go('sell')"><span class="qi">🎙️</span>声を出品<small>声をアピールして、販売や仕事につなげる</small></button><button class="quickcard" onclick="go('voices')"><span class="qi">🔎</span>声を探す・購入<small>動画・広告・ナレーションなどに合う声を探す</small></button><button class="quickcard" onclick="go('jobs')"><span class="qi">📣</span>声を依頼<small>欲しい声や用途を投稿して募集する</small></button><button class="quickcard" onclick="go('messages')"><span class="qi">💬</span>メッセージ<small>取引相手とやり取りする</small></button></div><div class="home-summary-title">すぐ確認</div><div class="home-summary-grid"><button class="home-summary-card" type="button" onclick="openFinanceCenter('seller')"><span>💰 売上</span><strong id="homeSalesAmount">0円</strong></button><button class="home-summary-card" type="button" onclick="go('messages')"><span>💬 未読</span><strong id="homeUnreadCount">0件</strong></button><button class="home-summary-card" type="button" onclick="menuGoMySection('myListings')"><span>🎙️ 出品を確認</span><strong id="homeMyListingCount">0件</strong></button><button class="home-summary-card favorite-summary-card" type="button" onclick="openFavorites()"><span>♥ お気に入り</span><strong id="homeFavoriteCount">0件</strong></button></div></section>
 
 <section id="voices" class="page"><h2>声を探す・購入</h2>
-<div class="purchase-guide"><b>🔎 用途に合う声を探そう</b><br>動画・YouTube・SNS・広告・商品紹介・企業の説明動画・店舗や施設の案内・朗読・ゲームやアプリのキャラクターボイスなど、必要な声を探して購入できます。気になる声を見つけたら、サンプルや条件を確認して「購入する」から進んでください。</div><div class="field"><input id="voiceSearch" placeholder="英語、関西弁、YouTube、出品者名..." oninput="scheduleListingSearch()"></div><div class="small" style="margin:-4px 2px 10px">タイトル・カテゴリー・説明・AI条件・出品者名から検索できます。</div><div class="voice-filter-row"><label><input id="hidePurchasedToggle" type="checkbox" onchange="loadListings(true)"> 購入済みを非表示</label><label><input id="hideOwnToggle" type="checkbox" onchange="loadListings(true)"> 自分の出品を除外</label></div><div id="listingSearchMeta" class="small" style="margin:0 2px 10px"></div><div id="listingList"></div><button id="listingLoadMoreBtn" class="btn secondary full hide" type="button" style="margin-top:12px" onclick="loadMoreListings()">さらに表示</button></section>
+<div class="purchase-guide"><b>🔎 用途に合う声を探そう</b><br>ここは、声を売りたい人と声を探している人が出会う「声のフリマ」です。動画・YouTube・SNS・広告・商品紹介・企業の説明動画・店舗や施設の案内・朗読・ゲームやアプリのキャラクターボイスなど、必要な声を探せます。出品者のアピールやサンプルを聴いて、気になる声を見つけてください。条件が合えば購入し、必要に応じて取引相手と内容を相談しながら進められます。</div><div class="field"><input id="voiceSearch" placeholder="英語、関西弁、YouTube、出品者名..." oninput="scheduleListingSearch()"></div><div class="small" style="margin:-4px 2px 10px">タイトル・カテゴリー・説明・AI条件・出品者名から検索できます。</div><div class="voice-filter-row"><label><input id="hidePurchasedToggle" type="checkbox" onchange="loadListings(true)"> 購入済みを非表示</label><label><input id="hideOwnToggle" type="checkbox" onchange="loadListings(true)"> 自分の出品を除外</label></div><div id="listingSearchMeta" class="small" style="margin:0 2px 10px"></div><div id="listingList"></div><button id="listingLoadMoreBtn" class="btn secondary full hide" type="button" style="margin-top:12px" onclick="loadMoreListings()">さらに表示</button></section>
 
 <section id="sell" class="page"><h2>声を出品する</h2>
 <div class="card" style="margin-bottom:14px">
   <h3 style="margin-top:0">🎙️ あなたの声をアピールしよう</h3>
-  <p class="small">ナレーション・セリフ・朗読・キャラクターボイスなど、あなたの得意な声をサンプルとして出品できます。声を探している企業・制作会社・クリエイター・依頼者に見つけてもらい、購入や仕事の相談につながる可能性があります。</p>
+  <p class="small">ここは、自分の声をアピールして仕事や販売につなげる「声のフリマ」です。「低い声に自信があります」「CMに使ってください」「ナレーションやります」など、あなたの強みや得意な声を自由にアピールしてください。ナレーション・セリフ・朗読・キャラクターボイスなどのサンプルを公開し、声を探している企業・制作会社・クリエイター・依頼者に見つけてもらえます。</p>
   <p class="small"><b>出品例：</b>動画・CMナレーション／朗読／アニメ・ゲーム向けボイス／商品・サービス案内／落ち着いた声／元気な声／方言／外国語など</p>
-  <p class="small"><b>出品のコツ：</b>「どんな声を提供できるか」が伝わる30秒〜1分程度のサンプルがおすすめです。得意な声・用途・納期なども説明欄に書いておきましょう。</p>
+  <p class="small"><b>出品のコツ：</b>「どんな声を提供できるか」が伝わる30秒〜1分程度のサンプルがおすすめです。得意な声・使ってほしい用途・納期・希望料金などを書き、「料金や内容は相談OK」など交渉できることも説明欄でアピールしましょう。</p>
 </div><div class="card"><div class="field"><label>タイトル</label><input id="sellTitle" placeholder="例：自然な日本語を読みます"></div><div class="field"><label>カテゴリー</label><select id="sellCategory"><option>外国語・学習</option><option>日本語・方言</option><option>YouTube・SNS</option><option>ナレーション</option><option>歌</option><option>メッセージ</option><option>その他</option></select></div><div class="field"><label>説明</label><textarea id="sellDesc" placeholder="声の特徴、対応できる内容など"></textarea></div><div class="field"><label>価格（円）</label><input id="sellPrice" type="number" value="1000" min="0"></div><div class="field"><label>納期（日）</label><input id="sellDays" type="number" value="3" min="1"></div><div class="field"><label>AI利用</label><select id="sellAI"><option>禁止</option><option>案件ごとに相談</option><option>許可</option></select></div><div class="field"><label>公開用の声サンプル</label><input id="sellAudio" type="file"><div class="small">対応形式：m4a / mp3 / wav / aac / mp4 などの音声ファイル</div></div><div class="notice">ここへ登録する音声は「公開サンプル」として扱います。取引後の納品音声は別の非公開領域へ保存します。</div><button class="btn full" onclick="createListing()">声を出品する</button><div id="sellMsg"></div></div></section>
 
 <section id="jobs" class="page"><h2>声の依頼を探す / 募集する</h2>
@@ -1013,6 +1013,14 @@ body:has(#authPage.on) .tag .line2{
     <div class="manual-head">
       <div>
         <h3>使い方・操作マニュアル</h3>
+      <div class="manual-item">
+        <b>🎙️ 声のフリマは「声のアピール・マッチング」の場所</b>
+        <p>声を売りたい人が「低い声に自信があります」「CMに使ってください」「ナレーションやります」など、自分の声や得意分野をアピールし、声を探している個人・企業・制作会社・クリエイターと出会うための場所です。公開サンプルをきっかけに、購入や仕事の相談につなげられます。</p>
+      </div>
+      <div class="manual-item">
+        <b>💬 条件や料金は話し合いながら</b>
+        <p>声の用途、原稿量、納期、希望する雰囲気などは案件ごとに異なります。出品時には希望価格を設定しつつ、説明欄に「料金・内容は相談OK」などを書いてアピールできます。取引開始後はメッセージで内容を確認しながら進めます。欲しい声が見つからない場合は「声を依頼」から予算や条件を提示して募集できます。</p>
+      </div>
         <div class="small">声のフリマの基本操作</div>
       </div>
       <button class="manual-close" type="button" onclick="closeManualCenter()">×</button>
@@ -1020,7 +1028,7 @@ body:has(#authPage.on) .tag .line2{
 
     <div class="manual-section">
       <b>🎧 声を探す・購入</b>
-      <p>動画・広告・ナレーション・朗読・キャラクターボイスなど、用途に合う声をキーワードで検索できます。タイトル・カテゴリー・説明・AI条件・出品者名から探せます。</p>
+      <p>動画・広告・ナレーション・朗読・キャラクターボイスなど、用途に合う声をキーワードで検索できます。サンプルと出品者のアピールを確認し、目的に合う人を探してください。タイトル・カテゴリー・説明・AI条件・出品者名から検索できます。</p>
     </div>
 
     <div class="manual-section">
@@ -1040,7 +1048,7 @@ body:has(#authPage.on) .tag .line2{
 
     <div class="manual-section">
       <b>🎙️ 声を出品する</b>
-      <p>「声を出品」から、得意な声や用途が伝わるタイトル・カテゴリー・説明・価格・納期・AI利用条件・サンプル音声を登録します。ナレーション、朗読、キャラクターボイス、商品案内など、どんな仕事に使える声かを書くと探す側に伝わりやすくなります。</p>
+      <p>「声を出品」から、得意な声や用途が伝わるタイトル・カテゴリー・説明・価格・納期・AI利用条件・サンプル音声を登録します。「低い声が得意」「CM向け」「ナレーション対応」「料金・内容は相談OK」など、自分の強みと仕事のイメージが伝わるように書くのがおすすめです。</p>
     </div>
 
     <div class="manual-section">
