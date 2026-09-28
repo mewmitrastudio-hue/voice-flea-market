@@ -643,6 +643,8 @@ body.messages-mode .chatrow .small{display:block;max-width:100%;overflow:hidden;
 body.messages-mode .conversation-time{max-width:86px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;text-align:right}
 body.messages-mode .unread-dot{flex:0 0 auto;align-self:flex-end}
 @media(max-width:390px){body.messages-mode .chatrow{padding:11px}body.messages-mode .conversation-time{max-width:72px;font-size:9px}}
+ 
+.chat-cancel-btn{border:0;background:transparent;color:#8a849f;font-size:10px;padding:4px 2px 0;cursor:pointer;text-decoration:underline}
 </style>
 <script>
 if(window.navigator.standalone===true){document.body.classList.add('standalone')}
@@ -1912,6 +1914,22 @@ async function loadListings(reset=true){
     listingLoadMoreBtn?.classList.add('hide');
   }
 }
+async function deleteMyListing(listingId){
+  if(!sb||!currentUser||!listingId)return;
+  const ok=confirm('この出品を削除しますか？\n\n購入・取引履歴がある出品は削除できません。');
+  if(!ok)return;
+  const {count:paymentCount,error:paymentError}=await sb.from('payments').select('*',{count:'exact',head:true}).eq('listing_id',listingId);
+  if(paymentError)return alert('購入履歴の確認に失敗しました：'+paymentError.message);
+  const {count:conversationCount,error:conversationError}=await sb.from('conversations').select('*',{count:'exact',head:true}).eq('listing_id',listingId);
+  if(conversationError)return alert('取引履歴の確認に失敗しました：'+conversationError.message);
+  if((paymentCount||0)>0||(conversationCount||0)>0){
+    return alert('この出品には購入・取引履歴があるため削除できません。取引記録を保護するため、そのまま残します。');
+  }
+  const {error}=await sb.from('listings').delete().eq('id',listingId).eq('seller_id',currentUser.id);
+  if(error)return alert('削除できませんでした：'+error.message);
+  alert('出品を削除しました。');
+  await loadMe();loadHome();loadListings(true);
+}
 async function openMyListing(listingId){
   await go('voices');
   voiceSearch.value='';
@@ -2227,7 +2245,21 @@ async function openConversation(id,title='チャット',opts={}){
  conversationList.style.display='none';chatBox.classList.add('on');setShellMode('chat');chatTitle.textContent=title;chatSub.textContent='この相手とのメッセージ';
  if(currentUser&&!opts.skipSave){localStorage.setItem(uiKey('page'),'messages');saveChatState(id,title)}
  await Promise.all(currentConversationGroupIds.map(markConversationSeen));
- await Promise.all([loadTradeInfoPanel(c),loadChatMessages(),loadDeliveries()]);await applyChatBlockState();await loadMessageBadge();await loadHome()
+ const existingHideBtn=document.getElementById('hideCurrentConversationBtn');
+  if(existingHideBtn)existingHideBtn.remove();
+  if(chatBox){
+    const hideBtn=document.createElement('button');
+    hideBtn.id='hideCurrentConversationBtn';
+    hideBtn.type='button';
+    hideBtn.className='btn secondary';
+    hideBtn.style.cssText='margin:8px 0;width:100%';
+    hideBtn.textContent='この会話を自分の一覧から非表示';
+    hideBtn.onclick=()=>{if(confirm('この会話を自分のメッセージ一覧から非表示にしますか？\n相手側の履歴は削除されません。'))hideConversationForMe(currentConversationId)};
+    const inputArea=chatInput?.closest('.card')||chatInput?.parentElement;
+    if(inputArea)inputArea.parentElement?.insertBefore(hideBtn,inputArea);
+    else chatBox.appendChild(hideBtn);
+  }
+  await Promise.all([loadTradeInfoPanel(c),loadChatMessages(),loadDeliveries()]);await applyChatBlockState();await loadMessageBadge();await loadHome()
 }
 function closeChat(){clearChatNotice();clearChatState();const tip=document.getElementById('tradeInfoPanel');if(tip){tip.classList.remove('show');tip.innerHTML=''}const tr=document.getElementById('tradeInfoReopen');if(tr)tr.classList.remove('show');currentConversationId=null;currentConversation=null;currentConversationPartner=null;currentConversationGroupIds=[];setShellMode('messages');chatBox.classList.remove('on');conversationList.style.display='grid';loadConversations()}
 async function loadChatMessages(){
@@ -2278,10 +2310,20 @@ async function loadChatMessages(){
      return separator+`<div class="chat-system-row"><div class="chat-system-note">${esc(shortBody)}${when?`<div class="chat-message-time">${when}</div>`:''}</div></div>`;
    }
    const mine=m.sender_id===currentUser.id;
-   if(mine)return separator+`<div class="chat-message-row mine-row"><div class="chat-message-content"><div class="bubble mine">${esc(body)}</div>${when?`<div class="chat-message-time">${when}</div>`:''}</div></div>`;
+   if(mine){
+     const cancelled=body==='送信を取り消しました';
+     return separator+`<div class="chat-message-row mine-row"><div class="chat-message-content"><div class="bubble mine">${esc(body)}</div>${when?`<div class="chat-message-time">${when}</div>`:''}${cancelled?'':`<button type="button" class="chat-cancel-btn" onclick="cancelSentMessage('${m.id}')">送信を取り消す</button>`}</div></div>`;
+   }
    return separator+`<div class="chat-message-row theirs-row">${avatarMarkup(profileMap[m.sender_id]||{display_name:'ユーザー'},'xs',m.sender_id)}<div class="chat-message-content"><div class="bubble theirs">${esc(body)}</div>${when?`<div class="chat-message-time">${when}</div>`:''}</div></div>`;
  }).join('')||'<div class="small">まだメッセージはありません。最初のメッセージを送ってみましょう。</div>';
  ids.forEach(markConversationSeen);setTimeout(()=>chatMessages.scrollTop=chatMessages.scrollHeight,0)
+}
+async function cancelSentMessage(messageId){
+  if(!sb||!currentUser||!messageId)return;
+  if(!confirm('このメッセージの送信を取り消しますか？'))return;
+  const {error}=await sb.from('messages').update({body:'送信を取り消しました'}).eq('id',messageId).eq('sender_id',currentUser.id);
+  if(error)return alert('送信を取り消せませんでした：'+error.message);
+  await loadChatMessages();loadMessageBadge();
 }
 async function sendChatMessage(){
  const body=chatInput.value.trim();if(!body||!currentConversationId)return;clearChatNotice();if(await isCurrentConversationBlocked())return info('chatMsg','ブロック中のためメッセージを送信できません。','err');const {error}=await sb.from('messages').insert({conversation_id:currentConversationId,sender_id:currentUser.id,body});if(error)return info('chatMsg',error.message,'err');chatInput.value='';info('chatMsg','送信しました。');setTimeout(()=>{if(chatMsg?.textContent.includes('送信しました'))chatMsg.innerHTML=''},2200);await loadChatMessages();loadMessageBadge()
@@ -2846,7 +2888,7 @@ async function loadMe(){
     sb.from('conversations').select('id,job_id,listing_id,buyer_id,seller_id,delivery_status,delivered_at,accepted_at,created_at').eq('buyer_id',currentUser.id).order('created_at',{ascending:false})
   ]);
 
-  myListings.innerHTML=`<h3>出品したもの</h3>${(l||[]).map(x=>`<button type="button" class="card mypage-item-card mypage-click-card" onclick="openMyListing('${x.id}')"><b>${esc(x.title)}</b><div class="small">${Number(x.price_jpy||0).toLocaleString()}円</div><div class="trade-date">出品日：${formatJpDateTime(x.created_at,false)||'-'}</div><span class="mypage-card-arrow">›</span></button>`).join('')||'<button type="button" class="card small mypage-item-card mypage-empty-card mypage-click-card" onclick="go(\'sell\')">まだ出品がありません。<span class="mypage-card-arrow">›</span></button>'}`;
+  myListings.innerHTML=`<h3>出品したもの</h3>${(l||[]).map(x=>`<div class="card mypage-item-card"><button type="button" class="mypage-click-card" style="width:100%;border:0;background:transparent;text-align:left;padding:0" onclick="openMyListing('${x.id}')"><b>${esc(x.title)}</b><div class="small">${Number(x.price_jpy||0).toLocaleString()}円</div><div class="trade-date">出品日：${formatJpDateTime(x.created_at,false)||'-'}</div><span class="mypage-card-arrow">›</span></button><button type="button" class="btn secondary full" style="margin-top:10px" onclick="deleteMyListing('${x.id}')">この出品を削除</button></div>`).join('')||'<button type="button" class="card small mypage-item-card mypage-empty-card mypage-click-card" onclick="go(\'sell\')">まだ出品がありません。<span class="mypage-card-arrow">›</span></button>'}`;
 
   // Stripe Webhookで保存された実決済（Sandbox）から出品者売上・返金を集計する。
   const {data:sellerPayments,error:sellerPaymentsError}=await sb
