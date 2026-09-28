@@ -785,6 +785,30 @@ body:has(#authPage.on) .tag .line2{
 .global-page-nav .global-home-btn{margin-left:auto;color:#5648c7;background:#f8f6ff;border-color:#dcd5ff}
 @media(max-width:430px){.global-page-nav{margin-top:0;margin-bottom:8px}.global-page-nav button{min-height:40px;padding:0 12px;font-size:12px}}
 </style>
+
+<style id="admin-dashboard-style">
+.admin-dashboard-overlay{display:none;position:fixed;inset:0;z-index:121000;background:rgba(20,22,35,.44);backdrop-filter:blur(3px);-webkit-backdrop-filter:blur(3px);padding:16px;align-items:center;justify-content:center}
+.admin-dashboard-overlay.show{display:flex}
+.admin-dashboard-box{width:min(100%,520px);max-height:90dvh;overflow:auto;background:#fff;border-radius:24px;padding:20px;box-shadow:0 24px 80px rgba(30,26,74,.28)}
+.admin-dashboard-head{display:flex;align-items:flex-start;justify-content:space-between;gap:12px;margin-bottom:14px}
+.admin-dashboard-head h3{margin:0;font-size:22px}
+.admin-dashboard-close{width:40px;height:40px;border:0;border-radius:13px;background:#f1efff;color:#5148c9;font-size:22px;font-weight:900}
+.admin-dashboard-grid{display:grid;grid-template-columns:1fr 1fr;gap:9px;margin:14px 0}
+.admin-stat-card{border:1px solid #e6e1f7;border-radius:16px;padding:13px;background:linear-gradient(145deg,#fff,#faf8ff);min-width:0}
+.admin-stat-card span{display:block;font-size:11px;color:#716b83;font-weight:800}
+.admin-stat-card strong{display:block;margin-top:5px;font-size:22px;color:#39324f;word-break:break-word}
+.admin-stat-card small{display:block;margin-top:3px;font-size:9px;color:#9992aa}
+.admin-dashboard-section{margin-top:16px;padding-top:14px;border-top:1px solid #eeeaf7}
+.admin-dashboard-list{display:grid;gap:8px;margin-top:10px}
+.admin-dashboard-item{border:1px solid #e8e3f8;border-radius:13px;padding:11px;background:#fff}
+.admin-dashboard-item-head{display:flex;justify-content:space-between;gap:10px;align-items:flex-start}
+.admin-dashboard-item-title{font-size:12px;font-weight:900;line-height:1.45}
+.admin-dashboard-item-amount{font-size:14px;font-weight:900;white-space:nowrap}
+.admin-dashboard-meta{font-size:10px;color:#73798c;line-height:1.55;margin-top:5px;word-break:break-all}
+.admin-dashboard-note{margin-top:14px;padding:11px 12px;border-radius:13px;background:#f7f5ff;color:#6c6680;font-size:10px;line-height:1.6}
+@media(max-width:390px){.admin-dashboard-grid{gap:7px}.admin-stat-card{padding:11px}.admin-stat-card strong{font-size:20px}}
+</style>
+
 </head><body><div id="pullRefreshIndicator" class="pull-refresh-indicator">↓ 引っ張って更新</div><div class="app">
 <div class="topbar"><div class="brandwrap"><div class="brandicon">🎙️</div><div class="brandtext"><div class="brand">声のフリマ</div><div class="tag"><span class="line1">世界に、あなたの声を売る。</span><span class="line2">あなたの声を、世界が買う。</span></div></div></div><div class="topactions"><button id="refreshBtn" class="refreshbtn hide" onclick="refreshAllData()" aria-label="最新情報に更新" title="最新情報に更新">↻</button><button id="bellBtn" class="bellbtn hide" onclick="openNotifications()" aria-label="お知らせ">🔔<span id="bellBadge" class="bellbadge"></span></button><button id="favoriteBtn" class="bellbtn hide" onclick="openFavorites()" aria-label="お気に入り">♡<span id="favoriteBadge" class="bellbadge"></span></button><button id="menuBtn" class="bellbtn hide" onclick="openMainMenu()" aria-label="メニュー">☰</button></div></div>
 
@@ -884,6 +908,7 @@ body:has(#authPage.on) .tag .line2{
       <div class="main-menu-label">お金</div>
       <button onclick="closeMainMenu();openFinanceCenter('buyer')">💳 支払い内訳</button>
       <button onclick="closeMainMenu();openFinanceCenter('seller')">💰 売上・振込</button>
+      <button id="adminDashboardMenuBtn" class="admin-only-menu hide" onclick="closeMainMenu();openAdminDashboard()">📊 運営ダッシュボード</button>
       <button id="adminRefundMenuBtn" class="admin-only-menu hide" onclick="closeMainMenu();openAdminRefundCenter()">🛡️ 運営・返金管理</button>
     </div>
 
@@ -904,6 +929,42 @@ body:has(#authPage.on) .tag .line2{
 </div>
 
 
+
+
+<div id="adminDashboardOverlay" class="admin-dashboard-overlay" onclick="if(event.target===this)closeAdminDashboard()">
+  <div class="admin-dashboard-box">
+    <div class="admin-dashboard-head">
+      <div>
+        <h3>運営ダッシュボード</h3>
+        <div class="small">声のフリマの利用状況を確認</div>
+      </div>
+      <button class="admin-dashboard-close" type="button" onclick="closeAdminDashboard()">×</button>
+    </div>
+
+    <div id="adminDashboardMsg"></div>
+
+    <div class="admin-dashboard-grid">
+      <div class="admin-stat-card"><span>登録ユーザー</span><strong id="adminStatUsers">-</strong><small>profiles</small></div>
+      <div class="admin-stat-card"><span>出品中の声</span><strong id="adminStatListings">-</strong><small>listings</small></div>
+      <div class="admin-stat-card"><span>声の依頼</span><strong id="adminStatJobs">-</strong><small>jobs</small></div>
+      <div class="admin-stat-card"><span>成立した支払い</span><strong id="adminStatPaid">-</strong><small>paid / refunded</small></div>
+      <div class="admin-stat-card"><span>累計決済額</span><strong id="adminStatGross">-</strong><small>返金分を除く</small></div>
+      <div class="admin-stat-card"><span>累計手数料</span><strong id="adminStatFees">-</strong><small>返金分を除く</small></div>
+    </div>
+
+    <div class="admin-dashboard-section">
+      <div class="row">
+        <b>最近の決済</b>
+        <button class="btn secondary" type="button" style="padding:8px 10px;font-size:11px" onclick="loadAdminDashboard()">更新</button>
+      </div>
+      <div id="adminRecentPayments" class="admin-dashboard-list"><div class="small">読み込み中...</div></div>
+    </div>
+
+    <div class="admin-dashboard-note">
+      数字はSupabaseの現在データから取得します。権限設定（RLS）で運営アカウントから読めないテーブルがある場合、その項目だけ「取得不可」と表示します。
+    </div>
+  </div>
+</div>
 
 <div id="adminRefundOverlay" class="admin-refund-overlay" onclick="if(event.target===this)closeAdminRefundCenter()">
   <div class="admin-refund-box">
@@ -1161,7 +1222,103 @@ function setShellMode(mode){
 
 
 function isVoiceFleaAdmin(){return !!currentUser&&currentUser.id===VOICE_FLEA_ADMIN_USER_ID}
-function setAdminMenuVisibility(){document.getElementById('adminRefundMenuBtn')?.classList.toggle('hide',!isVoiceFleaAdmin())}
+function setAdminMenuVisibility(){
+  const hidden=!isVoiceFleaAdmin();
+  document.getElementById('adminDashboardMenuBtn')?.classList.toggle('hide',hidden);
+  document.getElementById('adminRefundMenuBtn')?.classList.toggle('hide',hidden);
+}
+
+function closeAdminDashboard(){document.getElementById('adminDashboardOverlay')?.classList.remove('show')}
+
+async function openAdminDashboard(){
+  if(!isVoiceFleaAdmin())return alert('この機能は運営アカウント専用です。');
+  document.getElementById('adminDashboardOverlay')?.classList.add('show');
+  await loadAdminDashboard();
+}
+
+function adminSetStat(id,value){
+  const el=document.getElementById(id);
+  if(el)el.textContent=value;
+}
+
+async function adminCountTable(table){
+  const {count,error}=await sb.from(table).select('*',{count:'exact',head:true});
+  if(error)throw error;
+  return Number(count||0);
+}
+
+async function loadAdminDashboard(){
+  if(!sb||!isVoiceFleaAdmin())return;
+  const msg=document.getElementById('adminDashboardMsg');
+  const recent=document.getElementById('adminRecentPayments');
+  if(msg)msg.innerHTML='<div class="notice">最新データを読み込み中...</div>';
+  if(recent)recent.innerHTML='<div class="small">読み込み中...</div>';
+
+  ['adminStatUsers','adminStatListings','adminStatJobs','adminStatPaid','adminStatGross','adminStatFees']
+    .forEach(id=>adminSetStat(id,'-'));
+
+  const countTargets=[
+    ['profiles','adminStatUsers'],
+    ['listings','adminStatListings'],
+    ['jobs','adminStatJobs']
+  ];
+
+  const errors=[];
+  await Promise.all(countTargets.map(async ([table,id])=>{
+    try{adminSetStat(id,(await adminCountTable(table)).toLocaleString())}
+    catch(e){adminSetStat(id,'取得不可');errors.push(`${table}: ${e.message}`)}
+  }));
+
+  try{
+    const {data:payments,error}=await sb.from('payments')
+      .select('id,listing_id,amount_jpy,platform_fee_jpy,status,paid_at,refunded_at,created_at')
+      .in('status',['paid','refunded'])
+      .order('created_at',{ascending:false})
+      .limit(200);
+    if(error)throw error;
+
+    const rows=payments||[];
+    const paidRows=rows.filter(p=>p.status==='paid');
+    adminSetStat('adminStatPaid',rows.length.toLocaleString());
+    adminSetStat('adminStatGross',financeYen(paidRows.reduce((sum,p)=>sum+Number(p.amount_jpy||0),0)));
+    adminSetStat('adminStatFees',financeYen(paidRows.reduce((sum,p)=>sum+Number(p.platform_fee_jpy||0),0)));
+
+    const recentRows=rows.slice(0,10);
+    let listingMap=new Map();
+    const listingIds=[...new Set(recentRows.map(p=>p.listing_id).filter(Boolean))];
+    if(listingIds.length){
+      const {data:ls}=await sb.from('listings').select('id,title').in('id',listingIds);
+      listingMap=new Map((ls||[]).map(x=>[x.id,x.title]));
+    }
+
+    if(recent){
+      recent.innerHTML=recentRows.length?recentRows.map(p=>{
+        const title=listingMap.get(p.listing_id)||'出品取引';
+        const refunded=p.status==='refunded';
+        return `<div class="admin-dashboard-item">
+          <div class="admin-dashboard-item-head">
+            <div class="admin-dashboard-item-title">${esc(title)}</div>
+            <div class="admin-dashboard-item-amount">${financeYen(p.amount_jpy||0)}</div>
+          </div>
+          <div class="admin-dashboard-meta">${refunded?'返金済み':'支払い済み'} ／ ${esc(formatJpDateTime(p.paid_at||p.created_at)||'-')}</div>
+        </div>`;
+      }).join(''):'<div class="small">支払い済み・返金済みの決済はまだありません。</div>';
+    }
+  }catch(e){
+    adminSetStat('adminStatPaid','取得不可');
+    adminSetStat('adminStatGross','取得不可');
+    adminSetStat('adminStatFees','取得不可');
+    if(recent)recent.innerHTML=`<div class="err">決済情報を取得できませんでした：${esc(e.message)}</div>`;
+    errors.push(`payments: ${e.message}`);
+  }
+
+  if(msg){
+    msg.innerHTML=errors.length
+      ? `<div class="notice">一部の項目を取得できません。Supabaseの権限設定（RLS）を確認してください。</div>`
+      : '<div class="ok">最新の運営データを表示しています。</div>';
+  }
+}
+
 function closeAdminRefundCenter(){document.getElementById('adminRefundOverlay')?.classList.remove('show')}
 async function openAdminRefundCenter(){
   if(!isVoiceFleaAdmin())return alert('この機能は運営アカウント専用です。');
