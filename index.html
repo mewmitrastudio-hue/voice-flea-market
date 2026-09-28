@@ -188,7 +188,7 @@ body.normal-mode #nav button{height:46px!important;min-height:46px!important;bor
 /* Rules / policy center */
 .rules-card{margin-top:14px}.rules-overlay{position:fixed;inset:0;background:rgba(20,25,55,.48);display:none;align-items:center;justify-content:center;padding:18px;z-index:9999}.rules-overlay.show{display:flex}.rules-box{width:min(720px,100%);max-height:86vh;overflow:auto;background:#fff;border-radius:26px;padding:24px;box-shadow:0 20px 60px rgba(0,0,0,.22)}.rules-head{display:flex;align-items:center;justify-content:space-between;gap:12px}.rules-head h3{margin:0;font-size:26px}.rules-close{border:0;background:#f1efff;border-radius:16px;width:48px;height:48px;font-size:28px;color:#5b52d9}.rules-tabs{display:grid;grid-template-columns:1fr;gap:10px;margin:18px 0}.rules-tab{border:1px solid #dedaff;background:#fff;border-radius:16px;padding:14px 16px;text-align:left;font-weight:700;color:#4239b7}.rules-tab.active{background:#6656f3;color:#fff;border-color:#6656f3}.rules-body{font-size:15px;line-height:1.8;color:#2f3445}.rules-body h4{font-size:20px;margin:6px 0 10px}.rules-body h5{font-size:16px;margin:18px 0 6px}.rules-body ul{padding-left:1.25em}.rules-beta{background:#fff7e8;border:1px solid #f3d9a7;border-radius:14px;padding:12px 14px;margin-bottom:14px;color:#7a5410}.rules-note{font-size:13px;color:#6d7488;margin-top:14px}
 
-/* 決済・売上プレビュー（正式決済導入前） */
+/* 売上金プレビュー（正式決済導入前） */
 .finance-card{border-color:#ded9ff;background:linear-gradient(145deg,#fff,#faf8ff)}
 .finance-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:10px}.finance-grid .btn{margin-top:0}
 .finance-overlay{display:none;position:fixed;inset:0;background:rgba(24,25,52,.45);backdrop-filter:blur(3px);z-index:30000;padding:16px;align-items:center;justify-content:center}.finance-overlay.on{display:flex}.finance-box{width:min(430px,100%);max-height:calc(100dvh - 32px);overflow:auto;background:#fff;border-radius:28px;padding:22px 22px calc(28px + env(safe-area-inset-bottom));box-shadow:0 24px 80px rgba(30,26,74,.28)}body.finance-modal-open #nav{display:none!important}
@@ -830,7 +830,7 @@ body:has(#authPage.on) .tag .line2{
 
 <section id="messages" class="page"><div class="messages-list-head"><div class="messages-list-title"><b>メッセージ</b><span>取引相手とのやり取り</span></div><button type="button" class="message-home-btn" onclick="goHomeNow()" aria-label="ホームへ戻る">🏠 ホーム</button></div><h2>メッセージ</h2><div id="conversationList" class="chatlist"></div><div id="chatBox" class="card chatbox"><div class="chatroom-head"><button class="chatback" onclick="closeChat()" aria-label="メッセージ一覧へ">‹</button><div class="chatroom-title"><b id="chatTitle">チャット</b><span id="chatSub">取引メッセージ</span></div><div class="chatroom-actions"><button type="button" class="message-home-btn compact" onclick="goHomeNow()" aria-label="ホームへ戻る">🏠 ホーム</button><button id="chatSafetyBtn" class="safety-chat-btn" onclick="openSafetyCenter('chat')">通報・ブロック</button></div></div><button id="tradeInfoReopen" class="trade-info-reopen" type="button" onclick="showTradeInfoPanel()" aria-label="確認済みの取引情報をもう一度見る">取引情報を見る</button><div id="tradeInfoPanel" class="trade-info-panel"></div><div id="chatMessages" class="chatmessages"></div><div id="deliveryArea" class="chatdelivery"></div><div class="chatdock"><div class="chatcomposer"><textarea id="chatInput" placeholder="メッセージを入力"></textarea><button class="btn" onclick="sendChatMessage()">送信</button></div><div id="chatMsg"></div></div></div></section>
 
-<section id="me" class="page"><h2>マイページ</h2><div class="card profile-compact profile-card-main"><div id="meText">-</div></div><div id="myListings"></div><div id="mySoldVoices"></div><div id="myPurchasedVoices"></div><div id="mySellerJobs"></div><div id="myBuyerJobs"></div><div id="myHiddenTrades"></div><div class="card finance-card compact-finance-card"><b>💰 売上・振込</b><div id="sellerSalesSummary" style="margin-top:10px"></div><button class="btn secondary full" type="button" style="margin-top:10px" onclick="openFinanceCenter('seller')">売上・振込を確認</button><div class="stripe-connect-box"><div id="stripeConnectStatus" class="stripe-connect-status">Stripe受取アカウントの状態を確認中...</div><button id="stripeConnectBtn" class="btn full stripe-connect-btn" type="button" onclick="connectStripeSeller()">Stripe受取アカウントを設定</button></div></div></section>
+<section id="me" class="page"><h2>マイページ</h2><div class="card profile-compact profile-card-main"><div id="meText">-</div></div><div id="myListings"></div><div id="mySoldVoices"></div><div id="myPurchasedVoices"></div><div id="mySellerJobs"></div><div id="myBuyerJobs"></div><div id="myHiddenTrades"></div><div class="card finance-card compact-finance-card"><b>💰 売上金</b><div id="sellerSalesSummary" style="margin-top:10px"></div><button class="btn secondary full" type="button" style="margin-top:10px" onclick="openFinanceCenter('seller')">売上金を確認</button><div class="stripe-connect-box"><div id="stripeConnectStatus" class="stripe-connect-status">Stripe受取アカウントの状態を確認中...</div><button id="stripeConnectBtn" class="btn full stripe-connect-btn" type="button" onclick="connectStripeSeller()">Stripe受取アカウントを設定</button></div></div></section>
 
 
 
@@ -907,7 +907,7 @@ body:has(#authPage.on) .tag .line2{
     <div class="main-menu-section">
       <div class="main-menu-label">お金</div>
       <button onclick="closeMainMenu();openFinanceCenter('buyer')">💳 支払い内訳</button>
-      <button onclick="closeMainMenu();openFinanceCenter('seller')">💰 売上・振込</button>
+      <button onclick="closeMainMenu();openFinanceCenter('seller')">💰 売上金</button>
       <button id="adminDashboardMenuBtn" class="admin-only-menu hide" onclick="closeMainMenu();openAdminDashboard()">📊 運営ダッシュボード</button>
       <button id="adminRefundMenuBtn" class="admin-only-menu hide" onclick="closeMainMenu();openAdminRefundCenter()">🛡️ 運営・返金管理</button>
     </div>
@@ -1038,7 +1038,7 @@ body:has(#authPage.on) .tag .line2{
 
     <div class="manual-section">
       <b>💰 売上を確認する</b>
-      <p>マイページまたは右上メニューの「売上・振込」から、売上総額・手数料・受取額を確認できます。</p>
+      <p>マイページまたは右上メニューの「売上金」から、売上総額・手数料・受取額を確認できます。</p>
     </div>
 
     <div class="manual-section">
@@ -1057,7 +1057,7 @@ body:has(#authPage.on) .tag .line2{
     </div>
   </div>
 </div>
-<div id="financeOverlay" class="finance-overlay" onclick="if(event.target===this)closeFinanceCenter()"><div class="finance-box"><div class="finance-head"><h3>決済・売上</h3><button class="finance-close" onclick="closeFinanceCenter()">×</button></div><div class="finance-beta">Stripe Sandboxで決済・返金・送金差し戻しまで確認済みです。ここにはSupabaseに保存された実際のテスト決済結果を表示します。</div><div class="finance-tabs"><button id="financeTabBuyer" class="finance-tab active" onclick="showFinancePanel('buyer')">支払い確認</button><button id="financeTabSeller" class="finance-tab" onclick="showFinancePanel('seller')">売上・振込</button></div><div id="financeBody"></div></div></div>
+<div id="financeOverlay" class="finance-overlay" onclick="if(event.target===this)closeFinanceCenter()"><div class="finance-box"><div class="finance-head"><h3>売上金</h3><button class="finance-close" onclick="closeFinanceCenter()">×</button></div><div id="financeBody"></div></div></div>
 <div id="notifOverlay" class="notif-overlay" onclick="if(event.target===this)closeNotifications()"><aside class="notif-sheet"><div class="notif-head"><h2>お知らせ</h2><div class="notif-actions"><button class="notif-readall" onclick="markAllNotificationsRead()">すべて既読</button><button class="notif-close" onclick="closeNotifications()">×</button></div></div><div class="small">必要な連絡をまとめて確認できます。</div><div id="notifContent"><div class="notif-empty">読み込み中...</div></div></aside></div>
 <div id="rulesOverlay" class="rules-overlay" onclick="if(event.target===this)closeRulesCenter()"><div class="rules-box"><div class="rules-head"><h3>ルール・ポリシー</h3><button class="rules-close" onclick="closeRulesCenter()">×</button></div><div class="rules-beta">安心してご利用いただくため、取引・決済・返金・音声の権利・AI利用などのルールを定めています。ご利用前に各項目をご確認ください。</div><div class="rules-tabs"><button id="ruleTabTerms" class="rules-tab active" onclick="showRuleDoc('terms')">利用規約</button><button id="ruleTabPrivacy" class="rules-tab" onclick="showRuleDoc('privacy')">プライバシーポリシー</button><button id="ruleTabProhibited" class="rules-tab" onclick="showRuleDoc('prohibited')">禁止事項</button><button id="ruleTabCancel" class="rules-tab" onclick="showRuleDoc('cancel')">キャンセル・返金</button><button id="ruleTabAi" class="rules-tab" onclick="showRuleDoc('ai')">音声・AI利用</button><button id="ruleTabCommerce" class="rules-tab" onclick="showRuleDoc('commerce')">特商法・運営者情報</button></div><div id="rulesBody" class="rules-body"></div></div></div>
 <div id="safetyOverlay" class="safety-overlay" onclick="if(event.target===this)closeSafetyCenter()"><div class="safety-box"><div class="safety-head"><h3 id="safetyTitle">お問い合わせ</h3><button class="safety-close" onclick="closeSafetyCenter()">×</button></div><div id="safetyIntro" class="safety-note">使い方、不具合、その他のお問い合わせを運営へ送れます。</div><div id="safetyPartnerActions" class="safety-actions hide">
@@ -1192,7 +1192,7 @@ function showFinancePanel(mode='buyer'){
    const step1=(count+refundedCount)>0?'active':'future';
    const step2=(count+refundedCount)>0?'active':'future';
    const currentStatus=activeCount>0?'支払い済み売上あり':'現在の売上なし';
-   body.innerHTML=`<div class="finance-summary"><div class="small">支払い済み ${count}件 / 返金済み ${refundedCount}件</div><div class="finance-line"><span>売上総額</span><strong>${financeYen(gross)}</strong></div><div class="finance-line"><span>返金額</span><strong>− ${financeYen(refundTotal)}</strong></div><div class="finance-line"><span>サービス手数料（現在）</span><strong>− ${financeYen(fee)}</strong></div><div class="finance-line"><span>出品者受取額（現在）</span><strong class="finance-total">${financeYen(payout)}</strong></div><div class="finance-line"><span>現在の状況</span><strong>${currentStatus}</strong></div><span class="finance-status">Stripe Sandbox確認済み</span></div>${txHtml}<div class="finance-muted">取引履歴は購入日が新しい順に表示します。返金済みの取引も削除せず履歴として残します。</div>`;
+   body.innerHTML=`<div class="finance-summary"><div class="small">支払い済み ${count}件 / 返金済み ${refundedCount}件</div><div class="finance-line"><span>売上総額</span><strong>${financeYen(gross)}</strong></div><div class="finance-line"><span>返金額</span><strong>− ${financeYen(refundTotal)}</strong></div><div class="finance-line"><span>サービス手数料（現在）</span><strong>− ${financeYen(fee)}</strong></div><div class="finance-line"><span>出品者受取額（現在）</span><strong class="finance-total">${financeYen(payout)}</strong></div></div>${txHtml}<div class="finance-muted">取引履歴は購入日が新しい順に表示します。返金済みの取引も削除せず履歴として残します。</div>`;
  }
 }
 
@@ -2850,7 +2850,7 @@ async function loadMe(){
     if(sellerPaymentsError){
       salesSummary.innerHTML=`<div class="small" style="color:#b42318">売上情報を取得できませんでした：${esc(sellerPaymentsError.message)}</div>`;
     }else if(allSellerSales.length){
-      salesSummary.innerHTML=`<div class="finance-summary" style="margin:0"><div class="small">支払い済み ${paidSales.length}件 / 返金済み ${refundedSales.length}件</div><div class="finance-line"><span>売上総額</span><strong>${financeYen(allGross)}</strong></div><div class="finance-line"><span>返金額</span><strong>− ${financeYen(refundTotal)}</strong></div><div class="finance-line"><span>サービス手数料（現在）</span><strong>− ${financeYen(paidFee)}</strong></div><div class="finance-line"><span>出品者受取額（現在）</span><strong class="finance-total">${financeYen(paidPayout)}</strong></div><span class="finance-status">Stripe Sandbox確認済み</span></div>`;
+      salesSummary.innerHTML=`<div class="finance-summary" style="margin:0"><div class="small">支払い済み ${paidSales.length}件 / 返金済み ${refundedSales.length}件</div><div class="finance-line"><span>売上総額</span><strong>${financeYen(allGross)}</strong></div><div class="finance-line"><span>返金額</span><strong>− ${financeYen(refundTotal)}</strong></div><div class="finance-line"><span>サービス手数料（現在）</span><strong>− ${financeYen(paidFee)}</strong></div><div class="finance-line"><span>出品者受取額（現在）</span><strong class="finance-total">${financeYen(paidPayout)}</strong></div></div>`;
     }else{
       salesSummary.innerHTML=`<div class="small">まだ売上・返金履歴はありません。</div>`;
     }
