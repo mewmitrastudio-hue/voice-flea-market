@@ -703,6 +703,20 @@ body.messages-mode .unread-dot{flex:0 0 auto;align-self:flex-end}
 }
 .trade-history-count{margin:4px 2px 8px;color:#8a849f;font-size:10px;text-align:right}
 
+
+/* === JCB/Stripe review: public pre-login information === */
+.public-review-card{border:1px solid #ddd8f8;background:linear-gradient(145deg,#fff,#faf8ff);border-radius:20px;padding:15px;margin:12px 0;box-shadow:0 8px 24px rgba(73,57,130,.06)}
+.public-review-card h2{font-size:18px;margin:0 0 8px}
+.public-review-card p{font-size:12px;line-height:1.65;color:#667085;margin:6px 0}
+.public-review-actions{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:10px}
+.public-review-actions button,.public-review-actions a{border:1px solid #d9dcff;background:#fff;color:#5148c9;border-radius:12px;padding:10px 8px;font-size:12px;font-weight:850;text-align:center;text-decoration:none}
+.public-listing-title{font-size:14px;font-weight:900;line-height:1.45}
+.public-listing-meta{display:flex;gap:5px;flex-wrap:wrap;margin-top:7px}
+.public-listing-meta span{font-size:10px;background:#f0edff;color:#5148c9;border-radius:999px;padding:4px 7px}
+.public-listing-desc{font-size:11px;color:#667085;line-height:1.6;margin-top:7px;white-space:pre-wrap}
+.public-listing-price{font-size:17px;font-weight:950;color:#302b4b;margin-top:8px}
+.public-review-note{font-size:10px!important;color:#8a849f!important}
+
 </style>
 <script>
 if(window.navigator.standalone===true){document.body.classList.add('standalone')}
@@ -878,6 +892,24 @@ body:has(#authPage.on) .tag .line2{
 <div class="hero"><h1>話す・読む・歌う。<br>あなたの声が仕事になる。</h1><p>声を売る・探す・頼む。すべてここから。</p></div>
 <div class="card"><div class="field"><label>メール</label><input id="email" type="email" placeholder="you@example.com"></div><div class="field"><label>パスワード</label><input id="password" type="password" placeholder="8文字以上"></div><div class="field"><label>表示名（新規登録時）</label><input id="displayName" placeholder="表示名を入力"></div><button class="btn full" onclick="signIn()">ログイン</button><button class="btn secondary full" onclick="signUp()">新規登録</button><div id="authMsg"></div></div>
 <div id="configNotice" class="notice">現在サービスへ接続できません。時間をおいて再度お試しください。</div>
+
+<div class="public-review-card" id="publicReviewInfo">
+  <h2>サービス内容・取引条件</h2>
+  <p>「声のフリマ」は、ナレーション・朗読・キャラクターボイス・動画／広告向け音声などを出品・購入できるマーケットプレイスです。出品ごとに商品概要、価格、納期、AI利用条件等を表示します。</p>
+  <div class="public-review-actions">
+    <button type="button" onclick="openPublicPolicy('terms')">利用規約</button>
+    <button type="button" onclick="openPublicPolicy('commerce')">特商法表記</button>
+    <button type="button" onclick="openPublicPolicy('prohibited')">禁止事項</button>
+    <button type="button" onclick="openPublicPolicy('cancel')">キャンセル・返金</button>
+  </div>
+</div>
+
+<div class="public-review-card" id="publicListingsCard">
+  <h2>公開中の商品・サービス</h2>
+  <p>審査・ご利用前の確認用として、ログインせずに公開中の出品概要と価格をご覧いただけます。購入手続きにはログインが必要です。</p>
+  <div id="publicListingList"><div class="small">公開中の出品を読み込んでいます…</div></div>
+  <p class="public-review-note">表示される価格・概要は公開中の出品データに基づきます。</p>
+</div>
 </section>
 
 <section id="home" class="page"><div class="quickgrid"><button class="quickcard" onclick="go('sell')"><span class="qi">🎙️</span>声を出品<small>声をアピールして、販売や仕事につなげる</small></button><button class="quickcard" onclick="go('voices')"><span class="qi">🔎</span>声を探す・購入<small>動画・広告・ナレーションなどに合う声を探す</small></button><button class="quickcard" onclick="go('jobs')"><span class="qi">📣</span>声を依頼<small>欲しい声や用途を投稿して募集する</small></button><button class="quickcard" onclick="go('messages')"><span class="qi">💬</span>メッセージ<small>取引相手とやり取りする</small></button></div><div class="home-summary-title">すぐ確認</div><div class="home-summary-grid"><button class="home-summary-card" type="button" onclick="openFinanceCenter('seller')"><span>💰 売上</span><strong id="homeSalesAmount">0円</strong></button><button class="home-summary-card" type="button" onclick="go('messages')"><span>💬 未読</span><strong id="homeUnreadCount">0件</strong></button><button class="home-summary-card" type="button" onclick="menuGoMySection('myListings')"><span>🎙️ 出品を確認</span><strong id="homeMyListingCount">0件</strong></button><button class="home-summary-card favorite-summary-card" type="button" onclick="openFavorites()"><span>♥ お気に入り</span><strong id="homeFavoriteCount">0件</strong></button></div></section>
@@ -3348,6 +3380,60 @@ commerce:`<h4>特定商取引法に基づく表記</h4>
 <p>本サービスの利用には、利用規約・プライバシーポリシー・禁止事項・キャンセル・返金条件・音声の権利／AI利用条件その他の各種ルールが適用されます。</p>
 <div class="rules-note">表示内容は、サービス内容や取引条件の変更に応じて更新する場合があります。</div>`
 };
+
+async function loadPublicReviewListings(){
+  const box=document.getElementById('publicListingList');
+  if(!box)return;
+  if(!sb){
+    box.innerHTML='<div class="small">現在、公開情報を取得できません。</div>';
+    return;
+  }
+  try{
+    const {data,error}=await sb
+      .from('listings')
+      .select('id,title,category,description,price_jpy,delivery_days,ai_use,created_at')
+      .eq('is_active',true)
+      .order('created_at',{ascending:false})
+      .limit(12);
+    if(error)throw error;
+    const rows=data||[];
+    if(!rows.length){
+      box.innerHTML='<div class="small">現在公開中の出品はありません。</div>';
+      return;
+    }
+    box.innerHTML=rows.map(v=>{
+      const desc=(v.description||'').trim();
+      return `<div class="card" style="margin:10px 0">
+        <div class="public-listing-title">${esc(v.title||'音声サービス')}</div>
+        <div class="public-listing-meta">
+          <span>${esc(v.category||'音声')}</span>
+          <span>納期 ${Number(v.delivery_days||0)}日</span>
+          <span>AI利用：${esc(v.ai_use||'条件を確認')}</span>
+        </div>
+        ${desc?`<div class="public-listing-desc">${esc(desc.length>180?desc.slice(0,180)+'…':desc)}</div>`:''}
+        <div class="public-listing-price">${Number(v.price_jpy||0).toLocaleString()}円</div>
+      </div>`;
+    }).join('');
+  }catch(e){
+    console.warn('公開出品の取得に失敗しました',e);
+    box.innerHTML='<div class="small">公開中の商品情報を取得できませんでした。時間をおいて再度ご確認ください。</div>';
+  }
+}
+function openPublicPolicy(kind){
+  openRulesCenter();
+  showRuleDoc(kind);
+  try{history.replaceState(null,'','#'+kind)}catch(_){}
+}
+function openPolicyFromHash(){
+  const kind=(location.hash||'').replace('#','');
+  if(['terms','privacy','prohibited','cancel','ai','commerce'].includes(kind)){
+    openRulesCenter();
+    showRuleDoc(kind);
+  }
+}
+window.addEventListener('load',()=>{loadPublicReviewListings();setTimeout(openPolicyFromHash,0)});
+window.addEventListener('hashchange',openPolicyFromHash);
+
 function openRulesCenter(){document.getElementById('rulesOverlay')?.classList.add('show');showRuleDoc('terms')}
 function closeRulesCenter(){document.getElementById('rulesOverlay')?.classList.remove('show')}
 function showRuleDoc(kind){const body=document.getElementById('rulesBody');if(body)body.innerHTML=RULE_DOCS[kind]||RULE_DOCS.terms;['terms','privacy','prohibited','cancel','ai','commerce'].forEach(k=>{const id='ruleTab'+k.charAt(0).toUpperCase()+k.slice(1);document.getElementById(id)?.classList.toggle('active',k===kind)})}
