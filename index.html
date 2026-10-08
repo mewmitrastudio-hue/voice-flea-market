@@ -905,22 +905,25 @@ body:has(#authPage.on) .tag .line2{
 </div>
 
 <div class="public-review-card" id="support" style="scroll-margin-top:16px">
-  <h2>サポート・お問い合わせ</h2>
-  <p>「声のフリマ」の使い方、不具合、取引に関するご相談、機能へのご要望を受け付けています。</p>
-  <div style="margin-top:12px;padding:12px;border:1px solid #e5e0f6;border-radius:14px;background:#faf9ff">
-    <div class="small" style="margin-bottom:5px">運営者</div>
-    <strong style="font-size:14px">Hideki Suematsu</strong>
-    <div class="small" style="margin-top:10px;margin-bottom:5px">お問い合わせメール</div>
-    <a href="mailto:hideki590404@icloud.com" style="color:#5148c9;font-weight:850;word-break:break-all">hideki590404@icloud.com</a>
+  <h2>声のフリマ サポート</h2>
+  <p>使い方、不具合、取引に関するご相談、機能へのご要望を、ログインせずに送信できます。</p>
+  <div class="field">
+    <label for="publicSupportEmail">返信用メールアドレス（任意）</label>
+    <input id="publicSupportEmail" type="email" inputmode="email" autocomplete="email" placeholder="you@example.com">
   </div>
-  <p style="margin-top:12px">ログインできる方は、ログイン後のメニュー内「お問い合わせ」から運営へ直接送信できます。ログインできない場合は、上記メールアドレスへご連絡ください。</p>
+  <div class="field">
+    <label for="publicSupportDetail">お問い合わせ内容</label>
+    <textarea id="publicSupportDetail" placeholder="お問い合わせ内容を5文字以上で入力してください。"></textarea>
+  </div>
+  <button class="btn full" type="button" onclick="submitPublicSupportRequest()">運営へ送信</button>
+  <div id="publicSupportMsg"></div>
+  <p style="margin-top:12px">ログインできる方は、ログイン後のメニュー内「お問い合わせ」からも送信できます。</p>
   <div class="public-review-actions">
-    <a href="mailto:hideki590404@icloud.com?subject=%E5%A3%B0%E3%81%AE%E3%83%95%E3%83%AA%E3%83%9E%20%E3%81%8A%E5%95%8F%E3%81%84%E5%90%88%E3%82%8F%E3%81%9B">✉️ メールで問い合わせる</a>
     <button type="button" onclick="openPublicPolicy('commerce')">特商法・運営者情報</button>
     <button type="button" onclick="openPublicPolicy('privacy')">プライバシーポリシー</button>
     <button type="button" onclick="openPublicPolicy('terms')">利用規約</button>
   </div>
-  <p class="public-review-note">お問い合わせ内容を確認のうえ、必要に応じて運営からご連絡します。</p>
+  <p class="public-review-note">個人の氏名・個人メールアドレスは、このサポート画面には公開表示しません。</p>
 </div>
 
 <div class="public-review-card" id="publicListingsCard">
@@ -1228,6 +1231,22 @@ const VOICE_FLEA_ADMIN_USER_ID='6454e07c-ed0b-46b7-a8a1-aa63c555d634';
 const configured=cfg.SUPABASE_URL && cfg.SUPABASE_PUBLISHABLE_KEY && !cfg.SUPABASE_URL.includes('YOUR_PROJECT') && !cfg.SUPABASE_PUBLISHABLE_KEY.includes('YOUR_');
 function esc(s=''){return String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]))}
 function info(el,text,type='ok'){document.getElementById(el).innerHTML=`<div class="${type}">${esc(text)}</div>`}
+async function submitPublicSupportRequest(){
+ const email=document.getElementById('publicSupportEmail')?.value.trim()||'';
+ const detail=document.getElementById('publicSupportDetail')?.value.trim()||'';
+ if(detail.length<5)return info('publicSupportMsg','お問い合わせ内容を5文字以上入力してください。','err');
+ if(email&&!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email))return info('publicSupportMsg','返信用メールアドレスの形式を確認してください。','err');
+ if(!sb)return info('publicSupportMsg','現在お問い合わせを送信できません。少し時間をおいて再度お試しください。','err');
+ const message=(email?`返信用メールアドレス: ${email}\n\n`:'')+detail;
+ const payload={user_id:currentUser?.id||null,category:'support',subject:'公開サポート問い合わせ',message};
+ const {error}=await sb.from('support_inquiries').insert(payload);
+ if(error){
+   console.warn('public support submit',error);
+   return info('publicSupportMsg','送信できませんでした。ログインできる場合は、ログイン後の「お問い合わせ」から送信してください。','err');
+ }
+ document.getElementById('publicSupportDetail').value='';
+ info('publicSupportMsg','お問い合わせを受け付けました。必要に応じて運営からご連絡します。');
+}
 function uiKey(name){return `voice_flea_ui_${currentUser?.id||'guest'}_${name}`}
 function clearChatNotice(){if(window.chatMsg)chatMsg.innerHTML=''}
 const FINANCE_FEE_RATE=0.15;
@@ -3360,7 +3379,7 @@ init();
 
 const RULE_DOCS={
 terms:`<h4>利用規約</h4><p>「声のフリマ」は、音声を出品・募集・応募・納品できるマーケットプレイスです。利用者は、自身の責任で正確な情報を登録し、相手方との合意内容を守って利用してください。</p><h5>1. アカウント</h5><ul><li>第三者になりすました登録や、不正なアカウント利用は禁止します。</li><li>ログイン情報は本人が適切に管理してください。</li></ul><h5>2. 取引</h5><ul><li>出品内容、価格、納期、利用条件などは、取引前に当事者間で確認してください。</li><li>納品済み音声の利用範囲は、合意した条件の範囲内に限ります。</li><li>決済は本サービスが指定する決済方法を利用します。適用される価格・手数料・取引条件は、申込み前の画面に表示された内容をご確認ください。</li></ul><h5>3. 評価</h5><ul><li>取引完了後、双方が1回ずつ評価できます。</li><li>虚偽、脅迫、嫌がらせを目的とした評価は禁止します。</li></ul><h5>4. 違反対応</h5><p>規約違反、権利侵害、不正利用などが確認された場合、投稿の非表示、機能制限、アカウント停止等を行う場合があります。</p><div class="rules-note">本規約および各種ポリシーは、サービス内容の変更や法令への対応等により改定する場合があります。</div>`,
-privacy:`<h4>プライバシーポリシー</h4><h5>1. 取得する情報</h5><ul><li>メールアドレス、ユーザー名などのアカウント情報</li><li>出品・応募・チャット・納品・評価・通報・問い合わせ等の利用情報</li><li>本人確認を導入した場合に必要となる確認情報</li></ul><h5>2. 利用目的</h5><ul><li>サービス提供、本人認証、取引機能の提供</li><li>不正利用防止、安全管理、問い合わせ対応</li><li>機能改善、障害調査、利用状況の分析</li></ul><h5>3. 第三者提供</h5><p>法令に基づく場合等を除き、本人の同意なく個人データを第三者へ提供しません。外部サービスを利用する場合は、必要な範囲で委託することがあります。</p><h5>4. 安全管理</h5><p>認証、アクセス制御その他の合理的な安全管理措置を行います。</p><h5>5. 問い合わせ</h5><p>個人情報の取扱いに関する問い合わせは、マイページの「お問い合わせ」から受け付けます。</p><div class="rules-note">個人情報の取扱いに関するお問い合わせは、本サービス内の「お問い合わせ」から受け付けます。</div>`,
+privacy:`<h4>プライバシーポリシー</h4><h5>1. 取得する情報</h5><ul><li>メールアドレス、ユーザー名などのアカウント情報</li><li>出品・応募・チャット・納品・評価・通報・問い合わせ等の利用情報</li><li>本人確認を導入した場合に必要となる確認情報</li></ul><h5>2. 利用目的</h5><ul><li>サービス提供、本人認証、取引機能の提供</li><li>不正利用防止、安全管理、問い合わせ対応</li><li>機能改善、障害調査、利用状況の分析</li></ul><h5>3. 第三者提供</h5><p>法令に基づく場合等を除き、本人の同意なく個人データを第三者へ提供しません。外部サービスを利用する場合は、必要な範囲で委託することがあります。</p><h5>4. 安全管理</h5><p>認証、アクセス制御その他の合理的な安全管理措置を行います。</p><h5>5. 問い合わせ</h5><p>個人情報の取扱いに関する問い合わせは、公開の「サポート・お問い合わせ」またはログイン後の「お問い合わせ」から受け付けます。</p><div class="rules-note">個人情報の取扱いに関するお問い合わせは、公開の「サポート・お問い合わせ」または本サービス内の「お問い合わせ」から受け付けます。</div>`,
 prohibited:`<h4>禁止事項</h4><p>安全な取引のため、以下の行為は禁止します。</p><ul><li>他人の声・音声・著作物・商標等を無断で出品または利用する行為</li><li>本人の許可なく声をAI学習・声クローン・なりすまし用途に使う行為</li><li>詐欺、脅迫、嫌がらせ、差別、誹謗中傷、違法行為の依頼</li><li>虚偽の出品、実在しない実績や本人確認状態の表示</li><li>外部決済への強引な誘導、個人情報の不必要な収集</li><li>スパム、大量投稿、サービス運営を妨害する行為</li><li>法令または公序良俗に反する内容の出品・募集・メッセージ</li></ul><p>違反が疑われる場合は、取引チャットの「通報・ブロック」から通報できます。</p><div class="rules-note">AI利用・声クローンは初期状態では許可しない方針です。案件ごとに明示的な許可がある場合のみ扱う設計を前提とします。</div>`,
 cancel:`<h4>キャンセル・返金条件</h4><p>キャンセル・返金は、取引の進行状況、納品状況、当事者間の合意内容および本条件に基づいて取り扱います。</p><h5>1. 取引開始前</h5><ul><li>正式な取引開始前であれば、当事者間の合意によりキャンセルできます。</li><li>購入・依頼前に、価格、納期、修正回数、利用範囲を確認してください。</li></ul><h5>2. 取引開始後</h5><ul><li>作業開始後のキャンセルは、進行状況や双方の責任を確認したうえで扱います。</li><li>出品者が納品できない、重大な契約不履行がある等の場合は、運営確認のうえ返金対象とする方針です。</li><li>購入者都合のみで、すでに相当の作業が完了している場合は、全額返金にならない場合があります。</li></ul><h5>3. 納品後</h5><ul><li>納品物が合意内容と明らかに異なる場合は、まず修正対応を優先します。</li><li>修正で解決できない重大な相違がある場合は、運営確認のうえキャンセル・返金を検討します。</li><li>受取完了後の返金は原則として例外対応とします。</li></ul><h5>4. 禁止事項が関係する場合</h5><p>詐欺、権利侵害、不正利用、虚偽申告等が確認された場合は、通常のキャンセル条件とは別に、運営判断で取引停止等を行う場合があります。</p><div class="rules-note">返金が認められる場合の方法・時期は、決済状況および取引内容を確認したうえでご案内します。</div>`,
 ai:`<h4>音声の権利・AI利用条件</h4><h5>1. 音声の権利</h5><ul><li>出品者は、自分が権利を持つ音声、または正当に利用許可を得た音声のみ出品できます。</li><li>購入者は、取引時に合意した用途・範囲を超えて音声を利用できません。</li><li>第三者の著作権、肖像・パブリシティ、商標その他の権利を侵害する利用は禁止します。</li></ul><h5>2. 商用利用・二次利用</h5><ul><li>広告、動画、ゲーム、商品、配信等での商用利用は、出品時または取引前に条件を明示します。</li><li>再販売、素材としての再配布、用途変更は、別途明示的な許可が必要です。</li></ul><h5>3. AI学習・声クローン</h5><ul><li>AI学習、音声合成モデルの訓練、声クローン、なりすまし用途への利用は初期状態では禁止します。</li><li>これらを許可する場合は、出品者本人の明示的な同意を案件ごとに記録する前提とします。</li><li>一度許可した範囲を超える再学習、第三者へのモデル提供、別サービスへの転用は禁止します。</li></ul><h5>4. 証拠の保存</h5><p>利用条件・AI利用可否・商用利用可否は、取引時の合意内容に従うものとし、当事者は後から確認できる形で条件を明確にしてください。</p><div class="rules-note">声は本人性と結びつくため、AI利用は通常の音声利用より厳格に扱う方針です。</div>`,
@@ -3373,7 +3392,7 @@ commerce:`<h4>特定商取引法に基づく表記</h4>
 <li>運営責任者：請求があった場合、遅滞なく開示いたします。</li>
 <li>所在地：請求があった場合、遅滞なく開示いたします。</li>
 <li>電話番号：請求があった場合、遅滞なく開示いたします。</li>
-<li>お問い合わせ方法：本サービス内の「お問い合わせ」より受け付けています。</li>
+<li>お問い合わせ方法：公開の「サポート・お問い合わせ」または本サービス内の「お問い合わせ」より受け付けています。</li>
 </ul>
 <h5>2. 販売価格・役務の対価</h5>
 <p>各出品・依頼・取引画面に表示された金額とします。</p>
