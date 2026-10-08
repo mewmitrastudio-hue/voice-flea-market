@@ -1,7 +1,19 @@
+const corsHeaders = {
+  "Access-Control-Allow-Origin": "https://voice-flea-market.pages.dev",
+  "Access-Control-Allow-Headers": "content-type",
+  "Access-Control-Allow-Methods": "POST, OPTIONS",
+};
+
 Deno.serve(async (req) => {
+  if (req.method === "OPTIONS") {
+    return new Response("ok", {
+      status: 200,
+      headers: corsHeaders,
+    });
+  }
+
   try {
     const body = await req.json();
-
     const record = body?.record ?? body;
 
     const message =
@@ -46,8 +58,14 @@ Supabaseのsupport_inquiriesも確認してください。`
       throw new Error(await response.text());
     }
 
-    return new Response("ok", { status: 200 });
+    return new Response("ok", {
+      status: 200,
+      headers: corsHeaders,
+    });
   } catch (error) {
-    return new Response(String(error), { status: 500 });
+    return new Response(String(error), {
+      status: 500,
+      headers: corsHeaders,
+    });
   }
 });
