@@ -38,7 +38,7 @@ Deno.serve(async (req) => {
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        from: "声のフリマ <onboarding@resend.dev>",
+        from: "声のフリマ 声のフリマ <support@koe-furima.com>",
         to: [notifyTo],
         subject: "【声のフリマ】新しいお問い合わせ",
         text:
