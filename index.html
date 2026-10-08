@@ -1236,20 +1236,16 @@ async function submitPublicSupportRequest(){
  const detail=document.getElementById('publicSupportDetail')?.value.trim()||'';
  if(detail.length<5)return info('publicSupportMsg','お問い合わせ内容を5文字以上入力してください。','err');
  if(email&&!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email))return info('publicSupportMsg','返信用メールアドレスの形式を確認してください。','err');
- if(!cfg.SUPABASE_URL)return info('publicSupportMsg','現在お問い合わせを送信できません。少し時間をおいて再度お試しください。','err');
- try{
-   const response=await fetch(`${cfg.SUPABASE_URL}/functions/v1/send-support-notification`,{
-     method:'POST',
-     headers:{'Content-Type':'application/json'},
-     body:JSON.stringify({record:{message:detail,reply_email:email||'未入力'}})
-   });
-   if(!response.ok)throw new Error(await response.text());
-   document.getElementById('publicSupportDetail').value='';
-   info('publicSupportMsg','お問い合わせを受け付けました。必要に応じて運営からご連絡します。');
- }catch(error){
+ if(!sb)return info('publicSupportMsg','現在お問い合わせを送信できません。少し時間をおいて再度お試しください。','err');
+ const message=(email?`返信用メールアドレス: ${email}\n\n`:'')+detail;
+ const payload={user_id:currentUser?.id||null,category:'support',subject:'公開サポート問い合わせ',message};
+ const {error}=await sb.from('support_inquiries').insert(payload);
+ if(error){
    console.warn('public support submit',error);
-   info('publicSupportMsg','送信できませんでした。少し時間をおいて再度お試しください。','err');
+   return info('publicSupportMsg','送信できませんでした。少し時間をおいて再度お試しください。','err');
  }
+ document.getElementById('publicSupportDetail').value='';
+ info('publicSupportMsg','お問い合わせを受け付けました。必要に応じて運営からご連絡します。');
 }
 function uiKey(name){return `voice_flea_ui_${currentUser?.id||'guest'}_${name}`}
 function clearChatNotice(){if(window.chatMsg)chatMsg.innerHTML=''}
