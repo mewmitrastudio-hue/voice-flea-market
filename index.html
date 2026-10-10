@@ -1251,6 +1251,7 @@ function uiKey(name){return `voice_flea_ui_${currentUser?.id||'guest'}_${name}`}
 function clearChatNotice(){if(window.chatMsg)chatMsg.innerHTML=''}
 const FINANCE_FEE_RATE=0.15;
 function financeYen(n){return `${Number(n||0).toLocaleString()}円`}
+function financeDeductionYen(n){return Number(n||0)===0?"0円":`− ${financeYen(n)}`}
 function formatJpDateTime(value,withTime=true){
  if(!value)return '';
  const d=new Date(value);if(Number.isNaN(d.getTime()))return '';
@@ -1358,7 +1359,7 @@ function showFinancePanel(mode='buyer'){
    const step1=(count+refundedCount)>0?'active':'future';
    const step2=(count+refundedCount)>0?'active':'future';
    const currentStatus=activeCount>0?'支払い済み売上あり':'現在の売上なし';
-   body.innerHTML=`<div class="finance-summary"><div class="small">支払い済み ${count}件 / 返金済み ${refundedCount}件</div><div class="finance-line"><span>売上総額</span><strong>${financeYen(gross)}</strong></div><div class="finance-line"><span>返金額</span><strong>− ${financeYen(refundTotal)}</strong></div><div class="finance-line"><span>サービス手数料（現在）</span><strong>− ${financeYen(fee)}</strong></div><div class="finance-line"><span>出品者受取額（現在）</span><strong class="finance-total">${financeYen(payout)}</strong></div></div>${txHtml}<div class="finance-muted">取引履歴は購入日が新しい順に表示します。返金済みの取引も削除せず履歴として残します。</div>`;
+   body.innerHTML=`<div class="finance-summary"><div class="small">支払い済み ${count}件 / 返金済み ${refundedCount}件</div><div class="finance-line"><span>売上総額</span><strong>${financeYen(gross)}</strong></div><div class="finance-line"><span>返金額</span><strong>${financeDeductionYen(refundTotal)}</strong></div><div class="finance-line"><span>サービス手数料（現在）</span><strong>${financeDeductionYen(fee)}</strong></div><div class="finance-line"><span>出品者受取額（現在）</span><strong class="finance-total">${financeYen(payout)}</strong></div></div>${txHtml}<div class="finance-muted">取引履歴は購入日が新しい順に表示します。返金済みの取引も削除せず履歴として残します。</div>`;
  }
 }
 
@@ -3198,7 +3199,7 @@ async function loadMe(){
     if(sellerPaymentsError){
       salesSummary.innerHTML=`<div class="small" style="color:#b42318">売上情報を取得できませんでした：${esc(sellerPaymentsError.message)}</div>`;
     }else if(allSellerSales.length){
-      salesSummary.innerHTML=`<div class="finance-summary" style="margin:0"><div class="small">支払い済み ${paidSales.length}件 / 返金済み ${refundedSales.length}件</div><div class="finance-line"><span>売上総額</span><strong>${financeYen(allGross)}</strong></div><div class="finance-line"><span>返金額</span><strong>− ${financeYen(refundTotal)}</strong></div><div class="finance-line"><span>サービス手数料（現在）</span><strong>− ${financeYen(paidFee)}</strong></div><div class="finance-line"><span>出品者受取額（現在）</span><strong class="finance-total">${financeYen(paidPayout)}</strong></div></div>`;
+      salesSummary.innerHTML=`<div class="finance-summary" style="margin:0"><div class="small">支払い済み ${paidSales.length}件 / 返金済み ${refundedSales.length}件</div><div class="finance-line"><span>売上総額</span><strong>${financeYen(allGross)}</strong></div><div class="finance-line"><span>返金額</span><strong>${financeDeductionYen(refundTotal)}</strong></div><div class="finance-line"><span>サービス手数料（現在）</span><strong>${financeDeductionYen(paidFee)}</strong></div><div class="finance-line"><span>出品者受取額（現在）</span><strong class="finance-total">${financeYen(paidPayout)}</strong></div></div>`;
     }else{
       salesSummary.innerHTML=`<div class="small">まだ売上・返金履歴はありません。</div>`;
     }
