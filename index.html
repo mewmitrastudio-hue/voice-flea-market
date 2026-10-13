@@ -903,6 +903,36 @@ body:has(#authPage.on) .tag .line2{
 @media(max-width:390px){.admin-dashboard-grid{gap:7px}.admin-stat-card{padding:11px}.admin-stat-card strong{font-size:20px}}
 </style>
 
+
+<!-- iOS native shell safe-area and home spacing adjustment 2026-10-13 -->
+<style id="ios-native-layout-20261013">
+/* Only the installed iOS app/WebView: preserve normal Safari layout. */
+html.ios-native-shell body:not(.normal-mode):not(.messages-mode):not(.chat-mode) .app {
+  padding-top: max(58px, calc(env(safe-area-inset-top, 0px) + 12px));
+}
+html.ios-native-shell body.normal-mode .app {
+  padding-top: max(58px, calc(env(safe-area-inset-top, 0px) + 12px)) !important;
+}
+/* Spread home sections naturally through available height without moving the bottom nav. */
+html.ios-native-shell body.normal-mode #home.page.on {
+  display:flex !important;
+  flex-direction:column !important;
+  justify-content:space-evenly !important;
+  gap:8px !important;
+}
+html.ios-native-shell body.normal-mode #home .quickgrid,
+html.ios-native-shell body.normal-mode #home .home-summary-grid {flex:0 0 auto;}
+/* If content is taller than the viewport, retain vertical scrolling. */
+html.ios-native-shell body.normal-mode #home.page.on {overflow-y:auto !important;}
+</style>
+<script>
+(function(){
+  var ua=navigator.userAgent||'';
+  var ios=/iPhone|iPad|iPod/.test(ua);
+  var nativeWebView=ios && (!/Safari\//.test(ua) || navigator.standalone===true);
+  if(nativeWebView) document.documentElement.classList.add('ios-native-shell');
+})();
+</script>
 </head><body><div id="pullRefreshIndicator" class="pull-refresh-indicator">↓ 引っ張って更新</div><div class="app">
 <div class="topbar"><div class="brandwrap"><div class="brandicon">🎙️</div><div class="brandtext"><div class="brand">声のフリマ</div><div class="tag"><span class="line1">世界に、あなたの声を売る。</span><span class="line2">あなたの声を、世界が買う。</span></div></div></div><div class="topactions"><button id="refreshBtn" class="refreshbtn hide" onclick="refreshAllData()" aria-label="最新情報に更新" title="最新情報に更新">↻</button><button id="bellBtn" class="bellbtn hide" onclick="openNotifications()" aria-label="お知らせ">🔔<span id="bellBadge" class="bellbadge"></span></button><button id="favoriteBtn" class="bellbtn hide" onclick="openFavorites()" aria-label="お気に入り">♡<span id="favoriteBadge" class="bellbadge"></span></button><button id="menuBtn" class="bellbtn hide" onclick="openMainMenu()" aria-label="メニュー">☰</button></div></div>
 
