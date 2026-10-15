@@ -1119,6 +1119,7 @@ html.ios-native-shell body.normal-mode #home.page.on {
       <div class="main-menu-label">お金</div>
       <button onclick="closeMainMenu();openFinanceCenter('buyer')">💳 支払い内訳</button>
       <button onclick="closeMainMenu();openFinanceCenter('seller')">💰 売上金</button>
+      <button onclick="closeMainMenu();openBoostPreview()">🚀 出品ブースト <span style="font-size:11px;color:#777">3プラン・準備中</span></button>
       <button id="adminDashboardMenuBtn" class="admin-only-menu hide" onclick="closeMainMenu();openAdminDashboard()">📊 運営ダッシュボード</button>
       <button id="adminRefundMenuBtn" class="admin-only-menu hide" onclick="closeMainMenu();openAdminRefundCenter()">🛡️ 運営・返金管理</button>
     </div>
@@ -2154,6 +2155,15 @@ async function loadListings(reset=true){
     return;
   }
 
+  // 課金がサーバーで検証済みの出品のみPR表示。取得失敗時は通常表示へ。
+  let verifiedBoostIds=new Set();
+  if((data||[]).length){
+    const ids=(data||[]).map(v=>v.id).filter(Boolean);
+    const {data:activeBoosts,error:boostError}=await sb.from('active_listing_boosts')
+      .select('listing_id').in('listing_id',ids);
+    if(!boostError) verifiedBoostIds=new Set((activeBoosts||[]).map(b=>b.listing_id));
+  }
+  if(token!==listingSearchToken)return;
   const rows=(data||[]).filter(v=>{
     if(hideOwn && v.seller_id===currentUser?.id)return false;
     if(hidePurchased && paidListingIds.has(v.id))return false;
@@ -2161,6 +2171,8 @@ async function loadListings(reset=true){
     return true;
   });
 
+  // ページ内のPR枠を先に表示。サーバー側で確認されたブーストのみ対象。
+  rows.sort((a,b)=>Number(verifiedBoostIds.has(b.id))-Number(verifiedBoostIds.has(a.id)));
   const cards=rows.map(v=>{
     let audio='';
 
@@ -2186,7 +2198,7 @@ async function loadListings(reset=true){
     const desc=(v.description||'').trim();
     const descHtml=desc?`<div class="small" style="margin-top:8px;line-height:1.6">${esc(desc.length>120?desc.slice(0,120)+'…':desc)}</div>`:'';
 
-    return `<div class="card voice" data-listing-id="${esc(v.id)}"><div class="row"><div class="listing-seller-wrap">${avatarMarkup(v.profiles,'sm',v.seller_id)}<div><b>${esc(v.title)}</b><button type="button" class="seller-profile-link" onclick="openPublicProfile('${esc(v.seller_id)}')">${esc(v.profiles?.display_name||'出品者')} のプロフィール</button></div></div><div class="listing-card-actions"><button type="button" class="favorite-heart ${favorited?'on':''}" onclick="toggleFavoriteListing('${esc(v.id)}',this)" aria-label="お気に入り">${favorited?'♥':'♡'}</button><div class="price">${Number(v.price_jpy).toLocaleString()}円</div></div></div><span class="pill">${esc(v.category)}</span><span class="pill">${v.delivery_days}日</span><span class="pill">AI:${esc(v.ai_use)}</span>${descHtml}${audio}<div class="listing-date">出品日：${formatJpDateTime(v.created_at,false)||'-'}</div>${action}</div>`;
+    return `<div class="card voice" data-listing-id="${esc(v.id)}">${verifiedBoostIds.has(v.id)?'<span class="boost-pr-tag">PR・優先表示</span>':''}<div class="row"><div class="listing-seller-wrap">${avatarMarkup(v.profiles,'sm',v.seller_id)}<div><b>${esc(v.title)}</b><button type="button" class="seller-profile-link" onclick="openPublicProfile('${esc(v.seller_id)}')">${esc(v.profiles?.display_name||'出品者')} のプロフィール</button></div></div><div class="listing-card-actions"><button type="button" class="favorite-heart ${favorited?'on':''}" onclick="toggleFavoriteListing('${esc(v.id)}',this)" aria-label="お気に入り">${favorited?'♥':'♡'}</button><div class="price">${Number(v.price_jpy).toLocaleString()}円</div></div></div><span class="pill">${esc(v.category)}</span><span class="pill">${v.delivery_days}日</span><span class="pill">AI:${esc(v.ai_use)}</span>${descHtml}${audio}<div class="listing-date">出品日：${formatJpDateTime(v.created_at,false)||'-'}</div>${action}</div>`;
   }).join('');
 
   if(reset){
@@ -3384,7 +3396,8 @@ async function loadMe(){
     sb.from('conversations').select('id,job_id,listing_id,buyer_id,seller_id,delivery_status,delivered_at,accepted_at,created_at').eq('buyer_id',currentUser.id).order('created_at',{ascending:false})
   ]);
 
-  myListings.innerHTML=`<h3>出品したもの</h3>${(l||[]).map(x=>`<div class="card mypage-item-card mylisting-compact"><button type="button" class="mypage-click-card mylisting-main" onclick="openMyListing('${x.id}')"><div class="mylisting-info"><b>${esc(x.title)}</b><span>${Number(x.price_jpy||0).toLocaleString()}円</span><small>出品日：${formatJpDateTime(x.created_at,false)||'-'}</small></div><span class="mypage-card-arrow">›</span></button><button type="button" class="mylisting-delete" aria-label="この出品を削除" onclick="deleteMyListing('${x.id}')">🗑️<span>削除</span></button></div>`).join('')||'<button type="button" class="card small mypage-item-card mypage-empty-card mypage-click-card" onclick="go(\'sell\')">まだ出品がありません。<span class="mypage-card-arrow">›</span></button>'}`;
+  window.__myBoostListings=(l||[]).map(x=>({id:x.id,title:x.title}));
+  myListings.innerHTML=`<h3>出品したもの</h3>${(l||[]).map(x=>`<div class="card mypage-item-card mylisting-compact"><button type="button" class="mypage-click-card mylisting-main" onclick="openMyListing('${x.id}')"><div class="mylisting-info"><b>${esc(x.title)}</b><span>${Number(x.price_jpy||0).toLocaleString()}円</span><small>出品日：${formatJpDateTime(x.created_at,false)||'-'}</small></div><span class="mypage-card-arrow">›</span></button><button type="button" class="boost-button" onclick="openBoostPreview('${x.id}')">🚀 ブースト</button><button type="button" class="mylisting-delete" aria-label="この出品を削除" onclick="deleteMyListing('${x.id}')">🗑️<span>削除</span></button></div>`).join('')||'<button type="button" class="card small mypage-item-card mypage-empty-card mypage-click-card" onclick="go(\'sell\')">まだ出品がありません。<span class="mypage-card-arrow">›</span></button>'}`;
 
   // Match the home and finance modal exactly; never substitute an unverified zero.
   try{
@@ -3739,4 +3752,56 @@ document.addEventListener('click',function(e){
     <button class="trade-hide-confirm-cancel" type="button" onclick="closeTradeRemoveConfirm()">戻る</button>
   </div>
 </div>
+
+<!-- 出品ブースト：購入機能未接続。課金やブーストの有効化は行いません。 -->
+<style>
+.boost-pr-tag{display:inline-block;padding:5px 10px;margin-bottom:9px;border-radius:8px;background:#f4efff;color:#5d3eb2;font-size:11px;font-weight:900;border:1px solid #d8c6ff}
+.boost-button{border:1px solid #d7c7ff;background:#f7f2ff;color:#6340b8;border-radius:11px;padding:9px 10px;font-size:12px;font-weight:800;white-space:nowrap}
+.boost-overlay{display:none;position:fixed;inset:0;background:rgba(22,15,40,.58);z-index:99999;align-items:center;justify-content:center;padding:18px}
+.boost-overlay.show{display:flex}
+.boost-panel{background:#fff;color:#28233e;border-radius:20px;padding:20px;max-width:440px;width:100%;max-height:88vh;overflow-y:auto;box-shadow:0 15px 50px #0003}
+.boost-panel h3{margin:0 0 10px}
+.boost-panel p{line-height:1.6;font-size:13px}
+.boost-plan{border:1.5px solid #ddd8ea;border-radius:14px;padding:13px;margin:10px 0;background:#fff}
+.boost-plan-head{display:flex;justify-content:space-between;align-items:center;gap:8px}
+.boost-plan strong{font-size:20px}
+.boost-plan small{display:block;color:#706982;margin-top:6px;line-height:1.6}
+.boost-tier{display:inline-block;padding:5px 10px;border-radius:999px;font-weight:900;font-size:12px;letter-spacing:.03em}
+.boost-silver{background:#e7eaf0;color:#475569;border:1px solid #c5cbd6}
+.boost-gold{background:#fff0b8;color:#815800;border:1px solid #e8c75a}
+.boost-platinum{background:#e9d9ff;color:#6838a5;border:1px solid #c7a4f1}
+.boost-note{font-size:12px;color:#746c80;background:#f8f6fc;padding:11px;border-radius:10px}
+.boost-panel .boost-close{width:100%;margin-top:10px}
+</style>
+<div id="boostPreviewOverlay" class="boost-overlay" role="dialog" aria-modal="true" aria-labelledby="boostPreviewTitle" onclick="if(event.target===this)closeBoostPreview()">
+ <div class="boost-panel">
+  <h3 id="boostPreviewTitle">🚀 出品ブースト</h3>
+  <p id="boostPreviewListing">出品を見つけてもらいやすくするPRプランです。</p>
+  <div class="boost-plan">
+   <div class="boost-plan-head"><span class="boost-tier boost-silver">◆ SILVER PR</span><strong>300円</strong></div>
+   <small>3日間／検索結果のPR枠に優先表示</small>
+  </div>
+  <div class="boost-plan">
+   <div class="boost-plan-head"><span class="boost-tier boost-gold">★ GOLD PR</span><strong>500円</strong></div>
+   <small>7日間／検索結果のPR枠＋おすすめ欄への掲載</small>
+  </div>
+  <div class="boost-plan">
+   <div class="boost-plan-head"><span class="boost-tier boost-platinum">✦ PLATINUM PR</span><strong>1,500円</strong></div>
+   <small>30日間／優先PR枠＋おすすめ欄＋閲覧分析（予定）</small>
+  </div>
+  <p class="boost-note">※ 3プランとも現在は準備中です。Appleのアプリ内課金と購入検証を実装するまで購入できません。表示順位・閲覧数・売上を保証するものではありません。購入後のPR表示は「広告」であることが分かるように表示します。</p>
+  <button class="btn full" type="button" disabled style="opacity:.55">準備中・購入できません</button>
+  <button class="btn secondary boost-close" type="button" onclick="closeBoostPreview()">閉じる</button>
+ </div>
+</div>
+<script>
+function openBoostPreview(listingId){
+ const el=document.getElementById('boostPreviewOverlay');
+ const title=document.getElementById('boostPreviewListing');
+ const listing=(window.__myBoostListings||[]).find(x=>String(x.id)===String(listingId));
+ title.textContent=listing?`「${listing.title}」のブーストプランを選べます。`:'出品を見つけてもらいやすくする3つのPRプランです。';
+ el?.classList.add('show');
+}
+function closeBoostPreview(){document.getElementById('boostPreviewOverlay')?.classList.remove('show')}
+</script>
 </body></html>
