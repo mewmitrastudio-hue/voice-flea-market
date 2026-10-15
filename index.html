@@ -737,6 +737,20 @@ body.messages-mode .unread-dot{flex:0 0 auto;align-self:flex-end}
 .rules-overlay .rules-head{position:relative;min-height:48px}
 .rules-overlay .rules-head h3{min-width:0;font-size:clamp(20px,5.5vw,26px)}
 .rules-overlay .rules-close{flex:0 0 48px}
+
+/* 通報・ブロック管理：メニューから独立して開く専用画面 */
+.safety-manage-overlay{display:none;position:fixed;inset:0;z-index:130000;background:rgba(20,22,35,.48);padding:0;align-items:center;justify-content:center}
+.safety-manage-overlay.show{display:flex}
+.safety-manage-sheet{background:#fff;width:min(100%,480px);height:100dvh;overflow-y:auto;overscroll-behavior:contain;-webkit-overflow-scrolling:touch;padding:calc(18px + env(safe-area-inset-top)) 18px calc(28px + env(safe-area-inset-bottom))}
+.safety-manage-head{display:flex;align-items:center;justify-content:space-between;gap:10px}
+.safety-manage-head h2{font-size:21px;margin:0}
+.safety-manage-close{width:42px;height:42px;border:0;border-radius:12px;background:#f1efff;color:#5148c9;font-size:24px}
+.safety-manage-section{border:1px solid #e5e0f6;border-radius:16px;padding:14px;margin-top:14px}
+.safety-manage-section h3{margin:0 0 8px;font-size:16px}
+.safety-manage-section p{font-size:12px;line-height:1.65;color:#667085;margin:7px 0}
+.safety-manage-section #safetyManageBlocked>b,.safety-manage-section #safetyManageHidden>b{display:none}
+.safety-manage-section .manage-row{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:10px 0;border-top:1px solid #eeeaf7}
+.safety-manage-section .manage-row button{border:1px solid #dedaff;border-radius:10px;background:#fff;color:#5148c9;padding:8px 12px;font-weight:800}
 </style>
 <script>
 if(window.navigator.standalone===true){document.body.classList.add('standalone')}
@@ -1051,6 +1065,16 @@ html.ios-native-shell body.normal-mode #home.page.on {
       <button type="button" class="profile-edit-close" onclick="closePublicProfile()">×</button>
     </div>
     <div id="publicProfileContent"><div class="small">読み込み中...</div></div>
+  </div>
+</div>
+
+<div id="safetyManageOverlay" class="safety-manage-overlay" role="dialog" aria-modal="true" aria-labelledby="safetyManageHeading" onclick="if(event.target===this)closeSafetyManagement()">
+  <div class="safety-manage-sheet">
+    <div class="safety-manage-head"><h2 id="safetyManageHeading">🛡️ 通報・ブロック管理</h2><button class="safety-manage-close" type="button" aria-label="閉じる" onclick="closeSafetyManagement()">×</button></div>
+    <div class="safety-manage-section"><h3>相手を通報・ブロックする</h3><p>「声を探す・購入」で出品者のプロフィールを開き、「このユーザーを通報・ブロック」を押してください。購入やメッセージのやり取りは不要です。</p><button type="button" class="btn secondary full" onclick="closeSafetyManagement();go('voices')">声を探す・購入へ</button></div>
+    <div class="safety-manage-section"><h3>ブロック中のユーザー</h3><p>ブロックした相手を確認し、ここから解除できます。</p><div id="safetyManageBlocked"><div class="small">読み込み中...</div></div></div>
+    <div class="safety-manage-section"><h3>非表示にした会話</h3><p>非表示の会話を再表示できます。取引・メッセージ自体は削除されません。</p><div id="safetyManageHidden"><div class="small">読み込み中...</div></div></div>
+    <div class="safety-manage-section"><h3>通報について</h3><p>通報は相手のプロフィール、または取引チャットの「通報・ブロック」から送信できます。内容を確認するのは運営です。</p><button type="button" class="btn secondary full" onclick="closeSafetyManagement();openSafetyCenter('support')">運営に問い合わせる</button></div>
   </div>
 </div>
 <div id="mainMenuOverlay" class="main-menu-overlay" onclick="if(event.target===this)closeMainMenu()">
@@ -2364,6 +2388,7 @@ async function unblockUserFromManager(blockId){
   const {error}=await sb.from('user_blocks').delete().eq('id',blockId).eq('blocker_id',currentUser.id);
   if(error)return alert('ブロックを解除できませんでした：'+error.message);
   await renderVisibilityBlockManager();
+  if(document.getElementById('safetyManageOverlay')?.classList.contains('show'))await refreshSafetyManagement();
   loadConversations();
 }
 async function loadConversations(){
@@ -2845,10 +2870,24 @@ let safetyMode='support';
 let safetyTargetUserId=null;
 async function openSafetyManagement(){
  if(!currentUser){alert('ログインしてください。');return}
- await go('me');
- const panel=document.getElementById('visibilityBlockManager');
- if(typeof renderVisibilityBlockManager==='function')await renderVisibilityBlockManager();
- if(panel)panel.scrollIntoView({behavior:'smooth',block:'start'});
+ const ov=document.getElementById('safetyManageOverlay');
+ if(!ov)return;
+ ov.classList.add('show');
+ await refreshSafetyManagement();
+}
+function closeSafetyManagement(){document.getElementById('safetyManageOverlay')?.classList.remove('show')}
+async function refreshSafetyManagement(){
+ const blocked=document.getElementById('safetyManageBlocked');
+ const hidden=document.getElementById('safetyManageHidden');
+ if(!blocked||!hidden||!currentUser||!sb)return;
+ blocked.innerHTML='<div class="small">読み込み中...</div>';
+ hidden.innerHTML='<div class="small">読み込み中...</div>';
+ // 既存の管理処理を再利用し、元データは変更しない。
+ await renderVisibilityBlockManager();
+ const originalBlocked=document.getElementById('blockedUserManager');
+ const originalHidden=document.getElementById('hiddenConversationManager');
+ blocked.innerHTML=originalBlocked?.innerHTML||'<div class="small">現在ありません。</div>';
+ hidden.innerHTML=originalHidden?.innerHTML||'<div class="small">現在ありません。</div>';
 }
 function cancelBlockConfirm(){document.getElementById('blockConfirmBox')?.classList.remove('show')}
 function closeSafetyCenter(){
