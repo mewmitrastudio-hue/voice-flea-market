@@ -1332,7 +1332,42 @@ function formatJpDateTime(value,withTime=true){
  return `${date} ${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}`;
 }
 function closeFinanceCenter(){document.getElementById('financeOverlay')?.classList.remove('on');document.body.classList.remove('finance-modal-open')}
-function openFinanceCenter(mode='buyer'){document.body.classList.add('finance-modal-open');document.getElementById('financeOverlay')?.classList.add('on');showFinancePanel(mode)}
+async function openFinanceCenter(mode='buyer'){
+ document.body.classList.add('finance-modal-open');
+ document.getElementById('financeOverlay')?.classList.add('on');
+ if(mode!=='seller'){showFinancePanel(mode);return}
+ const body=document.getElementById('financeBody');
+ if(body)body.innerHTML='<div class="finance-muted">売上・返金履歴を確認しています...</div>';
+ if(!sb||!currentUser){if(body)body.innerHTML='<div class="err">ログイン情報を確認できません。</div>';return}
+ try{
+  const {data,error}=await sb.from('payments')
+   .select('listing_id,amount_jpy,platform_fee_jpy,seller_amount_jpy,status,paid_at,refunded_at,created_at')
+   .eq('seller_id',currentUser.id).in('status',['paid','refunded']).order('paid_at',{ascending:false});
+  if(error)throw error;
+  const payments=data||[];
+  const paid=payments.filter(p=>p.status==='paid');
+  const refunded=payments.filter(p=>p.status==='refunded');
+  const gross=payments.reduce((sum,p)=>sum+Number(p.amount_jpy||0),0);
+  const refundTotal=refunded.reduce((sum,p)=>sum+Number(p.amount_jpy||0),0);
+  const fee=paid.reduce((sum,p)=>sum+Number(p.platform_fee_jpy||0),0);
+  const payout=paid.reduce((sum,p)=>sum+Number(p.seller_amount_jpy||0),0);
+  const previous=window.voiceFleaFinanceData||{};
+  window.voiceFleaFinanceData={...previous,
+   sellerAcceptedGross:gross,sellerRefundTotal:refundTotal,sellerAcceptedFee:fee,
+   sellerAcceptedPayout:payout,sellerAcceptedCount:paid.length,sellerRefundedCount:refunded.length,
+   sellerAcceptedTransactions:payments.map(p=>({
+    title:'出品取引',gross:Number(p.amount_jpy||0),fee:Number(p.platform_fee_jpy||0),
+    payout:Number(p.seller_amount_jpy||0),status:p.status,
+    paidAt:p.paid_at||p.created_at||null,refundedAt:p.refunded_at||null
+   }))
+  };
+  const home=document.getElementById('homeSalesAmount');
+  if(home)home.textContent=financeYen(payout);
+  if(document.getElementById('financeOverlay')?.classList.contains('on'))showFinancePanel('seller');
+ }catch(e){
+  if(body)body.innerHTML=`<div class="err">売上情報を取得できませんでした。${esc(e?.message||'時間をおいて再度お試しください。')}</div>`;
+ }
+}
 function setStripeConnectUI(accountId='',message='',verified=false){
  const status=document.getElementById('stripeConnectStatus');
  const btn=document.getElementById('stripeConnectBtn');
@@ -1753,7 +1788,7 @@ async function signOut(){document.body.classList.remove('normal-mode','chat-mode
 async function loadHome(){
   if(!sb||!currentUser)return;
 
-  const [{data:sales},{data:convs},{data:activeMyListings},{count:favoriteCount}]=await Promise.all([
+  const [{data:sales,error:salesError},{data:convs},{data:activeMyListings},{count:favoriteCount}]=await Promise.all([
     sb.from('payments').select('seller_amount_jpy,status').eq('seller_id',currentUser.id).eq('status','paid'),
     sb.from('conversations').select('id,delivery_status').or(`buyer_id.eq.${currentUser.id},seller_id.eq.${currentUser.id}`),
     sb.from('listings').select('id,created_at').eq('seller_id',currentUser.id).eq('is_active',true),
@@ -1777,7 +1812,7 @@ async function loadHome(){
   const myListingEl=document.getElementById('homeMyListingCount');
   const favoriteEl=document.getElementById('homeFavoriteCount');
 
-  if(salesEl)salesEl.textContent=`${salesAmount.toLocaleString()}円`;
+  if(salesEl)salesEl.textContent=salesError?'取得できません':`${salesAmount.toLocaleString()}円`;
   if(unreadEl)unreadEl.textContent=`${unread}件`;
   let myListingNoticeCount=0;
   try{
