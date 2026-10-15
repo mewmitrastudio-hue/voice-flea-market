@@ -1071,7 +1071,7 @@ html.ios-native-shell body.normal-mode #home.page.on {
 <div id="safetyManageOverlay" class="safety-manage-overlay" role="dialog" aria-modal="true" aria-labelledby="safetyManageHeading" onclick="if(event.target===this)closeSafetyManagement()">
   <div class="safety-manage-sheet">
     <div class="safety-manage-head"><h2 id="safetyManageHeading">🛡️ 通報・ブロック管理</h2><button class="safety-manage-close" type="button" aria-label="閉じる" onclick="closeSafetyManagement()">×</button></div>
-    <div class="safety-manage-section"><h3>相手を通報・ブロックする</h3><p>「声を探す・購入」で出品者のプロフィールを開き、「このユーザーを通報・ブロック」を押してください。購入やメッセージのやり取りは不要です。</p><button type="button" class="btn secondary full" onclick="closeSafetyManagement();go('voices')">声を探す・購入へ</button></div>
+    <div class="safety-manage-section"><h3>相手を通報・ブロックする</h3><p>出品者のプロフィールから、購入やメッセージをせずに通報・ブロックできます。</p><button type="button" class="btn secondary full" onclick="closeSafetyManagement();go('voices')">出品者を探す</button></div>
     <div class="safety-manage-section"><h3>ブロック中のユーザー</h3><p>ブロックした相手を確認し、ここから解除できます。</p><div id="safetyManageBlocked"><div class="small">読み込み中...</div></div></div>
     <div class="safety-manage-section"><h3>非表示にした会話</h3><p>非表示の会話を再表示できます。取引・メッセージ自体は削除されません。</p><div id="safetyManageHidden"><div class="small">読み込み中...</div></div></div>
     <div class="safety-manage-section"><h3>通報について</h3><p>通報は相手のプロフィール、または取引チャットの「通報・ブロック」から送信できます。内容を確認するのは運営です。</p><button type="button" class="btn secondary full" onclick="closeSafetyManagement();openSafetyCenter('support')">運営に問い合わせる</button></div>
