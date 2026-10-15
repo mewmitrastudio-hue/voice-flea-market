@@ -1096,6 +1096,7 @@ html.ios-native-shell body.normal-mode #home.page.on {
       <div class="main-menu-label">サポート</div>
       <button onclick="closeMainMenu();openManualCenter()">📖 使い方・操作マニュアル</button>
       <button onclick="closeMainMenu();openRulesCenter()">📘 ルール・ポリシー</button>
+      <button onclick="closeMainMenu();openSafetyManagement()">🛡️ 通報・ブロック管理</button>
       <button onclick="closeMainMenu();openSafetyCenter('support')">✉️ お問い合わせ</button>
       <div class="main-menu-account">
         <div>
@@ -1261,7 +1262,7 @@ html.ios-native-shell body.normal-mode #home.page.on {
 <button id="blockUserBtn" class="safety-action danger" onclick="toggleBlockCurrentPartner()">このユーザーをブロック</button>
 <div id="blockConfirmBox" class="block-confirm-box">
   <b>このユーザーをブロックしますか？</b>
-  <div class="block-confirm-note">ブロックすると、この取引ではメッセージを送受信できなくなります。あとから解除できます。</div>
+  <div class="block-confirm-note">ブロックすると、相手とのメッセージが制限されます。あとから解除できます。</div>
   <div class="block-confirm-actions">
     <button type="button" class="btn secondary" onclick="cancelBlockConfirm()">キャンセル</button>
     <button type="button" class="btn danger-btn" onclick="confirmBlockCurrentPartner()">ブロックする</button>
@@ -2841,6 +2842,14 @@ async function markAllNotificationsRead(){if(!currentUser)return;const {items}=a
 
 
 let safetyMode='support';
+let safetyTargetUserId=null;
+async function openSafetyManagement(){
+ if(!currentUser){alert('ログインしてください。');return}
+ await go('me');
+ const panel=document.getElementById('visibilityBlockManager');
+ if(typeof renderVisibilityBlockManager==='function')await renderVisibilityBlockManager();
+ if(panel)panel.scrollIntoView({behavior:'smooth',block:'start'});
+}
 function cancelBlockConfirm(){document.getElementById('blockConfirmBox')?.classList.remove('show')}
 function closeSafetyCenter(){
  document.getElementById('safetyOverlay')?.classList.remove('on');
@@ -2849,6 +2858,7 @@ function closeSafetyCenter(){
 }
 async function openSafetyCenter(mode='support'){
  safetyMode=mode;
+ safetyTargetUserId=mode==='profile'?safetyTargetUserId:(mode==='chat'?currentConversationPartner:null);
  const ov=document.getElementById('safetyOverlay'),actions=document.getElementById('safetyPartnerActions'),title=document.getElementById('safetyTitle'),intro=document.getElementById('safetyIntro'),categoryLabel=document.getElementById('safetyCategoryLabel');
  if(!ov)return;
  document.getElementById('safetyDetail').value='';
@@ -2857,8 +2867,8 @@ async function openSafetyCenter(mode='support'){
  const catSel=document.getElementById('safetyCategory');
  Array.from(catSel.options).forEach(o=>o.hidden=(mode==='support'?o.value!=='support':o.value==='support'));
  catSel.value=mode==='support'?'support':'harassment';
- if(mode==='chat'&&currentConversationPartner){
-   title.textContent='この取引の通報・ブロック';
+ if((mode==='chat'||mode==='profile')&&safetyTargetUserId){
+   title.textContent=mode==='profile'?'このユーザーの通報・ブロック':'この取引の通報・ブロック';
    intro.textContent='相手のブロックや違反報告ができます。';
    if(categoryLabel)categoryLabel.textContent='通報理由';
    actions.classList.remove('hide');
@@ -2874,16 +2884,16 @@ async function openSafetyCenter(mode='support'){
  ov.classList.add('on')
 }
 async function getBlockRows(){
- if(!sb||!currentUser||!currentConversationPartner)return [];
- const {data,error}=await sb.from('user_blocks').select('id,blocker_id,blocked_user_id').or(`and(blocker_id.eq.${currentUser.id},blocked_user_id.eq.${currentConversationPartner}),and(blocker_id.eq.${currentConversationPartner},blocked_user_id.eq.${currentUser.id})`);
+ if(!sb||!currentUser||!safetyTargetUserId)return [];
+ const {data,error}=await sb.from('user_blocks').select('id,blocker_id,blocked_user_id').or(`and(blocker_id.eq.${currentUser.id},blocked_user_id.eq.${safetyTargetUserId}),and(blocker_id.eq.${safetyTargetUserId},blocked_user_id.eq.${currentUser.id})`);
  if(error){console.warn('block check',error);return []}return data||[]
 }
 async function isCurrentConversationBlocked(){const rows=await getBlockRows();return rows.length>0}
 async function refreshBlockButton(){
- const b=document.getElementById('blockUserBtn');if(!b||!currentConversationPartner)return;const rows=await getBlockRows();const mine=rows.find(x=>x.blocker_id===currentUser.id);b.textContent=mine?'ブロックを解除':'このユーザーをブロック';b.classList.toggle('danger',!mine)
+ const b=document.getElementById('blockUserBtn');if(!b||!safetyTargetUserId)return;const rows=await getBlockRows();const mine=rows.find(x=>x.blocker_id===currentUser.id);b.textContent=mine?'ブロックを解除':'このユーザーをブロック';b.classList.toggle('danger',!mine)
 }
 async function toggleBlockCurrentPartner(){
- if(safetyMode!=='chat'||!currentConversationId||!currentConversationPartner){return info('safetyMsg','ブロックは取引チャットの「通報・ブロック」から行ってください。','err')}
+ if(!['chat','profile'].includes(safetyMode)||!safetyTargetUserId){return info('safetyMsg','相手のプロフィールまたは取引チャットから操作してください。','err')}
  const rows=await getBlockRows();const mine=rows.find(x=>x.blocker_id===currentUser.id);
  if(mine){
    const {error}=await sb.from('user_blocks').delete().eq('id',mine.id);
@@ -2895,15 +2905,15 @@ async function toggleBlockCurrentPartner(){
  document.getElementById('blockConfirmBox')?.classList.add('show');
 }
 async function confirmBlockCurrentPartner(){
- if(safetyMode!=='chat'||!currentConversationId||!currentConversationPartner)return;
+ if(!['chat','profile'].includes(safetyMode)||!safetyTargetUserId)return;
  const rows=await getBlockRows();
  const mine=rows.find(x=>x.blocker_id===currentUser.id);
  if(mine){cancelBlockConfirm();await refreshBlockButton();return}
- const {error}=await sb.from('user_blocks').insert({blocker_id:currentUser.id,blocked_user_id:currentConversationPartner});
+ const {error}=await sb.from('user_blocks').insert({blocker_id:currentUser.id,blocked_user_id:safetyTargetUserId});
  if(error)return info('safetyMsg',error.code==='23505'?'すでにブロックしています。':error.message,'err');
  cancelBlockConfirm();
  const m=document.getElementById('safetyMsg');
- if(m)m.innerHTML='<div class="safety-success-card"><b>ブロックしました</b><span>この取引ではメッセージを送受信できません。必要になった場合は、ここからブロックを解除できます。</span></div>';
+ if(m)m.innerHTML='<div class="safety-success-card"><b>ブロックしました</b><span>ブロックしました。必要になった場合は、ここから解除できます。</span></div>';
  await refreshBlockButton();await applyChatBlockState();
 }
 async function applyChatBlockState(){
@@ -2917,8 +2927,10 @@ async function submitSafetyRequest(){
  const detail=document.getElementById('safetyDetail').value.trim();
  if(detail.length<5)return info('safetyMsg','詳細を5文字以上入力してください。','err');
  const m=document.getElementById('safetyMsg');
- if(safetyMode==='chat'&&currentConversationPartner&&cat!=='support'){
-   const {error}=await sb.from('reports').insert({reporter_id:currentUser.id,target_user_id:currentConversationPartner,conversation_id:currentConversationId,reason:cat,details:detail});
+ if(['chat','profile'].includes(safetyMode)&&safetyTargetUserId&&cat!=='support'){
+   const payload={reporter_id:currentUser.id,target_user_id:safetyTargetUserId,reason:cat,details:detail};
+   if(safetyMode==='chat'&&currentConversationId)payload.conversation_id=currentConversationId;
+   const {error}=await sb.from('reports').insert(payload);
    if(error)return info('safetyMsg',error.message,'err');
    if(m)m.innerHTML='<div class="safety-success-card"><b>通報を受け付けました</b><span>内容を運営で確認します。必要に応じて対応を行います。</span></div>';
  }else{
@@ -3120,6 +3132,13 @@ async function saveBasicProfile(){
   info('profileEditMsg','保存しました。');
   setTimeout(async()=>{closeProfileEdit();await loadMe();await loadListings(true);},500);
 }
+function openProfileSafety(userId){
+ if(!currentUser){alert('通報・ブロックにはログインが必要です。');return}
+ if(!userId||userId===currentUser.id)return;
+ closePublicProfile();
+ safetyTargetUserId=userId;
+ openSafetyCenter('profile');
+}
 function closePublicProfile(){
   document.getElementById('publicProfileOverlay')?.classList.remove('show');
 }
@@ -3137,7 +3156,7 @@ async function openPublicProfile(userId){
   if(pe){box.innerHTML=`<div class="err">${esc(pe.message)}</div>`;return}
   const name=p?.display_name||'ユーザー';
   const listHtml=(listings||[]).map(v=>`<button class="public-listing-card" type="button" onclick="closePublicProfile();go('voices').then(()=>{voiceSearch.value='${esc(name).replace(/'/g,"&#39;")}';loadListings(true)})"><div><b>${esc(v.title)}</b><div class="small">${esc(v.category||'')}　AI:${esc(v.ai_use||'-')}</div></div><strong>${Number(v.price_jpy||0).toLocaleString()}円</strong></button>`).join('')||'<div class="small">現在販売中の声はありません。</div>';
-  box.innerHTML=`<div class="public-profile-main">${avatarMarkup(p,'xl',userId)}<div><h2>${esc(name)}</h2>${p?.verified?'<span class="identity-badge verified">✓ 本人確認済み</span>':''}${p?.profile_tagline?`<div class="public-tagline">${esc(p.profile_tagline)}</div>`:''}</div></div>${p?.profile_bio?`<div class="public-profile-section"><b>自己紹介</b><p>${esc(p.profile_bio)}</p></div>`:''}${p?.profile_specialties?`<div class="public-profile-section"><b>得意ジャンル</b><p>${esc(p.profile_specialties)}</p></div>`:''}${p?.profile_languages?`<div class="public-profile-section"><b>対応言語・方言</b><p>${esc(p.profile_languages)}</p></div>`:''}<div class="public-profile-section"><b>販売中の声</b><div class="public-listings">${listHtml}</div></div>`;
+  box.innerHTML=`<div class="public-profile-main">${avatarMarkup(p,'xl',userId)}<div><h2>${esc(name)}</h2>${p?.verified?'<span class="identity-badge verified">✓ 本人確認済み</span>':''}${p?.profile_tagline?`<div class="public-tagline">${esc(p.profile_tagline)}</div>`:''}</div></div>${p?.profile_bio?`<div class="public-profile-section"><b>自己紹介</b><p>${esc(p.profile_bio)}</p></div>`:''}${p?.profile_specialties?`<div class="public-profile-section"><b>得意ジャンル</b><p>${esc(p.profile_specialties)}</p></div>`:''}${p?.profile_languages?`<div class="public-profile-section"><b>対応言語・方言</b><p>${esc(p.profile_languages)}</p></div>`:''}${userId!==currentUser?.id?`<div class="public-profile-section"><button type="button" class="btn secondary full" onclick="openProfileSafety(&quot;${esc(userId)}&quot;)">🛡️ このユーザーを通報・ブロック</button></div>`:""}<div class="public-profile-section"><b>販売中の声</b><div class="public-listings">${listHtml}</div></div>`;
 }
 
 
