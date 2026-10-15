@@ -1135,6 +1135,7 @@ html.ios-native-shell body.normal-mode #home.page.on {
           <span id="cloudStatus" class="status">確認中</span>
         </div>
         <button class="danger-menu-btn account-logout-btn" onclick="closeMainMenu();signOut()">🚪 ログアウト</button>
+        <button class="danger-menu-btn" type="button" onclick="closeMainMenu();requestAccountDeletion()" style="margin-top:8px">🗑️ アカウントを削除</button>
       </div>
     </div>
   </aside>
@@ -1793,6 +1794,37 @@ async function signIn(){
   const {error}=await sb.auth.signInWithPassword({email:email.value.trim(),password:password.value});
   if(error)return info('authMsg',error.message,'err');
   resetLoginZoom();
+}
+// Account deletion must be performed by a verified server-side Supabase Edge Function.
+// Fail closed if the backend has not yet been deployed; never delete only local profile data.
+let accountDeletionInProgress=false;
+async function requestAccountDeletion(){
+  if(accountDeletionInProgress)return;
+  if(!sb||!currentUser){alert('ログイン後に操作してください。');return;}
+  const first=confirm('アカウントを削除すると、ログインできなくなります。未完了の取引・返金・売上金がある場合は先に対応が必要です。削除手続きを進めますか？');
+  if(!first)return;
+  const typed=prompt('本人確認のため「削除」と入力してください。');
+  if(typed!=='削除'){
+    if(typed!==null)alert('入力が一致しないため、削除は実行していません。');
+    return;
+  }
+  accountDeletionInProgress=true;
+  try{
+    const {data:{session},error:sessionError}=await sb.auth.getSession();
+    if(sessionError||!session?.access_token)throw new Error('ログイン情報を確認できません。再ログインしてください。');
+    const {data,error}=await sb.functions.invoke('delete-account',{
+      body:{confirmation:'DELETE_MY_ACCOUNT'},
+      headers:{Authorization:`Bearer ${session.access_token}`}
+    });
+    if(error)throw error;
+    if(!data||data.success!==true)throw new Error(data?.message||'削除完了を確認できませんでした。');
+    alert('アカウントの削除が完了しました。');
+    await sb.auth.signOut();
+    location.reload();
+  }catch(e){
+    console.error('Account deletion failed',e);
+    alert('アカウントを削除できませんでした。サーバー側の削除機能が未設定、または未完了の取引がある可能性があります。アカウントは削除されていません。詳細はお問い合わせください。');
+  }finally{accountDeletionInProgress=false;}
 }
 async function signOut(){document.body.classList.remove('normal-mode','chat-mode','messages-mode');document.querySelector('.topbar')?.classList.remove('force-hide');document.getElementById('nav')?.classList.remove('force-hide');await sb.auth.signOut()}
 async function loadHome(){
