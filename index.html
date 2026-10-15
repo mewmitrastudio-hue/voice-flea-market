@@ -511,7 +511,7 @@ body.normal-mode #nav button{height:46px!important;min-height:46px!important;bor
 .home-summary-card strong{font-size:18px;color:#2f2a45}
 
 
-.listing-card-actions{display:flex;flex-direction:column;align-items:flex-end;gap:5px}
+.listing-card-actions{display:flex;flex-direction:column;align-items:flex-end;gap:5px;flex-shrink:0}.listing-card-actions .price{white-space:nowrap;word-break:keep-all}
 .favorite-heart{width:34px;height:34px;border:1px solid #ddd8f8;border-radius:50%;background:#fff;color:#7569dd;font-size:20px;line-height:1;font-weight:900}
 .favorite-heart.on{background:#fff0f6;color:#d43b78;border-color:#f0bed1}
 .favorites-overlay{position:fixed;inset:0;z-index:100005;display:none;align-items:center;justify-content:center;padding:18px;background:rgba(20,22,35,.42);backdrop-filter:blur(3px)}
@@ -3127,7 +3127,7 @@ function closeAvatarPreview(){
 async function openProfileEdit(name=''){
   const ov=document.getElementById('profileEditOverlay');
   const {data:p}=await sb.from('profiles').select('display_name,avatar_path,profile_tagline,profile_bio,profile_specialties,profile_languages').eq('id',currentUser.id).maybeSingle();
-  document.getElementById('profileDisplayName').value=p?.display_name||name||'';
+  document.getElementById('profileDisplayName').value=(p?.display_name&&p.display_name!=='ユーザー'?p.display_name:currentUser?.user_metadata?.display_name&&currentUser.user_metadata.display_name!=='ユーザー'?currentUser.user_metadata.display_name:p?.display_name)||name||'';
   document.getElementById('profileTagline').value=p?.profile_tagline||'';
   document.getElementById('profileBio').value=p?.profile_bio||'';
   document.getElementById('profileSpecialties').value=p?.profile_specialties||'';
@@ -3339,7 +3339,8 @@ async function loadMe(){
     history.replaceState({},'',location.pathname);
   }
 
-  const displayName=p?.display_name||currentUser.email||'ユーザー';
+  const registeredName=String(currentUser.user_metadata?.display_name||'').trim();
+  const displayName=(p?.display_name&&p.display_name!=='ユーザー'?p.display_name:registeredName&&registeredName!=='ユーザー'?registeredName:p?.display_name)||currentUser.email||'ユーザー';
   meText.innerHTML=`<div class="profile-main-row">${avatarMarkup({...p,display_name:displayName},'lg',currentUser.id)}<div class="profile-main-info"><b class="profile-name">${esc(displayName)}</b><div class="small profile-email">${esc(currentUser.email||'')}</div>${p?.profile_tagline?`<div class="profile-tagline">${esc(p.profile_tagline)}</div>`:''}<div class="profile-badges"><span class="identity-badge ${verified?'verified':'unverified'}">${verified?'✓ 本人確認済み':'本人確認 未完了'}</span>${avg?`<span class="rating-badge">★ ${avg}（${ratings.length}件）</span>`:'<span class="rating-badge muted">まだ評価はありません</span>'}</div></div><button class="btn secondary profile-edit-btn" type="button" onclick="openProfileEdit('${esc(displayName).replace(/'/g,'&#39;')}')">編集</button></div>`;
 
   const [{data:l},{data:sellerConvs,error:sellerErr},{data:buyerConvs,error:buyerErr}]=await Promise.all([
