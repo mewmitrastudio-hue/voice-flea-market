@@ -751,6 +751,13 @@ body.messages-mode .unread-dot{flex:0 0 auto;align-self:flex-end}
 .safety-manage-section #safetyManageBlocked>b,.safety-manage-section #safetyManageHidden>b{display:none}
 .safety-manage-section .manage-row{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:10px 0;border-top:1px solid #eeeaf7}
 .safety-manage-section .manage-row button{border:1px solid #dedaff;border-radius:10px;background:#fff;color:#5148c9;padding:8px 12px;font-weight:800}
+
+/* Unified finance presentation: emphasize the only verified amount. */
+.finance-primary-line{align-items:center;border-bottom:0!important;padding:16px 0 10px!important;flex-wrap:wrap}
+.finance-primary-line span{font-size:14px;font-weight:850;color:#302b53}
+.finance-primary-line .finance-total{font-size:clamp(24px,6vw,31px)!important;color:#5b4bdb;white-space:nowrap;font-variant-numeric:tabular-nums}
+.finance-summary>.finance-caption:first-child{font-size:12px;color:#605b77;font-weight:700}
+.finance-summary>.finance-caption:last-child{border-top:1px solid #eeeafd;padding-top:10px;margin-top:8px;line-height:1.7}
 </style>
 <script>
 if(window.navigator.standalone===true){document.body.classList.add('standalone')}
@@ -1332,38 +1339,38 @@ function formatJpDateTime(value,withTime=true){
  return `${date} ${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}`;
 }
 function closeFinanceCenter(){document.getElementById('financeOverlay')?.classList.remove('on');document.body.classList.remove('finance-modal-open')}
+async function fetchSellerFinance(){
+ if(!sb||!currentUser)throw new Error('ログイン情報を確認できません。');
+ // Shared source for home, my page and finance modal. No writes or deletions.
+ const {data,error}=await sb.from('payments')
+  .select('seller_amount_jpy,status').eq('seller_id',currentUser.id).eq('status','paid');
+ if(error)throw error;
+ const rows=data||[];
+ const payout=rows.reduce((sum,p)=>sum+Number(p.seller_amount_jpy||0),0);
+ return {count:rows.length,payout};
+}
+function applySellerFinance(data){
+ const home=document.getElementById('homeSalesAmount');
+ if(home)home.textContent=financeYen(data.payout);
+ const summary=document.getElementById('sellerSalesSummary');
+ if(summary)summary.innerHTML=`<div class="finance-summary" style="margin:0"><div class="finance-caption">支払い済みの取引 ${data.count}件</div><div class="finance-line finance-primary-line"><span>受取額</span><strong class="finance-total">${financeYen(data.payout)}</strong></div><div class="finance-caption">実際に振り込める残高ではありません。返金・振込状況は別途確認が必要です。</div></div>`;
+ window.voiceFleaFinanceData={...(window.voiceFleaFinanceData||{}),sellerAcceptedPayout:data.payout,sellerAcceptedCount:data.count,sellerDetailLimited:true};
+}
 async function openFinanceCenter(mode='buyer'){
  document.body.classList.add('finance-modal-open');
  document.getElementById('financeOverlay')?.classList.add('on');
- if(mode!=='seller'){showFinancePanel(mode);return}
+ if(mode!=='seller'){showFinancePanel(mode);return;}
  const body=document.getElementById('financeBody');
- if(body)body.innerHTML='<div class="finance-muted">売上・返金履歴を確認しています...</div>';
- if(!sb||!currentUser){if(body)body.innerHTML='<div class="err">ログイン情報を確認できません。</div>';return}
+ if(body)body.innerHTML='<div class="finance-muted">売上情報を確認しています...</div>';
  try{
-  // Use the exact same paid-payment fields and filters as the home summary.
-  // Additional fields may not exist or be readable; never turn a failed query into zero sales.
-  const {data:paidData,error:paidError}=await sb.from('payments')
-   .select('seller_amount_jpy,status').eq('seller_id',currentUser.id).eq('status','paid');
-  if(paidError)throw paidError;
-  const paid=paidData||[];
-  const payout=paid.reduce((sum,p)=>sum+Number(p.seller_amount_jpy||0),0);
-  const {data:refundData,error:refundError}=await sb.from('payments')
-   .select('amount_jpy,status').eq('seller_id',currentUser.id).eq('status','refunded');
-  const refunded=refundError?[]:(refundData||[]);
-  // The home total is authoritative for this view. Details that cannot be read
-  // are explicitly marked unavailable rather than fabricated from zero values.
-  const previous=window.voiceFleaFinanceData||{};
-  window.voiceFleaFinanceData={...previous,
-   sellerAcceptedGross:null,sellerRefundTotal:refundError?null:refunded.reduce((sum,p)=>sum+Number(p.amount_jpy||0),0),
-   sellerAcceptedFee:null,sellerAcceptedPayout:payout,
-   sellerAcceptedCount:paid.length,sellerRefundedCount:refundError?null:refunded.length,
-   sellerAcceptedTransactions:[],sellerDetailLimited:true
-  };
-  const home=document.getElementById('homeSalesAmount');
-  if(home)home.textContent=financeYen(payout);
+  const data=await fetchSellerFinance();
+  applySellerFinance(data);
   if(document.getElementById('financeOverlay')?.classList.contains('on'))showFinancePanel('seller');
  }catch(e){
-  if(body)body.innerHTML=`<div class="err">売上情報を取得できませんでした。${esc(e?.message||'時間をおいて再度お試しください。')}</div>`;
+  const home=document.getElementById('homeSalesAmount');
+  if(home)home.textContent='確認できません';
+  if(body)body.innerHTML='<div class="err">売上情報を取得できませんでした。画面を更新して、もう一度お試しください。</div>';
+  console.warn('Seller finance read failed',e);
  }
 }
 function setStripeConnectUI(accountId='',message='',verified=false){
@@ -1444,8 +1451,8 @@ function showFinancePanel(mode='buyer'){
    body.innerHTML=`<div class="finance-summary"><div class="small">${title}</div><div class="finance-line"><span>購入者の支払予定</span><strong class="finance-total">${financeYen(amount)}</strong></div><div class="finance-line"><span>サービス手数料（15%）</span><strong>${financeYen(fee)}</strong></div><div class="finance-line"><span>出品者の受取予定</span><strong>${financeYen(payout)}</strong></div><span class="finance-status">Stripe Connect連携予定</span></div><div class="finance-muted">手数料は出品者売上から差し引く想定です。正式公開前にStripeの実費・返金時の扱い・税表示を再確認して確定します。</div><button class="btn full disabled-preview" type="button">正式決済導入後に利用できます</button>`;
  }else{
    if(d.sellerDetailLimited){
-    const amount=financeYen(d.sellerAcceptedPayout||0);
-    body.innerHTML=`<div class="finance-summary"><div class="small">ホームと同じ支払い済み取引を集計しています</div><div class="finance-line"><span>支払い済み取引</span><strong>${Number(d.sellerAcceptedCount||0)}件</strong></div><div class="finance-line"><span>出品者受取額（計算上）</span><strong class="finance-total">${amount}</strong></div><div class="finance-caption">振込可能残高ではありません。売上総額・返金・手数料の内訳は現在確認できないため、誤った0円を表示せず省略しています。</div></div>`;
+    const amount=financeYen(d.sellerAcceptedPayout);
+    body.innerHTML=`<div class="finance-summary"><div class="finance-caption">支払い済みの取引 ${Number(d.sellerAcceptedCount||0)}件</div><div class="finance-line finance-primary-line"><span>受取額</span><strong class="finance-total">${amount}</strong></div><div class="finance-caption">ホーム・マイページと同じ集計です。実際の振込可能残高ではありません。</div></div><div class="finance-muted">売上総額・返金額・手数料の正確な内訳は、この画面では確認できないため表示していません。</div>`;
     return;
   }
   const gross=Number(d.sellerAcceptedGross||0);
@@ -1469,7 +1476,7 @@ function showFinancePanel(mode='buyer'){
    const step1=(count+refundedCount)>0?'active':'future';
    const step2=(count+refundedCount)>0?'active':'future';
    const currentStatus=activeCount>0?'支払い済み売上あり':'現在の売上なし';
-   body.innerHTML=`<div class="finance-summary"><div class="small">支払い済み ${count}件 / 返金済み ${refundedCount}件</div><div class="finance-line"><span>売上総額</span><strong>${financeYen(gross)}</strong></div><div class="finance-line"><span>返金額</span><strong>${financeYen(refundTotal)}</strong></div><div class="finance-line"><span>サービス手数料（15%）</span><strong>${financeYen(fee)}</strong></div><div class="finance-line"><span>出品者受取額（計算上）</span><strong class="finance-total">${financeYen(payout)}</strong></div><div class="finance-caption">売上総額から返金額とサービス手数料を差し引いた計算上の金額です。振込可能残高を示すものではありません。</div></div>${txHtml}<div class="finance-muted">取引履歴は購入日が新しい順に表示します。返金済みの取引も削除せず履歴として残します。</div>`;
+   body.innerHTML=`<div class="finance-summary"><div class="small">支払い済み ${count}件 / 返金済み ${refundedCount}件</div><div class="finance-line"><span>売上総額</span><strong>${financeYen(gross)}</strong></div><div class="finance-line"><span>返金額</span><strong>${financeYen(refundTotal)}</strong></div><div class="finance-line"><span>サービス手数料（15%）</span><strong>${financeYen(fee)}</strong></div><div class="finance-line"><span>受取額</span><strong class="finance-total">${financeYen(payout)}</strong></div><div class="finance-caption">売上総額から返金額とサービス手数料を差し引いた計算上の金額です。振込可能残高を示すものではありません。</div></div>${txHtml}<div class="finance-muted">取引履歴は購入日が新しい順に表示します。返金済みの取引も削除せず履歴として残します。</div>`;
  }
 }
 
@@ -1791,14 +1798,14 @@ async function signOut(){document.body.classList.remove('normal-mode','chat-mode
 async function loadHome(){
   if(!sb||!currentUser)return;
 
-  const [{data:sales,error:salesError},{data:convs},{data:activeMyListings},{count:favoriteCount}]=await Promise.all([
-    sb.from('payments').select('seller_amount_jpy,status').eq('seller_id',currentUser.id).eq('status','paid'),
+  const [salesResult,{data:convs},{data:activeMyListings},{count:favoriteCount}]=await Promise.all([
+    fetchSellerFinance().catch(e=>{console.warn('Home finance read failed',e);return null}),
     sb.from('conversations').select('id,delivery_status').or(`buyer_id.eq.${currentUser.id},seller_id.eq.${currentUser.id}`),
     sb.from('listings').select('id,created_at').eq('seller_id',currentUser.id).eq('is_active',true),
     sb.from('favorite_listings').select('*',{count:'exact',head:true}).eq('user_id',currentUser.id)
   ]);
 
-  const salesAmount=(sales||[]).reduce((sum,p)=>sum+Number(p.seller_amount_jpy||0),0);
+  const salesAmount=salesResult?.payout;
 
   let unread=0;
   for(const c of convs||[]){
@@ -1815,7 +1822,7 @@ async function loadHome(){
   const myListingEl=document.getElementById('homeMyListingCount');
   const favoriteEl=document.getElementById('homeFavoriteCount');
 
-  if(salesEl)salesEl.textContent=salesError?'取得できません':`${salesAmount.toLocaleString()}円`;
+  if(salesEl)salesEl.textContent=salesResult?financeYen(salesAmount):'確認できません';
   if(unreadEl)unreadEl.textContent=`${unread}件`;
   let myListingNoticeCount=0;
   try{
@@ -3351,32 +3358,16 @@ async function loadMe(){
 
   myListings.innerHTML=`<h3>出品したもの</h3>${(l||[]).map(x=>`<div class="card mypage-item-card mylisting-compact"><button type="button" class="mypage-click-card mylisting-main" onclick="openMyListing('${x.id}')"><div class="mylisting-info"><b>${esc(x.title)}</b><span>${Number(x.price_jpy||0).toLocaleString()}円</span><small>出品日：${formatJpDateTime(x.created_at,false)||'-'}</small></div><span class="mypage-card-arrow">›</span></button><button type="button" class="mylisting-delete" aria-label="この出品を削除" onclick="deleteMyListing('${x.id}')">🗑️<span>削除</span></button></div>`).join('')||'<button type="button" class="card small mypage-item-card mypage-empty-card mypage-click-card" onclick="go(\'sell\')">まだ出品がありません。<span class="mypage-card-arrow">›</span></button>'}`;
 
-  // Stripe Webhookで保存された実決済（Sandbox）から出品者売上・返金を集計する。
-  const {data:sellerPayments,error:sellerPaymentsError}=await sb
-    .from('payments')
-    .select('listing_id,amount_jpy,platform_fee_jpy,seller_amount_jpy,status,paid_at,refunded_at,created_at')
-    .eq('seller_id',currentUser.id)
-    .in('status',['paid','refunded'])
-    .order('paid_at',{ascending:false});
-
-  const allSellerSales=sellerPayments||[];
-  const paidSales=allSellerSales.filter(p=>p.status==='paid');
-  const refundedSales=allSellerSales.filter(p=>p.status==='refunded');
-  const allGross=allSellerSales.reduce((sum,p)=>sum+Number(p.amount_jpy||0),0);
-  const refundTotal=refundedSales.reduce((sum,p)=>sum+Number(p.amount_jpy||0),0);
-  const paidGross=paidSales.reduce((sum,p)=>sum+Number(p.amount_jpy||0),0);
-  const paidFee=paidSales.reduce((sum,p)=>sum+Number(p.platform_fee_jpy||0),0);
-  const paidPayout=paidSales.reduce((sum,p)=>sum+Number(p.seller_amount_jpy||0),0);
-  const salesSummary=document.getElementById('sellerSalesSummary');
-
-  if(salesSummary){
-    if(sellerPaymentsError){
-      salesSummary.innerHTML=`<div class="small" style="color:#b42318">売上情報を取得できませんでした：${esc(sellerPaymentsError.message)}</div>`;
-    }else if(allSellerSales.length){
-      salesSummary.innerHTML=`<div class="finance-summary" style="margin:0"><div class="small">支払い済み ${paidSales.length}件 / 返金済み ${refundedSales.length}件</div><div class="finance-line"><span>売上総額</span><strong>${financeYen(allGross)}</strong></div><div class="finance-line"><span>返金額</span><strong>${financeYen(refundTotal)}</strong></div><div class="finance-line"><span>サービス手数料（15%）</span><strong>${financeYen(paidFee)}</strong></div><div class="finance-line"><span>出品者受取額（計算上）</span><strong class="finance-total">${financeYen(paidPayout)}</strong></div><div class="finance-caption">売上総額から返金額とサービス手数料を差し引いた計算上の金額です。振込可能残高を示すものではありません。</div></div>`;
-    }else{
-      salesSummary.innerHTML=`<div class="small">まだ売上・返金履歴はありません。</div>`;
-    }
+  // Match the home and finance modal exactly; never substitute an unverified zero.
+  try{
+    const finance=await fetchSellerFinance();
+    applySellerFinance(finance);
+  }catch(e){
+    const summary=document.getElementById('sellerSalesSummary');
+    if(summary)summary.innerHTML='<div class="err">売上情報を確認できません。更新して再度お試しください。</div>';
+    const home=document.getElementById('homeSalesAmount');
+    if(home)home.textContent='確認できません';
+    console.warn('Profile finance read failed',e);
   }
 
   const {data:buyerPayments}=await sb
@@ -3387,6 +3378,7 @@ async function loadMe(){
     .order('paid_at',{ascending:false});
   const buyerPaymentDateMap=new Map();
   (buyerPayments||[]).forEach(p=>{if(p.listing_id&&!buyerPaymentDateMap.has(p.listing_id))buyerPaymentDateMap.set(p.listing_id,p.paid_at||p.created_at||null)});
+  const {data:sellerPayments}=await sb.from('payments').select('listing_id,paid_at,status').eq('seller_id',currentUser.id).eq('status','paid');
   const sellerPaymentDateMap=new Map();
   (sellerPayments||[]).forEach(p=>{if(p.listing_id&&!sellerPaymentDateMap.has(p.listing_id))sellerPaymentDateMap.set(p.listing_id,p.paid_at||null)});
 
@@ -3468,22 +3460,7 @@ async function loadMe(){
 
   const sellerListingMap=new Map((l||[]).map(x=>[x.id,x]));
   const latestBuyer=(buyerConvs||[])[0]||null;
-  window.voiceFleaFinanceData={
-    sellerAcceptedGross:allGross,
-    sellerRefundTotal:refundTotal,
-    sellerAcceptedFee:paidFee,
-    sellerAcceptedPayout:paidPayout,
-    sellerAcceptedCount:paidSales.length,
-    sellerRefundedCount:refundedSales.length,
-    sellerAcceptedTransactions:allSellerSales.map(p=>({
-      title:sellerListingMap.get(p.listing_id)?.title||'出品取引',
-      gross:Number(p.amount_jpy||0),
-      fee:Number(p.platform_fee_jpy||0),
-      payout:Number(p.seller_amount_jpy||0),
-      status:p.status||'paid',
-      paidAt:p.paid_at||p.created_at||null,
-      refundedAt:p.refunded_at||null
-    })),
+  window.voiceFleaFinanceData={...(window.voiceFleaFinanceData||{}),
     latestBuyerAmount:latestBuyer?Number(amountOf(latestBuyer)||0):1500,
     latestBuyerTitle:latestBuyer?titleOf(latestBuyer):'取引例'
   };
