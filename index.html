@@ -1340,26 +1340,24 @@ async function openFinanceCenter(mode='buyer'){
  if(body)body.innerHTML='<div class="finance-muted">売上・返金履歴を確認しています...</div>';
  if(!sb||!currentUser){if(body)body.innerHTML='<div class="err">ログイン情報を確認できません。</div>';return}
  try{
-  const {data,error}=await sb.from('payments')
-   .select('listing_id,amount_jpy,platform_fee_jpy,seller_amount_jpy,status,paid_at,refunded_at,created_at')
-   .eq('seller_id',currentUser.id).in('status',['paid','refunded']).order('paid_at',{ascending:false});
-  if(error)throw error;
-  const payments=data||[];
-  const paid=payments.filter(p=>p.status==='paid');
-  const refunded=payments.filter(p=>p.status==='refunded');
-  const gross=payments.reduce((sum,p)=>sum+Number(p.amount_jpy||0),0);
-  const refundTotal=refunded.reduce((sum,p)=>sum+Number(p.amount_jpy||0),0);
-  const fee=paid.reduce((sum,p)=>sum+Number(p.platform_fee_jpy||0),0);
+  // Use the exact same paid-payment fields and filters as the home summary.
+  // Additional fields may not exist or be readable; never turn a failed query into zero sales.
+  const {data:paidData,error:paidError}=await sb.from('payments')
+   .select('seller_amount_jpy,status').eq('seller_id',currentUser.id).eq('status','paid');
+  if(paidError)throw paidError;
+  const paid=paidData||[];
   const payout=paid.reduce((sum,p)=>sum+Number(p.seller_amount_jpy||0),0);
+  const {data:refundData,error:refundError}=await sb.from('payments')
+   .select('amount_jpy,status').eq('seller_id',currentUser.id).eq('status','refunded');
+  const refunded=refundError?[]:(refundData||[]);
+  // The home total is authoritative for this view. Details that cannot be read
+  // are explicitly marked unavailable rather than fabricated from zero values.
   const previous=window.voiceFleaFinanceData||{};
   window.voiceFleaFinanceData={...previous,
-   sellerAcceptedGross:gross,sellerRefundTotal:refundTotal,sellerAcceptedFee:fee,
-   sellerAcceptedPayout:payout,sellerAcceptedCount:paid.length,sellerRefundedCount:refunded.length,
-   sellerAcceptedTransactions:payments.map(p=>({
-    title:'出品取引',gross:Number(p.amount_jpy||0),fee:Number(p.platform_fee_jpy||0),
-    payout:Number(p.seller_amount_jpy||0),status:p.status,
-    paidAt:p.paid_at||p.created_at||null,refundedAt:p.refunded_at||null
-   }))
+   sellerAcceptedGross:null,sellerRefundTotal:refundError?null:refunded.reduce((sum,p)=>sum+Number(p.amount_jpy||0),0),
+   sellerAcceptedFee:null,sellerAcceptedPayout:payout,
+   sellerAcceptedCount:paid.length,sellerRefundedCount:refundError?null:refunded.length,
+   sellerAcceptedTransactions:[],sellerDetailLimited:true
   };
   const home=document.getElementById('homeSalesAmount');
   if(home)home.textContent=financeYen(payout);
@@ -1445,7 +1443,12 @@ function showFinancePanel(mode='buyer'){
    const amount=Number(d.latestBuyerAmount||1500);const fee=Math.round(amount*FINANCE_FEE_RATE);const payout=Math.max(0,amount-fee);const title=esc(d.latestBuyerTitle||'取引例');
    body.innerHTML=`<div class="finance-summary"><div class="small">${title}</div><div class="finance-line"><span>購入者の支払予定</span><strong class="finance-total">${financeYen(amount)}</strong></div><div class="finance-line"><span>サービス手数料（15%）</span><strong>${financeYen(fee)}</strong></div><div class="finance-line"><span>出品者の受取予定</span><strong>${financeYen(payout)}</strong></div><span class="finance-status">Stripe Connect連携予定</span></div><div class="finance-muted">手数料は出品者売上から差し引く想定です。正式公開前にStripeの実費・返金時の扱い・税表示を再確認して確定します。</div><button class="btn full disabled-preview" type="button">正式決済導入後に利用できます</button>`;
  }else{
-   const gross=Number(d.sellerAcceptedGross||0);
+   if(d.sellerDetailLimited){
+    const amount=financeYen(d.sellerAcceptedPayout||0);
+    body.innerHTML=`<div class="finance-summary"><div class="small">ホームと同じ支払い済み取引を集計しています</div><div class="finance-line"><span>支払い済み取引</span><strong>${Number(d.sellerAcceptedCount||0)}件</strong></div><div class="finance-line"><span>出品者受取額（計算上）</span><strong class="finance-total">${amount}</strong></div><div class="finance-caption">振込可能残高ではありません。売上総額・返金・手数料の内訳は現在確認できないため、誤った0円を表示せず省略しています。</div></div>`;
+    return;
+  }
+  const gross=Number(d.sellerAcceptedGross||0);
    const refundTotal=Number(d.sellerRefundTotal||0);
    const fee=Number(d.sellerAcceptedFee||0);
    const payout=Number(d.sellerAcceptedPayout||0);
