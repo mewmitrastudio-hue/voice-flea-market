@@ -3298,10 +3298,46 @@ async function openPublicProfile(userId){
 
 
 
+// Supabase stores per-user history visibility across logins and devices.
+// The underlying conversations and payment records are never deleted.
+let tradeVisibilityCacheUser=null;
+let tradeVisibilityCache=new Map();
+async function syncTradeVisibility(){
+ if(!currentUser)return;
+ const uid=currentUser.id;
+ const {data,error}=await sb.from('trade_history_visibility')
+   .select('trade_id,is_hidden,is_deleted').eq('user_id',uid);
+ if(error){console.warn('trade visibility load',error);throw new Error('取引履歴の表示設定を読み込めませんでした。');}
+ if(currentUser?.id!==uid)return;
+ tradeVisibilityCacheUser=uid;
+ tradeVisibilityCache=new Map((data||[]).map(row=>[String(row.trade_id),row]));
+}
+function tradeVisibilityState(id){
+ if(currentUser&&tradeVisibilityCacheUser===currentUser.id){
+   return tradeVisibilityCache.get(String(id))||{is_hidden:false,is_deleted:false};
+ }
+ return {is_hidden:localStorage.getItem(hiddenTradeKey(id))==='1',is_deleted:localStorage.getItem(removedTradeKey(id))==='1'};
+}
+async function saveTradeVisibility(id,changes){
+ if(!currentUser||!id)return false;
+ const uid=currentUser.id;
+ try{
+   if(tradeVisibilityCacheUser!==uid)await syncTradeVisibility();
+   const old=tradeVisibilityState(id);
+   const next={user_id:uid,trade_id:String(id),is_hidden:!!old.is_hidden,is_deleted:!!old.is_deleted,...changes,updated_at:new Date().toISOString()};
+   const {error}=await sb.from('trade_history_visibility').upsert(next,{onConflict:'user_id,trade_id'});
+   if(error)throw error;
+   if(currentUser?.id!==uid)return false;
+   tradeVisibilityCache.set(String(id),next);
+   if(next.is_deleted)localStorage.setItem(removedTradeKey(id),'1');else localStorage.removeItem(removedTradeKey(id));
+   if(next.is_hidden)localStorage.setItem(hiddenTradeKey(id),'1');else localStorage.removeItem(hiddenTradeKey(id));
+   return true;
+ }catch(error){console.error('trade visibility save',error);alert('履歴の設定を保存できませんでした。通信状態を確認して、もう一度お試しください。');return false;}
+}
 function hiddenTradeKey(id){return `vf_hidden_trade_${currentUser?.id||'none'}_${id}`}
 // 完了取引の「履歴から削除」は、この端末の表示だけを整理する。取引本体は消さない。
 function removedTradeKey(id){return `vf_removed_trade_${currentUser?.id||'none'}_${id}`}
-function isTradeRemovedForMe(id){return !!id&&localStorage.getItem(removedTradeKey(id))==='1'}
+function isTradeRemovedForMe(id){return !!id&&tradeVisibilityState(id).is_deleted}
 let pendingTradeRemoveId=null;
 function removeCompletedTradeForMe(id){
  if(!currentUser||!id)return;
@@ -3314,16 +3350,15 @@ function closeTradeRemoveConfirm(){
  const ov=document.getElementById('tradeRemoveConfirmOverlay');
  if(ov){ov.classList.remove('show');ov.setAttribute('aria-hidden','true')}
 }
-function confirmRemoveCompletedTradeForMe(){
+async function confirmRemoveCompletedTradeForMe(){
  if(!currentUser||!pendingTradeRemoveId)return closeTradeRemoveConfirm();
  const id=pendingTradeRemoveId;
- localStorage.setItem(removedTradeKey(id),'1');
- localStorage.removeItem(hiddenTradeKey(id));
+ if(!await saveTradeVisibility(id,{is_deleted:true,is_hidden:false}))return;
  closeTradeRemoveConfirm();
  loadMe();
 }
 
-function isTradeHiddenForMe(id){return !!id&&localStorage.getItem(hiddenTradeKey(id))==='1'}
+function isTradeHiddenForMe(id){return !!id&&tradeVisibilityState(id).is_hidden}
 
 let pendingTradeHideId=null;
 let tradeHistoryVisibleCount=10;
@@ -3345,22 +3380,23 @@ function closeTradeHideConfirm(){
     ov.setAttribute('aria-hidden','true');
   }
 }
-function confirmHideTradeForMe(){
+async function confirmHideTradeForMe(){
   if(!currentUser||!pendingTradeHideId)return closeTradeHideConfirm();
-  localStorage.setItem(hiddenTradeKey(pendingTradeHideId),'1');
+  if(!await saveTradeVisibility(pendingTradeHideId,{is_hidden:true}))return;
   closeTradeHideConfirm();
   loadMe();
 }
-function restoreTradeForMe(id){
+async function restoreTradeForMe(id){
   if(!currentUser||!id)return;
-  localStorage.removeItem(hiddenTradeKey(id));
-  loadMe();
+  if(await saveTradeVisibility(id,{is_hidden:false}))loadMe();
 }
 function loadMoreTradeHistory(){
   tradeHistoryVisibleCount+=10;
   loadMe();
 }
 async function loadMe(){
+ if(!currentUser)return;
+ try{await syncTradeVisibility()}catch(error){console.warn(error);alert(error.message);return;}
  setTimeout(()=>renderVisibilityBlockManager().catch(e=>console.warn('manager',e)),0);
   const {data:profile}=await sb.from('profiles').select('*').eq('id',currentUser.id).maybeSingle();
   let p=profile||{};
@@ -3796,8 +3832,8 @@ document.addEventListener('click',function(e){
    <div class="boost-plan-head"><span class="boost-tier boost-platinum">✦ PLATINUM PR</span><strong>1,500円</strong></div>
    <small>30日間／優先PR枠＋おすすめ欄＋閲覧分析（予定）</small>
   </div>
-  <div class="boost-note" id="boostVerificationStatus" role="status">現在の状態：料金・特典を公開中／決済と自動有効化は準備中</div>
-  <p class="boost-note">※ 現在は3プランとも案内のみです。WEB版の決済確認・購入記録・有効期限管理、およびiPhoneアプリ版のAppleアプリ内課金への対応が完了するまで購入できません。表示順位・閲覧数・売上を保証するものではありません。購入後のPR表示には「広告」であることを明示します。</p>
+  <div class="boost-note" id="boostVerificationStatus" role="status">反映状況：課金機能の準備中（購入・有効化はできません）</div>
+  <p class="boost-note">※ 3プランとも現在は準備中です。Appleのアプリ内課金と購入検証を実装するまで購入できません。表示順位・閲覧数・売上を保証するものではありません。購入後のPR表示は「広告」であることが分かるように表示します。</p>
   <button class="btn full" type="button" disabled style="opacity:.55">準備中・購入できません</button>
   <button class="btn secondary boost-close" type="button" onclick="closeBoostPreview()">閉じる</button>
  </div>
