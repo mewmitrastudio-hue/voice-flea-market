@@ -1595,9 +1595,15 @@ async function loadAdminRefunds(){
       <div class="admin-refund-item-head"><div class="admin-refund-item-title">${esc(title)}</div><div class="admin-refund-item-amount">${financeYen(p.amount_jpy||0)}</div></div>
       <div class="admin-refund-meta">Payment ID: ${esc(p.id)}<br>Stripe: ${esc(p.stripe_payment_intent_id||'-')}<br>支払日時: ${esc(p.paid_at||p.created_at||'-')}</div>
       <span class="admin-refund-status ${refunded?'refunded':''}">${refunded?'返金済み':'支払い済み'}</span>
-      ${refunded?`<div class="admin-refund-meta">返金日時: ${esc(p.refunded_at||'-')}</div>`:`<button class="btn admin-refund-action" type="button" onclick="adminRefundPayment('${esc(p.id)}',this)">この決済を全額返金</button>`}
+      ${refunded?`<div class="admin-refund-meta">返金日時: ${esc(p.refunded_at||'-')}</div>`:`<button class="btn secondary admin-refund-action" type="button" onclick="showRefundAction(this)">返金手続き</button><div class="admin-refund-action-panel" hidden><div class="small" style="margin-top:9px">対象の決済を確認してから返金してください。返金は取り消せません。</div><button class="btn admin-refund-action" type="button" onclick="adminRefundPayment('${esc(p.id)}',this)">この決済を全額返金</button></div>`}
     </div>`;
   }).join('');
+}
+function showRefundAction(btn){
+  const panel=btn.nextElementSibling;
+  if(!panel)return;
+  panel.hidden=!panel.hidden;
+  btn.textContent=panel.hidden?'返金手続き':'返金手続きを閉じる';
 }
 async function refundPaymentByInput(btn){
   const id=(document.getElementById('adminRefundPaymentId')?.value||'').trim();
