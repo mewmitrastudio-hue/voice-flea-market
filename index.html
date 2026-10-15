@@ -3204,11 +3204,24 @@ function hiddenTradeKey(id){return `vf_hidden_trade_${currentUser?.id||'none'}_$
 // 完了取引の「履歴から削除」は、この端末の表示だけを整理する。取引本体は消さない。
 function removedTradeKey(id){return `vf_removed_trade_${currentUser?.id||'none'}_${id}`}
 function isTradeRemovedForMe(id){return !!id&&localStorage.getItem(removedTradeKey(id))==='1'}
+let pendingTradeRemoveId=null;
 function removeCompletedTradeForMe(id){
  if(!currentUser||!id)return;
- if(!confirm('完了した取引を、この端末の履歴一覧から削除しますか？\n\n取引・決済・納品・メッセージの記録自体は削除されません。\nこの端末では一覧に表示されなくなります。'))return;
+ pendingTradeRemoveId=id;
+ const ov=document.getElementById('tradeRemoveConfirmOverlay');
+ if(ov){ov.classList.add('show');ov.setAttribute('aria-hidden','false')}
+}
+function closeTradeRemoveConfirm(){
+ pendingTradeRemoveId=null;
+ const ov=document.getElementById('tradeRemoveConfirmOverlay');
+ if(ov){ov.classList.remove('show');ov.setAttribute('aria-hidden','true')}
+}
+function confirmRemoveCompletedTradeForMe(){
+ if(!currentUser||!pendingTradeRemoveId)return closeTradeRemoveConfirm();
+ const id=pendingTradeRemoveId;
  localStorage.setItem(removedTradeKey(id),'1');
  localStorage.removeItem(hiddenTradeKey(id));
+ closeTradeRemoveConfirm();
  loadMe();
 }
 
@@ -3667,4 +3680,13 @@ document.addEventListener('click',function(e){
   </div>
 </div>
 
+<div id="tradeRemoveConfirmOverlay" class="trade-hide-confirm-overlay" aria-hidden="true" onclick="if(event.target===this)closeTradeRemoveConfirm()">
+  <div class="trade-hide-confirm-card" role="dialog" aria-modal="true" aria-labelledby="tradeRemoveConfirmTitle">
+    <div class="trade-hide-confirm-icon">🎧</div>
+    <h3 id="tradeRemoveConfirmTitle">この取引を履歴から削除しますか？</h3>
+    <p>取引おつかれさまでした！<br>この取引を、あなたの履歴一覧から整理できます。<br><br>お支払い・納品・メッセージの記録はそのまま保管されます。<br><small>※この端末の履歴一覧には表示されなくなります。</small></p>
+    <button class="trade-hide-confirm-primary" type="button" onclick="confirmRemoveCompletedTradeForMe()">履歴から削除</button>
+    <button class="trade-hide-confirm-cancel" type="button" onclick="closeTradeRemoveConfirm()">戻る</button>
+  </div>
+</div>
 </body></html>
