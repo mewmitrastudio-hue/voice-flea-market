@@ -1729,7 +1729,7 @@ function myListingsSeenKey(){return currentUser?`voice_flea_my_listings_seen_${c
 function markMyListingsSeen(){
   try{localStorage.setItem(myListingsSeenKey(),new Date().toISOString())}catch(e){}
   const el=document.getElementById('homeMyListingCount');
-  if(el)el.textContent='0件';
+  // 出品件数は通知の既読状態で変更しない。
 }
 async function menuGoMySection(sectionId){
   closeMainMenu();
@@ -1830,10 +1830,10 @@ async function signOut(){document.body.classList.remove('normal-mode','chat-mode
 async function loadHome(){
   if(!sb||!currentUser)return;
 
-  const [salesResult,{data:convs},{data:activeMyListings},{count:favoriteCount}]=await Promise.all([
+  const [salesResult,{data:convs},myListingsResult,{count:favoriteCount}]=await Promise.all([
     fetchSellerFinance().catch(e=>{console.warn('Home finance read failed',e);return null}),
     sb.from('conversations').select('id,delivery_status').or(`buyer_id.eq.${currentUser.id},seller_id.eq.${currentUser.id}`),
-    sb.from('listings').select('id,created_at').eq('seller_id',currentUser.id).eq('is_active',true),
+    sb.from('listings').select('id',{count:'exact',head:true}).eq('seller_id',currentUser.id).eq('is_active',true),
     sb.from('favorite_listings').select('*',{count:'exact',head:true}).eq('user_id',currentUser.id)
   ]);
 
@@ -1856,12 +1856,8 @@ async function loadHome(){
 
   if(salesEl)salesEl.textContent=salesResult?financeYen(salesAmount):'確認できません';
   if(unreadEl)unreadEl.textContent=`${unread}件`;
-  let myListingNoticeCount=0;
-  try{
-    const seenAt=localStorage.getItem(myListingsSeenKey())||'1970-01-01T00:00:00.000Z';
-    myListingNoticeCount=(activeMyListings||[]).filter(x=>(x.created_at||'')>seenAt).length;
-  }catch(e){myListingNoticeCount=(activeMyListings||[]).length}
-  if(myListingEl)myListingEl.textContent=`${myListingNoticeCount}件`;
+  // 通知の新着件数ではなく、現在の出品中件数を表示する。
+  if(myListingEl)myListingEl.textContent=myListingsResult.error?'確認できません':`${myListingsResult.count||0}件`;
   if(favoriteEl)favoriteEl.textContent=`${favoriteCount||0}件`;
 
   loadFavoriteBadge();
