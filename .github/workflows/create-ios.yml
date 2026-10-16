@@ -1,37 +1,56 @@
-name: Create iOS Project
-
+name: Verify and build iOS app
 on:
   workflow_dispatch:
-
+  push:
+    branches: [main]
+    paths:
+      - 'index.html'
+      - 'capacitor.config.json'
+      - 'package*.json'
+      - 'ios/**'
+      - 'scripts/**'
+      - '.github/workflows/create-ios.yml'
 permissions:
-  contents: write
-
+  contents: read
 jobs:
-  create-ios:
+  build-ios:
     runs-on: macos-latest
-
     steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
-
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
         with:
           node-version: '22'
-
-      - name: Install dependencies
-        run: npm install
-
-      - name: Build web app
-        run: npm run build
-
-      - name: Create iOS project
-        run: npx cap add ios
-
-      - name: Commit iOS project
+          cache: npm
+      - run: npm ci
+      - name: Sync current WEB source into existing iOS project
         run: |
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add ios package-lock.json
-          git diff --cached --quiet || git commit -m "Create Capacitor iOS project"
-          git push
+          npm run build
+          npx --no-install cap sync ios
+          node --input-type=module <<'NODE'
+          import { readFileSync } from 'node:fs';
+          import assert from 'node:assert/strict';
+          import vm from 'node:vm';
+          const source=readFileSync('index.html');
+          for(const path of ['www/index.html','ios/App/App/public/index.html']) {
+            assert.ok(source.equals(readFileSync(path)), path+' differs from WEB');
+          }
+          const config=JSON.parse(readFileSync('ios/App/App/capacitor.config.json','utf8'));
+          assert.equal(config.appId,'com.ayuhide.koenofurima');
+          assert.ok(!config.server?.url,'The app must bundle the current WEB source');
+          for(const m of source.toString('utf8').matchAll(/<script\b([^>]*)>([\s\S]*?)<\/script>/gi)) {
+            if(!/\bsrc\s*=/.test(m[1]) && !/type=["']application\/ld\+json/.test(m[1])) new vm.Script(m[2]);
+          }
+          console.log('WEB source, iOS bundle and inline JavaScript verified');
+          NODE
+      - name: Build simulator app without signing credentials
+        run: >-
+          xcodebuild -project ios/App/App.xcodeproj -scheme App
+          -configuration Debug -sdk iphonesimulator
+          -destination 'generic/platform=iOS Simulator'
+          -derivedDataPath build CODE_SIGNING_ALLOWED=NO build
+      - uses: actions/upload-artifact@v4
+        with:
+          name: KoeFurima-iOS-simulator
+          path: build/Build/Products/Debug-iphonesimulator/App.app
+          if-no-files-found: error
+          retention-days: 7
