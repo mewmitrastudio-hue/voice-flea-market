@@ -758,6 +758,17 @@ body.messages-mode .unread-dot{flex:0 0 auto;align-self:flex-end}
 .finance-primary-line .finance-total{font-size:clamp(24px,6vw,31px)!important;color:#5b4bdb;white-space:nowrap;font-variant-numeric:tabular-nums}
 .finance-summary>.finance-caption:first-child{font-size:12px;color:#605b77;font-weight:700}
 .finance-summary>.finance-caption:last-child{border-top:1px solid #eeeafd;padding-top:10px;margin-top:8px;line-height:1.7}
+
+/* 声のフリマ：決済エラーの案内 */
+.checkout-error-overlay{display:none;position:fixed;inset:0;z-index:130000;align-items:center;justify-content:center;padding:20px;background:rgba(31,26,62,.48);backdrop-filter:blur(4px);-webkit-backdrop-filter:blur(4px)}
+.checkout-error-overlay.show{display:flex}
+.checkout-error-card{width:min(100%,390px);padding:28px 22px 22px;text-align:center;border-radius:24px;background:#fff;box-shadow:0 20px 65px rgba(40,29,91,.24);border:1px solid #ece6fc}
+.checkout-error-symbol{width:62px;height:62px;margin:0 auto 14px;display:grid;place-items:center;border-radius:20px;background:linear-gradient(135deg,#f0edff,#ffeef7);font-size:30px}
+.checkout-error-card h3{font-size:20px;line-height:1.4;margin:0 0 10px;color:#2b2744}
+.checkout-error-card p{font-size:14px;line-height:1.75;color:#68637c;margin:0 0 20px}
+.checkout-error-card .btn{width:100%;font-size:15px;padding:14px}
+body.checkout-error-open #nav{pointer-events:none}
+
 </style>
 <script>
 if(window.navigator.standalone===true){document.body.classList.add('standalone')}
@@ -1872,6 +1883,31 @@ async function loadHome(){
 }
 async function createListing(){if(!currentUser)return;let path=null;const f=sellAudio.files[0];if(f){const ext=(f.name.split('.').pop()||'').toLowerCase().replace(/[^a-z0-9]/g,'');const allowed=['m4a','mp3','wav','aac','mp4','mpeg','ogg','webm'];const mime=(f.type||'').toLowerCase();if(!allowed.includes(ext) && !mime.startsWith('audio/'))return info('sellMsg','音声ファイルを選択してください（m4a / mp3 / wav / aac / mp4 など）。','err');path=`${currentUser.id}/${crypto.randomUUID()}.${ext||'audio'}`;const contentType=mime||({m4a:'audio/mp4',mp4:'audio/mp4',mp3:'audio/mpeg',mpeg:'audio/mpeg',wav:'audio/wav',aac:'audio/aac',ogg:'audio/ogg',webm:'audio/webm'}[ext]||'application/octet-stream');const {error:ue}=await sb.storage.from('voice-samples').upload(path,f,{upsert:false,contentType});if(ue)return info('sellMsg','音声アップロード: '+ue.message,'err')}
 const {error}=await sb.from('listings').insert({seller_id:currentUser.id,title:sellTitle.value.trim(),category:sellCategory.value,description:sellDesc.value.trim(),price_jpy:+sellPrice.value,delivery_days:+sellDays.value,ai_use:sellAI.value,sample_path:path});if(error)return info('sellMsg',error.message,'err');info('sellMsg','クラウドへ出品しました。');sellTitle.value='';sellDesc.value='';sellAudio.value='';loadHome()}
+
+/* 購入時のエラーを、読みやすい案内として表示する。技術情報は画面に出さない。 */
+function showCheckoutError(error){
+  const overlay=document.getElementById('checkoutErrorOverlay');
+  if(!overlay){alert('決済画面を開けませんでした。少し時間をおいて、もう一度お試しください。');return;}
+  const raw=String(error?.message||error||'');
+  const auth=/ログイン|認証|401|jwt|token/i.test(raw);
+  const title=document.getElementById('checkoutErrorTitle');
+  const msg=document.getElementById('checkoutErrorMessage');
+  if(title)title.textContent=auth?'ログインを確認してください':'決済画面を開けませんでした';
+  if(msg)msg.textContent=auth
+    ?'ログインの有効期限が切れている可能性があります。もう一度ログインしてからお試しください。'
+    :'ただいまお支払いの準備ができませんでした。時間をおいてもう一度お試しください。';
+  overlay.classList.add('show');
+  overlay.setAttribute('aria-hidden','false');
+  document.body.classList.add('checkout-error-open');
+}
+function closeCheckoutError(){
+  const overlay=document.getElementById('checkoutErrorOverlay');
+  if(!overlay)return;
+  overlay.classList.remove('show');
+  overlay.setAttribute('aria-hidden','true');
+  document.body.classList.remove('checkout-error-open');
+}
+
 async function startStripeCheckout(listingId,btn){
   if(!sb||!currentUser)return alert('購入するにはログインしてください。');
 
@@ -1946,9 +1982,8 @@ async function startStripeCheckout(listingId,btn){
 
   }catch(e){
 
-    alert(
-      `決済画面を開けませんでした：${e?.message||String(e)}`
-    );
+    console.error('Stripe Checkout start failed:', e);
+    showCheckoutError(e);
 
     if(btn){
       btn.disabled=false;
@@ -3716,6 +3751,16 @@ function showRuleDoc(kind){const body=document.getElementById('rulesBody');if(bo
 // 評価欄は受取確認後に loadReviewPanel() が表示管理します。
 </script>
 
+
+
+<div id="checkoutErrorOverlay" class="checkout-error-overlay" aria-hidden="true">
+  <div class="checkout-error-card" role="alertdialog" aria-modal="true" aria-labelledby="checkoutErrorTitle" aria-describedby="checkoutErrorMessage">
+    <div class="checkout-error-symbol" aria-hidden="true">🎧</div>
+    <h3 id="checkoutErrorTitle">決済画面を開けませんでした</h3>
+    <p id="checkoutErrorMessage">ただいまお支払いの準備ができませんでした。時間をおいてもう一度お試しください。</p>
+    <button class="btn" type="button" onclick="closeCheckoutError()">閉じる</button>
+  </div>
+</div>
 
 <div id="deliveryConfirmOverlay" class="vf-confirm-overlay" aria-hidden="true">
   <div class="vf-confirm-card" role="dialog" aria-modal="true" aria-labelledby="deliveryConfirmTitle">
