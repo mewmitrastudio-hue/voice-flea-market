@@ -1393,16 +1393,21 @@ async function openFinanceCenter(mode='buyer'){
   console.warn('Seller finance read failed',e);
  }
 }
-function setStripeConnectUI(accountId='',message='',verified=false){
+function setStripeConnectUI(accountId='',message='',verified=false,failed=false,livemode=null){
  const status=document.getElementById('stripeConnectStatus');
  const btn=document.getElementById('stripeConnectBtn');
  if(!status||!btn)return;
  status.classList.remove('ready','error');
  const stripeFlow=new URLSearchParams(location.search).get('stripe_onboarding');
- if(accountId&&verified){
+ if(failed){
+   status.textContent=message||'Stripe登録状況を確認できませんでした。時間をおいて再度お試しください。';
+   status.classList.add('error');
+   btn.textContent='本人確認・振込先を確認';
+   btn.disabled=false;
+ }else if(accountId&&verified){
    status.textContent=message||'Stripeの本人確認・振込先登録は完了しています。';
    status.classList.add('ready');
-   btn.textContent='Stripe登録 完了';
+   btn.textContent=livemode===false?'テスト環境の登録 完了':'Stripe登録 完了';
    btn.disabled=true;
  }else if(accountId){
    if(stripeFlow==='return'){
@@ -1419,20 +1424,31 @@ function setStripeConnectUI(accountId='',message='',verified=false){
    btn.disabled=false;
  }
 }
+async function stripeFunctionError(error,data){
+ if(data?.error)return String(data.error);
+ if(error?.context instanceof Response){
+   try{
+     const body=await error.context.clone().json();
+     if(body?.error)return String(body.error);
+   }catch(_){}
+ }
+ return 'Stripe登録状況を確認できませんでした。時間をおいて再度お試しください。';
+}
 async function getStripeSellerStatus(){
  if(!sb||!currentUser)return null;
  try{
    const {data:{session}}=await sb.auth.getSession();
-   if(!session?.access_token)return null;
+   if(!session?.access_token)throw new Error('ログイン情報を確認できません。再ログインしてください。');
    const {data,error}=await sb.functions.invoke('create-connect-account',{
      body:{action:'status'},
      headers:{Authorization:`Bearer ${session.access_token}`}
    });
-   if(error||data?.error)return null;
-   return data||null;
+   if(error||data?.error)throw new Error(await stripeFunctionError(error,data));
+   if(typeof data?.verified!=='boolean')throw new Error('Stripe登録状況を確認できませんでした。');
+   return data;
  }catch(e){
    console.warn('Stripe status check failed',e);
-   return null;
+   return {verified:false,error:e?.message||'Stripe登録状況を確認できませんでした。'};
  }
 }
 async function connectStripeSeller(){
@@ -1450,8 +1466,7 @@ async function connectStripeSeller(){
      body:{},
      headers:{Authorization:`Bearer ${session.access_token}`}
    });
-   if(error)throw error;
-   if(data?.error)throw new Error(data.error);
+   if(error||data?.error)throw new Error(await stripeFunctionError(error,data));
    if(!data?.accountId)throw new Error('StripeアカウントIDを確認できませんでした。');
    if(!data?.onboardingUrl)throw new Error('Stripe登録画面のURLを取得できませんでした。');
    window.location.assign(data.onboardingUrl);
@@ -1890,12 +1905,17 @@ function showCheckoutError(error){
   if(!overlay){alert('決済画面を開けませんでした。少し時間をおいて、もう一度お試しください。');return;}
   const raw=String(error?.message||error||'');
   const auth=/ログイン|認証|401|jwt|token/i.test(raw);
+  const messages={
+    seller_not_ready:'出品者のStripe登録が未完了です。出品者がマイページで本人確認・振込先登録を完了すると購入できます。',
+    seller_account_unavailable:'出品者のStripe受取設定を確認する必要があります。出品者に登録状況の確認を依頼してください。',
+    payment_configuration_error:'Stripeの登録状況を確認できませんでした。時間をおいて再度お試しください。'
+  };
   const title=document.getElementById('checkoutErrorTitle');
   const msg=document.getElementById('checkoutErrorMessage');
   if(title)title.textContent=auth?'ログインを確認してください':'決済画面を開けませんでした';
   if(msg)msg.textContent=auth
     ?'ログインの有効期限が切れている可能性があります。もう一度ログインしてからお試しください。'
-    :'ただいまお支払いの準備ができませんでした。時間をおいてもう一度お試しください。';
+    :messages[error?.code]||(/出品者.*登録.*完了していない/.test(raw)?messages.seller_not_ready:'ただいまお支払いの準備ができませんでした。時間をおいてもう一度お試しください。');
   overlay.classList.add('show');
   overlay.setAttribute('aria-hidden','false');
   document.body.classList.add('checkout-error-open');
@@ -1949,15 +1969,19 @@ async function startStripeCheckout(listingId,btn){
     }
 
     if(!response.ok){
-      throw new Error(
+      const checkoutError=new Error(
         data?.error ||
         data?.message ||
         `決済処理に失敗しました。HTTP ${response.status}`
       );
+      checkoutError.code=data?.code;
+      throw checkoutError;
     }
 
     if(data?.error){
-      throw new Error(data.error);
+      const checkoutError=new Error(data.error);
+      checkoutError.code=data.code;
+      throw checkoutError;
     }
 
     if(!data?.url){
@@ -3453,11 +3477,13 @@ async function loadMe(){
     }
   }
 
-  const verified=!!p?.verified;
+  const verified=!!stripeStatus?.verified && stripeStatus?.livemode!==false;
   setStripeConnectUI(
     p?.stripe_account_id||'',
-    verified?'Stripeの本人確認・振込先登録は完了しています。':'',
-    verified
+    stripeStatus?.error||stripeStatus?.message||(verified?'Stripeの本人確認・振込先登録は完了しています。':''),
+    !!stripeStatus?.verified,
+    !!stripeStatus?.error,
+    stripeStatus?.livemode
   );
 
   if(stripeFlow==='return'){
