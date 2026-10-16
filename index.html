@@ -2261,6 +2261,7 @@ async function loadListings(reset=true){
       action=`<button class="btn full" type="button" style="margin-top:14px" onclick="startStripeCheckout('${esc(v.id)}',this)">購入する</button>`;
     }
 
+    if(!own&&!purchased)action+=`<button class="btn secondary full" type="button" style="margin-top:8px" onclick="openListingInquiry('${esc(v.id)}')">購入前に質問する</button>`;
     const desc=(v.description||'').trim();
     const descHtml=desc?`<div class="small" style="margin-top:8px;line-height:1.6">${esc(desc.length>120?desc.slice(0,120)+'…':desc)}</div>`:'';
 
@@ -2423,6 +2424,7 @@ async function ensureListingConversation(listingId,buyerId,sellerId){
     .eq('listing_id',listingId)
     .eq('buyer_id',buyerId)
     .eq('seller_id',sellerId)
+    .eq('is_inquiry',false)
     .order('created_at',{ascending:false})
     .limit(1);
 
@@ -2452,6 +2454,26 @@ async function ensureListingConversation(listingId,buyerId,sellerId){
     await addTradeSystemMessage(created.data.id,buyerId,`🛒 ${buyerName}さんが ${sellerName}さんの商品「${itemTitle}」を購入しました。`);
   }
   return created;
+}
+
+async function openListingInquiry(listingId){
+  if(!sb||!currentUser)return alert('ログインしてください。');
+  const {data:listing,error:listingError}=await sb.from('listings').select('id,seller_id,title,is_active').eq('id',listingId).single();
+  if(listingError||!listing?.is_active)return alert('この出品への問い合わせは現在利用できません。');
+  if(listing.seller_id===currentUser.id)return alert('自分の出品には問い合わせできません。');
+  let {data:conversation,error}=await sb.from('conversations').select('id').eq('listing_id',listingId).eq('buyer_id',currentUser.id).eq('seller_id',listing.seller_id).eq('is_inquiry',true).maybeSingle();
+  if(error)return alert('問い合わせを確認できませんでした。');
+  if(!conversation){
+    const created=await sb.from('conversations').insert({listing_id:listingId,buyer_id:currentUser.id,seller_id:listing.seller_id,is_inquiry:true}).select('id').single();
+    conversation=created.data;error=created.error;
+    if(error?.code==='23505'){
+      const retry=await sb.from('conversations').select('id').eq('listing_id',listingId).eq('buyer_id',currentUser.id).eq('seller_id',listing.seller_id).eq('is_inquiry',true).single();
+      conversation=retry.data;error=retry.error;
+    }
+    if(error||!conversation)return alert('この相手への問い合わせは現在利用できません。');
+  }
+  await go('messages');
+  await openConversation(conversation.id,'購入前の問い合わせ：'+listing.title);
 }
 
 async function openPurchasedListingChat(listingId,sellerId,title='購入した音声'){
@@ -2550,7 +2572,7 @@ async function unblockUserFromManager(blockId){
 }
 async function loadConversations(){
  if(!sb||!currentUser)return;setShellMode('messages');chatBox.classList.remove('on');conversationList.style.display='grid';
- const {data,error}=await sb.from('conversations').select('id,buyer_id,seller_id,job_id,listing_id,delivery_status,created_at').or(`buyer_id.eq.${currentUser.id},seller_id.eq.${currentUser.id}`).order('created_at',{ascending:false});
+ const {data,error}=await sb.from('conversations').select('id,buyer_id,seller_id,job_id,listing_id,delivery_status,created_at,is_inquiry').or(`buyer_id.eq.${currentUser.id},seller_id.eq.${currentUser.id}`).order('created_at',{ascending:false});
  if(error){conversationList.innerHTML=`<div class="err">${esc(error.message)}</div>`;return}
  const cs=data||[];if(!cs.length){conversationList.innerHTML='<div class="card small">まだメッセージはありません。</div>';msgBadge?.classList.remove('show');return}
  const partnerIds=[...new Set(cs.map(c=>c.buyer_id===currentUser.id?c.seller_id:c.buyer_id))];
@@ -2620,6 +2642,10 @@ function showTradeInfoPanel(){
 async function loadTradeInfoPanel(c){
  const panel=document.getElementById('tradeInfoPanel');
  if(!panel||!c||!currentUser)return;
+ if(c.is_inquiry){
+   panel.innerHTML='<div class="notice">購入前の問い合わせです。支払い・納品はまだ行われていません。購入する場合は出品一覧から決済してください。</div>';
+   panel.classList.add('show');document.getElementById('tradeInfoReopen')?.classList.remove('show');return;
+ }
  try{
    const isBuyer=currentUser.id===c.buyer_id;
    const partnerId=isBuyer?c.seller_id:c.buyer_id;
@@ -2675,7 +2701,7 @@ async function loadTradeInfoPanel(c){
 
 async function openConversation(id,title='チャット',opts={}){
  clearChatNotice();currentConversationId=id;
- const {data:c,error:ce}=await sb.from('conversations').select('id,buyer_id,seller_id,job_id,listing_id,delivery_path,delivery_status,delivered_at,accepted_at,created_at').eq('id',id).single();
+ const {data:c,error:ce}=await sb.from('conversations').select('id,buyer_id,seller_id,job_id,listing_id,delivery_path,delivery_status,delivered_at,accepted_at,created_at,is_inquiry').eq('id',id).single();
  if(ce)return info('chatMsg',ce.message,'err');
  currentConversation=c;currentConversationPartner=currentUser.id===c.buyer_id?c.seller_id:c.buyer_id;
  // 同じ相手との複数取引を、表示上は1つのトーク履歴としてまとめる。
@@ -2714,13 +2740,13 @@ async function loadChatMessages(){
  const convMeta={};
  const convIds=[...new Set((data||[]).map(m=>m.conversation_id).filter(Boolean))];
  if(convIds.length){
-   const {data:convRows}=await sb.from('conversations').select('id,listing_id,job_id,created_at').in('id',convIds);
+   const {data:convRows}=await sb.from('conversations').select('id,listing_id,job_id,created_at,is_inquiry').in('id',convIds);
    const listingIds=[...new Set((convRows||[]).map(c=>c.listing_id).filter(Boolean))];
    const jobIds=[...new Set((convRows||[]).map(c=>c.job_id).filter(Boolean))];
    const titleMap={};
    if(listingIds.length){const {data:ls}=await sb.from('listings').select('id,title').in('id',listingIds);(ls||[]).forEach(x=>titleMap['l:'+x.id]=x.title)}
    if(jobIds.length){const {data:js}=await sb.from('jobs').select('id,title').in('id',jobIds);(js||[]).forEach(x=>titleMap['j:'+x.id]=x.title)}
-   (convRows||[]).forEach(c=>convMeta[c.id]={title:c.listing_id?(titleMap['l:'+c.listing_id]||'音声取引'):(titleMap['j:'+c.job_id]||'声の依頼'),created_at:c.created_at});
+   (convRows||[]).forEach(c=>convMeta[c.id]={title:c.is_inquiry?('購入前の問い合わせ：'+(titleMap['l:'+c.listing_id]||'出品')):c.listing_id?(titleMap['l:'+c.listing_id]||'音声取引'):(titleMap['j:'+c.job_id]||'声の依頼'),created_at:c.created_at});
  }
  const seenConversationSeparators=new Set();
  const seenRatingConversations=new Set();
@@ -2807,6 +2833,7 @@ async function sendChatMessage(){
 }
 async function loadDeliveries(){
  if(!currentConversationId||!currentConversation||!deliveryArea)return;
+ if(currentConversation.is_inquiry){deliveryArea.innerHTML='<div class="small">購入前の問い合わせでは納品・受取確認はできません。</div>';return;}
  const isSeller=currentUser.id===currentConversation.seller_id;
  const isBuyer=currentUser.id===currentConversation.buyer_id;
  let html='';
@@ -2922,7 +2949,7 @@ function rememberDeliveryFile(input){
  else{selectedDeliveryFiles.delete(currentConversationId);if(nameEl)nameEl.textContent=''}
 }
 async function uploadDelivery(){
- if(!currentConversationId||!currentConversation||currentUser.id!==currentConversation.seller_id)return;
+ if(!currentConversationId||!currentConversation||currentConversation.is_inquiry||currentUser.id!==currentConversation.seller_id)return;
  const f=selectedDeliveryFiles.get(currentConversationId)||document.getElementById('deliveryFile')?.files?.[0];if(!f)return info('deliveryMsg','納品する音声ファイルを選択してください。','err');
  const ext=(f.name.split('.').pop()||'').toLowerCase().replace(/[^a-z0-9]/g,'');const allowed=['m4a','mp3','wav','aac','mp4','mpeg','ogg','webm'];const mime=(f.type||'').toLowerCase();if(!allowed.includes(ext)&&!mime.startsWith('audio/'))return info('deliveryMsg','音声ファイルを選択してください。','err');
  const path=`${currentConversationId}/${crypto.randomUUID()}.${ext||'audio'}`;info('deliveryMsg','アップロード中...');
@@ -2935,7 +2962,7 @@ async function uploadDelivery(){
  selectedDeliveryFiles.delete(currentConversationId);info('deliveryMsg','納品しました。');await Promise.all([loadDeliveries(),loadChatMessages(),loadTradeInfoPanel(currentConversation)]);loadMessageBadge();loadNotificationBadge();
 }
 function openDeliveryConfirm(){
- if(!currentConversation||currentUser.id!==currentConversation.buyer_id)return;
+ if(!currentConversation||currentConversation.is_inquiry||currentUser.id!==currentConversation.buyer_id)return;
  const el=document.getElementById('deliveryConfirmOverlay');
  if(!el)return;
  el.classList.add('show');
@@ -2957,7 +2984,7 @@ function showReceiptSuccess(){
 }
 async function closeReceiptSuccessAndReview(){const el=document.getElementById('receiptSuccessOverlay');el?.classList.remove('show');await loadReviewPanel();document.getElementById('reviewArea')?.scrollIntoView({behavior:'smooth',block:'center'});}
 async function acceptDeliveryConfirmed(){
- if(!currentConversation||currentUser.id!==currentConversation.buyer_id)return;
+ if(!currentConversation||currentConversation.is_inquiry||currentUser.id!==currentConversation.buyer_id)return;
  closeDeliveryConfirm();
  const now=new Date().toISOString();
  const {data:updated,error}=await sb.from('conversations')
@@ -3496,8 +3523,8 @@ async function loadMe(){
 
   const [{data:l},{data:sellerConvs,error:sellerErr},{data:buyerConvs,error:buyerErr}]=await Promise.all([
     sb.from('listings').select('*').eq('seller_id',currentUser.id).order('created_at',{ascending:false}),
-    sb.from('conversations').select('id,job_id,listing_id,buyer_id,seller_id,delivery_status,delivered_at,accepted_at,created_at').eq('seller_id',currentUser.id).order('created_at',{ascending:false}),
-    sb.from('conversations').select('id,job_id,listing_id,buyer_id,seller_id,delivery_status,delivered_at,accepted_at,created_at').eq('buyer_id',currentUser.id).order('created_at',{ascending:false})
+    sb.from('conversations').select('id,job_id,listing_id,buyer_id,seller_id,delivery_status,delivered_at,accepted_at,created_at').eq('is_inquiry',false).eq('seller_id',currentUser.id).order('created_at',{ascending:false}),
+    sb.from('conversations').select('id,job_id,listing_id,buyer_id,seller_id,delivery_status,delivered_at,accepted_at,created_at').eq('is_inquiry',false).eq('buyer_id',currentUser.id).order('created_at',{ascending:false})
   ]);
 
   window.__myBoostListings=(l||[]).map(x=>({id:x.id,title:x.title}));
