@@ -8,7 +8,7 @@ assert.equal(hash,expected.web_sha256,'Source differs from reviewed WEB release'
 for(const p of ['www/index.html','ios/App/App/public/index.html'])assert.ok(source.equals(fs.readFileSync(p)),p+' differs from index.html');
 const config=JSON.parse(fs.readFileSync('ios/App/App/capacitor.config.json'));
 assert.equal(config.appId,'com.ayuhide.koenofurima');assert.ok(!config.server?.url,'Remote URL must not override bundled index');
-const number=process.env.CI_BUILD_NUMBER||'5';assert.match(number,/^[1-9][0-9]*$/);assert.ok(Number(number)>4,'Build number must exceed 4');
+const number=process.env.CI_BUILD_NUMBER||'';assert.match(number,/^[1-9][0-9]*$/);assert.ok(Number(number)>=expected.minimum_build_number,'Build number is older than reviewed release');
 const p='ios/App/App.xcodeproj/project.pbxproj',text=fs.readFileSync(p,'utf8');
 assert.equal((text.match(/CURRENT_PROJECT_VERSION = [0-9]+;/g)||[]).length,2);
 fs.writeFileSync(p,text.replace(/CURRENT_PROJECT_VERSION = [0-9]+;/g,'CURRENT_PROJECT_VERSION = '+number+';'));
@@ -17,3 +17,16 @@ if(!xml.includes('<key>ITSAppUsesNonExemptEncryption</key>'))xml=xml.replace('</
 xml=xml.replace(/(<key>CFBundleDevelopmentRegion<\/key>\s*)<string>en<\/string>/,'$1<string>ja</string>');
 fs.writeFileSync(plist,xml);
 console.log('VERIFIED_WEB_INDEX_SHA256='+hash);console.log('VERIFIED_IOS_BUILD_NUMBER='+number);
+
+const nativeSource=fs.readFileSync('BoostPlugin.swift');
+assert.equal(crypto.createHash('sha256').update(nativeSource).digest('hex'),expected.boost_native_sha256,'Native boost source differs from reviewed release');
+const core=fs.readFileSync('node_modules/@capacitor/core/dist/index.js');
+for(const dir of ['www','ios/App/App/public'])fs.writeFileSync(dir+'/capacitor-core.js',core);
+const scenePath='ios/App/App/SceneDelegate.swift';
+let scene=fs.readFileSync(scenePath,'utf8');
+const marker='// KOEFURIMA_NATIVE_BOOST_BEGIN';
+scene=scene.split(marker)[0].trimEnd();
+assert.ok(scene.includes('CAPBridgeViewController()')||scene.includes('KoeBridgeViewController()'),'Unknown scene controller');
+scene=scene.replace('CAPBridgeViewController()','KoeBridgeViewController()');
+fs.writeFileSync(scenePath,scene+'\n\n'+marker+'\n'+nativeSource.toString('utf8'));
+console.log('VERIFIED_NATIVE_BOOST_SHA256='+expected.boost_native_sha256);
