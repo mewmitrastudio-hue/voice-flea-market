@@ -9,12 +9,15 @@ on:
       - 'package*.json'
       - 'ios/**'
       - 'scripts/**'
+      - 'BoostPlugin.swift'
+      - 'release-manifest.json'
       - '.github/workflows/create-ios.yml'
 permissions:
   contents: read
 jobs:
   build-ios:
     runs-on: macos-latest
+    timeout-minutes: 20
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -22,10 +25,11 @@ jobs:
           node-version: '22'
           cache: npm
       - run: npm ci
-      - name: Sync current WEB source into existing iOS project
+      - name: Use reviewed minimum build number for simulator verification
+        run: node -e "const fs=require('fs');const m=JSON.parse(fs.readFileSync('release-manifest.json','utf8'));if(!Number.isSafeInteger(m.minimum_build_number)||m.minimum_build_number<1)throw Error('Invalid minimum build number');fs.appendFileSync(process.env.GITHUB_ENV,'CI_BUILD_NUMBER='+m.minimum_build_number+'\n')"
+      - name: Prepare reviewed WEB and native sources in existing iOS project
         run: |
-          npm run build
-          npx --no-install cap sync ios
+          npm run capawesome:build
           node --input-type=module <<'NODE'
           import { readFileSync } from 'node:fs';
           import assert from 'node:assert/strict';
