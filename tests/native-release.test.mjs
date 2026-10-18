@@ -31,5 +31,8 @@ test('reviewed web/native hashes and inline JavaScript are valid',()=>{
  const root=new URL('../',import.meta.url), manifest=JSON.parse(fs.readFileSync(new URL('release-manifest.json',root),'utf8'));
  for(const [name,key] of [['index.html','web_sha256'],['BoostPlugin.swift','boost_native_sha256']])assert.equal(crypto.createHash('sha256').update(fs.readFileSync(new URL(name,root))).digest('hex'),manifest[key]);
  const html=fs.readFileSync(new URL('index.html',root),'utf8');
+ assert.equal(html.match(/<meta name="voice-flea-release" content="([^"]+)"/)[1],manifest.release,'HTML and manifest release labels differ');
+ assert.ok(Number.isSafeInteger(manifest.minimum_build_number)&&manifest.minimum_build_number>0,'Invalid minimum build number');
+ assert.equal(manifest.boost_sales_enabled,false,'Boost sales require a separate reviewed launch');
  for(const m of html.matchAll(/<script\b([^>]*)>([\s\S]*?)<\/script>/gi))if(!/\bsrc\s*=/.test(m[1])&&!/type=["']application\/ld\+json/.test(m[1]))new vm.Script(m[2]);
 });

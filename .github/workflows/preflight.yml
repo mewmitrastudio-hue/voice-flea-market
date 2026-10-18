@@ -1,0 +1,38 @@
+name: Release preflight
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main]
+    paths:
+      - 'index.html'
+      - 'BoostPlugin.swift'
+      - '*config.json'
+      - 'package*.json'
+      - 'release-manifest.json'
+      - 'scripts/**'
+      - 'tests/**'
+      - '.github/workflows/preflight.yml'
+permissions:
+  contents: read
+concurrency:
+  group: preflight-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+jobs:
+  preflight:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+      - run: npm ci
+      - run: npm test
+      - name: Prepare the reviewed bundle without signing keys
+        run: |
+          export CI_BUILD_NUMBER="$(node -p "JSON.parse(require('fs').readFileSync('release-manifest.json')).minimum_build_number")"
+          npm run capawesome:build

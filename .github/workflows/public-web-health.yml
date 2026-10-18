@@ -1,0 +1,30 @@
+name: Public Web health
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: '23 22 * * *'
+  push:
+    branches: [main]
+    paths:
+      - 'index.html'
+      - 'release-manifest.json'
+      - 'scripts/check-public-web.mjs'
+      - '.github/workflows/public-web-health.yml'
+permissions:
+  contents: read
+concurrency:
+  group: public-web-health
+  cancel-in-progress: true
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Check HTTPS, app shell and deployed release (read only)
+        run: node scripts/check-public-web.mjs
