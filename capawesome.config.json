@@ -1,0 +1,11 @@
+{
+  "cloud": {
+    "apps": [
+      {
+        "appId": "c0e475d8-2fde-404d-8963-89bc436c792b",
+        "dependencyInstallCommand": "npm ci",
+        "webBuildCommand": "npm test && npm run capawesome:build"
+      }
+    ]
+  }
+}
