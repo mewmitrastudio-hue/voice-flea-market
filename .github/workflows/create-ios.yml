@@ -11,6 +11,7 @@ on:
       - 'scripts/**'
       - 'BoostPlugin.swift'
       - 'release-manifest.json'
+      - 'tests/**'
       - '.github/workflows/create-ios.yml'
 permissions:
   contents: read
@@ -18,6 +19,18 @@ jobs:
   build-ios:
     runs-on: macos-latest
     timeout-minutes: 20
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - target: simulator
+            configuration: Debug
+            sdk: iphonesimulator
+            destination: generic/platform=iOS Simulator
+          - target: device-release
+            configuration: Release
+            sdk: iphoneos
+            destination: generic/platform=iOS
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -25,7 +38,8 @@ jobs:
           node-version: '22'
           cache: npm
       - run: npm ci
-      - name: Use reviewed minimum build number for simulator verification
+      - run: npm test
+      - name: Use reviewed minimum build number for unsigned verification
         run: node -e "const fs=require('fs');const m=JSON.parse(fs.readFileSync('release-manifest.json','utf8'));if(!Number.isSafeInteger(m.minimum_build_number)||m.minimum_build_number<1)throw Error('Invalid minimum build number');fs.appendFileSync(process.env.GITHUB_ENV,'CI_BUILD_NUMBER='+m.minimum_build_number+'\n')"
       - name: Prepare reviewed WEB and native sources in existing iOS project
         run: |
@@ -46,15 +60,15 @@ jobs:
           }
           console.log('WEB source, iOS bundle and inline JavaScript verified');
           NODE
-      - name: Build simulator app without signing credentials
+      - name: Build ${{ matrix.target }} app without signing credentials
         run: >-
           xcodebuild -project ios/App/App.xcodeproj -scheme App
-          -configuration Debug -sdk iphonesimulator
-          -destination 'generic/platform=iOS Simulator'
+          -configuration '${{ matrix.configuration }}' -sdk '${{ matrix.sdk }}'
+          -destination '${{ matrix.destination }}'
           -derivedDataPath build CODE_SIGNING_ALLOWED=NO build
       - uses: actions/upload-artifact@v4
         with:
-          name: KoeFurima-iOS-simulator
-          path: build/Build/Products/Debug-iphonesimulator/App.app
+          name: KoeFurima-iOS-${{ matrix.target }}
+          path: build/Build/Products/${{ matrix.configuration }}-${{ matrix.sdk }}/App.app
           if-no-files-found: error
           retention-days: 7
