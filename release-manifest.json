@@ -1,8 +1,8 @@
 {
-  "release": "2026.10.18-4",
-  "web_sha256": "9c98cfd80499e00e0ebf66f4945416130f712bfd3bff6b3a14014e3ebcd4ee4c",
+  "release": "2026.10.19-1",
+  "web_sha256": "a475c04b311f162602ff08cd104adfaa8dd5f3c482b7e602eeaeb405f9f897d4",
   "bundle_id": "com.ayuhide.koenofurima",
-  "minimum_build_number": 13,
+  "minimum_build_number": 14,
   "production_backend_applied": true,
   "production_backend_applied_at": "2026-10-16T22:09:17.179653+00:00",
   "boost_native_sha256": "e24a86330952bbf5edeafea5d2eca59871948b5a97336a350670e88671eb41b1",
