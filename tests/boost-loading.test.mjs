@@ -46,3 +46,36 @@ test('the actual Capacitor proxy loads through async initialization and reaches 
  const again=await context.nativeBoost();assert.equal(again.plugin,raw);
  assert.equal(calls.length,2,'initialization must not dispatch a fictitious then method');
 });
+function deferred(){let resolve;const promise=new Promise(r=>{resolve=r});return {promise,resolve};}
+function purchaseScreen(){
+ const pending=deferred(),order=deferred(),purchase=deferred(),verify=deferred(),finish=deferred();
+ const reached={pending:deferred(),prepare:deferred(),purchase:deferred(),verify:deferred(),finish:deferred()};
+ const calls=[],notices=[],buttons=['silver','gold','platinum'].map(plan=>({dataset:{boostBuy:plan},closest:()=>({querySelector:()=>({textContent:''})})}));
+ const plugin={pendingTransactions:()=>{calls.push('pending');reached.pending.resolve();return pending.promise},purchase:()=>{calls.push('purchase');reached.purchase.resolve();return purchase.promise},finish:()=>{calls.push('finish');reached.finish.resolve();return finish.promise}};
+ const context=vm.createContext({boostBusy:false,boostPurchasePlan:null,boostReady:true,currentUser:{id:'owner'},boostEnvironment:'Sandbox',boostStoreProducts:['silver','gold','platinum'].map(p=>({id:'com.ayuhide.koenofurima.boost.'+p,displayPrice:'¥300'})),nativeBoost:async()=>({plugin}),boostNotice:t=>notices.push(t),formatJpDateTime:()=>'',boostApi:body=>{calls.push(body.action);reached[body.action].resolve();return body.action==='prepare'?order.promise:verify.promise},document:{getElementById:()=>({value:'listing'}),querySelectorAll:()=>buttons}});
+ vm.runInContext(html.slice(html.indexOf('function boostListingChanged(){'),html.indexOf('// Bound read-only')),context);
+ vm.runInContext(html.slice(html.indexOf('async function purchaseBoost('),html.indexOf('async function reconcileBoostPurchases(')),context);
+ return {context,pending,order,purchase,verify,finish,reached,calls,notices,buttons};
+}
+test('purchase responds immediately and repeated taps never create additional orders or purchases',async()=>{
+ const s=purchaseScreen(),run=s.context.purchaseBoost('silver');
+ assert.match(s.buttons[0].textContent,/購入画面を準備中/);assert.ok(s.buttons.every(x=>x.disabled));
+ assert.match(s.notices.at(-1),/購入画面を準備/);
+ await Promise.all([s.context.purchaseBoost('silver'),s.context.purchaseBoost('gold')]);
+ await s.reached.pending.promise;s.pending.resolve({transactions:[]});
+ await s.reached.prepare.promise;assert.deepEqual(s.calls,['pending','prepare']);
+ await s.context.purchaseBoost('silver');s.order.resolve({orderId:'order',productId:'silver'});
+ await s.reached.purchase.promise;assert.match(s.notices.at(-1),/購入画面を開いて/);
+ await s.context.purchaseBoost('silver');s.purchase.resolve({status:'purchased',signedTransaction:'signed',transactionId:'tx'});
+ await s.reached.verify.promise;assert.match(s.notices.at(-1),/出品への反映を確認/);assert.ok(s.buttons.every(x=>x.disabled));
+ await s.context.purchaseBoost('silver');s.verify.resolve({success:true,environment:'Sandbox',endsAt:'2026-10-24'});
+ await s.reached.finish.promise;s.finish.resolve();await run;
+ assert.deepEqual(s.calls,['pending','prepare','purchase','verify','finish']);assert.equal(s.context.boostBusy,false);assert.match(s.notices.at(-1),/反映が完了/);
+});
+test('Apple cancellation releases the lock and never verifies or finishes a transaction',async()=>{
+ const s=purchaseScreen(),run=s.context.purchaseBoost('silver');
+ await s.reached.pending.promise;s.pending.resolve({transactions:[]});
+ await s.reached.prepare.promise;s.order.resolve({orderId:'order',productId:'silver'});
+ await s.reached.purchase.promise;s.purchase.resolve({status:'cancelled'});await run;
+ assert.deepEqual(s.calls,['pending','prepare','purchase']);assert.equal(s.context.boostBusy,false);assert.equal(s.context.boostPurchasePlan,null);assert.ok(s.buttons.every(x=>!x.disabled));assert.match(s.notices.at(-1),/キャンセル/);
+});
