@@ -28,7 +28,7 @@ public class KoeBoostPlugin: CAPPlugin, CAPBridgedPlugin {
             do {
                 let items = try await Product.products(for: Array(allowed))
                 call.resolve(["environment": purchaseEnvironment, "products": items.filter { $0.type == .consumable }.map {
-                    ["id": $0.id, "displayPrice": $0.displayPrice, "displayName": $0.displayName]
+                    ["id": $0.id, "displayPrice": $0.displayPrice, "displayName": $0.displayName, "currencyCode": $0.priceFormatStyle.currencyCode]
                 }])
             } catch { call.reject("商品情報を取得できません。時間をおいて再試行してください。") }
         }
