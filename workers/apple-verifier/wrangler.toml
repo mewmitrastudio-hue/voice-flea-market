@@ -1,5 +1,5 @@
 name = "koe-apple-verifier"
-main = "index.mjs"
+main = "signature-only.mjs"
 compatibility_date = "2026-10-21"
 compatibility_flags = ["nodejs_compat"]
 workers_dev = true
@@ -7,7 +7,6 @@ workers_dev = true
 [alias]
 "node-fetch" = "./fetch-compat.mjs"
 
-# Set through encrypted Worker secrets, never in this file:
-# APPLE_IAP_PRIVATE_KEY, APPLE_IAP_KEY_ID, APPLE_IAP_ISSUER_ID,
-# APPLE_APP_ID, APPLE_VERIFIER_SHARED_SECRET.
-# This worker does not receive Supabase database/admin credentials.
+# Encrypted secret: APPLE_VERIFIER_SHARED_SECRET only.
+# APPLE_APP_ID is a non-secret runtime variable.
+# Never configure an Apple signing key or database credentials in this service.
