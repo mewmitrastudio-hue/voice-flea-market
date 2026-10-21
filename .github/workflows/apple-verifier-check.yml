@@ -1,0 +1,21 @@
+name: Apple verifier proposal tests
+on:
+  pull_request:
+    paths:
+      - 'workers/apple-verifier/**'
+      - '.github/workflows/apple-verifier-check.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: npm
+          cache-dependency-path: workers/apple-verifier/package-lock.json
+      - run: npm ci --ignore-scripts --prefix workers/apple-verifier
+      - run: npm test --prefix workers/apple-verifier
