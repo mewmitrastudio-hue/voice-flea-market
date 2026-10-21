@@ -1,0 +1,15 @@
+name = "koe-apple-verifier"
+main = "signature-only.mjs"
+compatibility_date = "2026-10-21"
+compatibility_flags = ["nodejs_compat"]
+workers_dev = true
+
+[alias]
+"node-fetch" = "./fetch-compat.mjs"
+
+# Encrypted secret: APPLE_VERIFIER_SHARED_SECRET only.
+# APPLE_APP_ID is a non-secret runtime variable.
+# Never configure an Apple signing key or database credentials in this service.
+
+[vars]
+APPLE_APP_ID = "6817161473"

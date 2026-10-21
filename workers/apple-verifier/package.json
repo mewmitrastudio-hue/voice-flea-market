@@ -1,0 +1,7 @@
+{
+  "name": "koe-apple-verifier",
+  "private": true,
+  "type": "module",
+  "scripts": {"test": "node --test test/*.test.mjs"},
+  "dependencies": {"@apple/app-store-server-library": "3.1.0"}
+}
