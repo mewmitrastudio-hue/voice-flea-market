@@ -10,3 +10,6 @@ workers_dev = true
 # Encrypted secret: APPLE_VERIFIER_SHARED_SECRET only.
 # APPLE_APP_ID is a non-secret runtime variable.
 # Never configure an Apple signing key or database credentials in this service.
+
+[vars]
+APPLE_APP_ID = "6817161473"
