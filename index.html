@@ -4361,6 +4361,12 @@ function boostListingChanged(){
  const id=document.getElementById('boostListingSelect').value;
  document.querySelectorAll('[data-boost-buy]').forEach(button=>{const product=boostStoreProducts.find(p=>p.id.endsWith('.'+button.dataset.boostBuy));button.disabled=boostBusy||!boostReady||!id||!product;button.textContent=product?product.displayPrice+'で購入':'準備中';if(product)button.closest('.boost-plan').querySelector('strong').textContent=product.displayPrice;});
 }
+// Bound read-only loading work; purchase and reconciliation writes are never raced.
+async function boostRead(task,stage,timeout=15000){
+ let timer;
+ try{return await Promise.race([Promise.resolve().then(task),new Promise((_,reject)=>{timer=setTimeout(()=>reject(new Error(stage+'に時間がかかっています。一度閉じてから開き直してください。')),timeout);})]);}
+ finally{clearTimeout(timer);}
+}
 async function openBoostPreview(listingId){
  const request=++boostRequest;boostReady=false;boostStoreProducts=[];
  document.getElementById('boostPreviewOverlay')?.classList.add('show');boostNotice('購入と反映状況を確認しています…');
@@ -4368,27 +4374,32 @@ async function openBoostPreview(listingId){
  if(!sb||!currentUser){boostNotice('ログインすると自分の出品とブースト履歴を確認できます。');return;}
  try{
   const userId=currentUser.id;
-  const {data,error}=await sb.from('listings').select('id,title').eq('seller_id',userId).eq('is_active',true).order('created_at',{ascending:false});
+  const {data,error}=await boostRead(()=>sb.from('listings').select('id,title').eq('seller_id',userId).eq('is_active',true).order('created_at',{ascending:false}),'出品の取得');
   if(request!==boostRequest||currentUser?.id!==userId)return;
   if(error)throw error;
   select.add(new Option('出品を選んでください',''));
   for(const listing of data||[])select.add(new Option(listing.title,listing.id));
   if((data||[]).some(x=>x.id===listingId))select.value=listingId;
-  const history=await sb.from('listing_boosts').select('plan,status,starts_at,ends_at,environment').eq('seller_id',userId).order('created_at',{ascending:false}).limit(30);
+  const history=await boostRead(()=>sb.from('listing_boosts').select('plan,status,starts_at,ends_at,environment').eq('seller_id',userId).order('created_at',{ascending:false}).limit(30),'購入履歴の取得');
   if(request!==boostRequest||currentUser?.id!==userId)return;
   document.getElementById('boostOwnHistory').textContent=history.error?'履歴を取得できません。時間をおいて開き直してください。':(history.data||[]).map(b=>`${b.plan.toUpperCase()}・${b.environment==='Sandbox'?'テスト・':''}${b.status==='cancelled'?'無効':new Date(b.ends_at)<=new Date()?'終了':b.status==='active'?(new Date(b.starts_at)>new Date()?'開始待ち':'有効'):'反映待ち'}${b.ends_at?' ／ 終了 '+formatJpDateTime(b.ends_at):''}`).join('\n')||'ブーストの購入履歴はありません。';
+  if(!(data||[]).length){boostNotice('ブーストできる出品がありません。閉じて「声を出品」から出品を登録してください。');return;}
   if(!isNativeBoost()){boostNotice('現在、Web版からブーストは購入できません。');return;}
-  const status=await boostApi({action:'status'});
+  boostNotice('購入設定を確認しています…');
+  const status=await boostRead(()=>boostApi({action:'status'}),'購入設定の確認');
   if(request!==boostRequest)return;
   if(!status.enabled){boostNotice('Apple課金の設定準備中です。現在は購入できません。');return;}
-  const plugin=await nativeBoost();
-  const pending=await plugin.pendingTransactions();
+  boostNotice('Appleの購入機能を確認しています…');
+  const plugin=await boostRead(()=>nativeBoost(),'Apple購入機能の確認');
+  const pending=await boostRead(()=>plugin.pendingTransactions(),'Appleの未反映購入の確認');
+  if(request!==boostRequest)return;
   if((pending.transactions||[]).length){boostNotice('購入済みで反映待ちの情報があります。「購入の反映を確認」を押してください。');return;}
-  const products=await plugin.products();
+  boostNotice('Appleから3プランの商品情報を取得しています…');
+  const products=await boostRead(()=>plugin.products(),'Appleの商品取得',20000);
   if(request!==boostRequest)return;
   if(products.environment!==status.environment){boostNotice('Appleの購入環境を確認できません。現在は購入できません。');return;}boostEnvironment=status.environment;boostStoreProducts=products.products||[];boostReady=true;boostListingChanged();
   boostNotice(status.environment==='Sandbox'?'テスト購入です。実際の請求と一般公開PRは発生しません。':'対象の出品とプランを選ぶとAppleの購入確認画面が開きます。');
- }catch{if(request===boostRequest)boostNotice('購入状況を取得できません。時間をおいて開き直してください。');}
+ }catch(error){if(request===boostRequest)boostNotice(error?.message?.includes('に時間がかかっています。')?error.message:'購入状況を取得できません。一度閉じてから開き直してください。');}
 }
 async function purchaseBoost(plan){
  if(boostBusy||!boostReady||!currentUser)return;
