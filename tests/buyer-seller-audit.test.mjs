@@ -62,7 +62,7 @@ test('trade information never borrows a different repeat purchase or lists a rec
  const trade={id:'trade',buyer_id:buyer,seller_id:seller,listing_id:listing,created_at:'2026-09-12',delivery_status:'submitted'};
  pays=[{amount_jpy:1000,paid_at:'2026-09-11'},{amount_jpy:2000,paid_at:'2026-09-16'}];await c.loadTradeInfoPanel(trade);
  assert.match(panel.innerHTML,/対応が未照合/);assert.doesNotMatch(panel.innerHTML,/2,000円|9,999円|>購入日<\/div>/);
- pays=[{amount_jpy:1000,paid_at:'2026-09-11'}];await c.loadTradeInfoPanel(trade);assert.match(panel.innerHTML,/1,000円/);assert.match(panel.innerHTML,/購入日/);
+ pays=[{id:payment,amount_jpy:1000,paid_at:'2026-09-11'}];await c.loadTradeInfoPanel(trade);assert.match(panel.innerHTML,/対応が未照合/);await c.loadTradeInfoPanel({...trade,payment_id:payment});assert.match(panel.innerHTML,/1,000円/);assert.match(panel.innerHTML,/購入日/);
  await c.loadTradeInfoPanel({...trade,listing_id:null,job_id:'job'});assert.match(panel.innerHTML,/募集予算/);assert.match(panel.innerHTML,/支払い完了を示すものではありません/);
 });
 test('unfinished native iOS normal purchases stop before creating an external Checkout session',async()=>{
