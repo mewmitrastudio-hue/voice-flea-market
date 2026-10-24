@@ -77,3 +77,9 @@ receipt-time capture, seller payout or an Apple ordinary-purchase flow.
 
 The end-to-end SQL fixtures replace external services. They are not card-entry,
 StoreKit-device, real-Stripe-Sandbox or bank-deposit tests.
+
+Account-switch follow-up: Stripe seller-status and onboarding responses are
+now discarded if the initiating account changed. A stale response cannot
+redirect the new account to the former account's onboarding. Notification
+queries keep their initiating account and stop after a switch; old badge
+responses cannot overwrite a newer request. Combined checks now total 68.
