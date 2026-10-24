@@ -14,10 +14,10 @@ async function database(){const db=new PGlite();await db.exec(`
  create table payments(id uuid primary key,listing_id uuid,buyer_id uuid,seller_id uuid,status text,stripe_reconciled_at timestamptz,stripe_livemode boolean,refunded_amount_jpy integer);
  insert into payments values('${purchase}','${listing}','${buyer}','${seller}','paid',now(),false,0);
  create table user_blocks(blocker_id uuid,blocked_user_id uuid);
- create table conversations(id uuid primary key default gen_random_uuid(),listing_id uuid,buyer_id uuid,seller_id uuid,job_id uuid,is_inquiry boolean default false,delivery_status text default 'none');
+ create table conversations(id uuid primary key default gen_random_uuid(),listing_id uuid,buyer_id uuid,seller_id uuid,job_id uuid,is_inquiry boolean default false,delivery_status text default 'none',delivery_path text,delivered_at timestamptz,accepted_at timestamptz);
  alter table conversations enable row level security;grant select,insert,update on conversations to authenticated;
  create policy own on conversations to authenticated using(buyer_id=auth.uid() or seller_id=auth.uid()) with check(buyer_id=auth.uid() or seller_id=auth.uid());
- `);await db.exec(migration);return db;}
+ `);await db.exec(migration);await db.exec(fs.readFileSync(new URL('../supabase/migrations/20261024100350_freeze_refunded_trade_fulfillment.sql',import.meta.url),'utf8'));return db;}
 test('exact purchase links survive repeated and interleaved opens; other users and malformed associations are denied',async()=>{
  const db=await database();try{
   assert.equal((await db.query("select has_function_privilege('anon','public.open_paid_purchase_conversation(uuid)','execute') ok")).rows[0].ok,false);
@@ -63,4 +63,16 @@ test('purchase return matches only its exact Checkout and never touches another 
  const f=reconcileFixture();await f.c.reconcilePendingPurchase();assert.ok(f.queries.some(x=>x[0]==='stripe_checkout_session_id'&&x[1]==='cs_test_current'));assert.equal(f.calls[0].args.purchase_id,purchase);assert.equal(f.map.size,0);
  for(const options of [{changeAccount:true},{recordSession:'cs_test_other'},{paymentStatus:'refunded'},{legacy:true}]){const x=reconcileFixture(options);assert.equal(await x.c.reconcilePendingPurchase(),null);assert.equal(x.calls.length,0);assert.equal(x.map.size,1);}
  const newer=reconcileFixture({newPending:true});assert.equal(await newer.c.reconcilePendingPurchase(),null);assert.ok([...newer.map.values()][0].includes('cs_test_newer'));assert.ok(!newer.calls.includes('overlay'));
+});
+
+test('refunded linked trades reject authenticated delivery and acceptance updates while history stays readable',async()=>{
+ const db=await database();try{
+  await db.exec(`set role authenticated;set request.jwt.claim.sub='${buyer}'`);
+  const c=(await db.query('select public.open_paid_purchase_conversation($1) c',[purchase])).rows[0].c;
+  await db.exec(`reset role;update payments set status='refunded',refunded_amount_jpy=1000 where id='${purchase}';set role authenticated;set request.jwt.claim.sub='${seller}'`);
+  await assert.rejects(db.query("update conversations set delivery_status='submitted',delivery_path=$2 where id=$1",[c.id,c.id+'/voice.m4a']),/Paid purchase required/);
+  await db.exec(`set request.jwt.claim.sub='${buyer}'`);
+  await assert.rejects(db.query("update conversations set delivery_status='accepted',accepted_at=now() where id=$1",[c.id]),/Paid purchase required/);
+  assert.equal((await db.query('select payment_id from conversations where id=$1',[c.id])).rows[0].payment_id,purchase);
+ }finally{await db.close()}
 });

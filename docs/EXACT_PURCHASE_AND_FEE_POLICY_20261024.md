@@ -59,3 +59,21 @@ unpublished operator verification material.
 
 Do not count these fixes as all payment flows complete. No new charge, refund,
 transfer, key switch, Apple review submission or general release was performed.
+
+## Follow-up from complete-workflow scenarios
+
+A new isolated SQL workflow executes reconciliation, buyer purchase opening,
+seller delivery, buyer acceptance, refund reconciliation and operator totals.
+Normal progression preserves the same payment/conversation identity; a full
+refund produces retained gross zero and leaves completed history readable.
+
+A failing scenario exposed that refunded linked conversations could still be
+delivered. The additive freeze_refunded_trade_fulfillment migration now blocks
+authenticated delivery/acceptance changes unless the exact linked payment is
+reconciled, paid and has zero refund. Payment row sharing locks serialize this
+check with reconciliation. Both refund-before-delivery and partial-refund-
+after-delivery-before-acceptance scenarios now pass. This does not introduce
+receipt-time capture, seller payout or an Apple ordinary-purchase flow.
+
+The end-to-end SQL fixtures replace external services. They are not card-entry,
+StoreKit-device, real-Stripe-Sandbox or bank-deposit tests.
