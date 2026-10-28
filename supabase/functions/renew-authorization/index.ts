@@ -46,11 +46,11 @@ Deno.serve(async(req)=>{
   if(session.status==='expired'){await db.rpc('finish_checkout_reservation',{reservation:quote.reservation_id,session:session.id});return reply({error:'認証画面の有効期限が切れました。もう一度お試しください。'},409);}
   if(session.status==='complete'){
    const {error}=await db.rpc('record_checkout_session',{reservation:quote.reservation_id,session:session.id});if(error)throw new Error('checkout_persistence_pending');
-   return reply({success:true,sessionId:session.id,listingId:payment.listing_id,awaitingReconciliation:true});
+   return reply({success:true,sessionId:session.id,listingId:payment.listing_id,applicationId:payment.job_application_id,awaitingReconciliation:true});
   }
   if(!/^cs_[A-Za-z0-9_]+$/.test(session.id)||session.livemode!==live||!session.url||new URL(session.url).hostname!=='checkout.stripe.com'||new URL(session.url).protocol!=='https:')throw new Error('checkout_unconfirmed');
   const {error:saveError}=await db.rpc('record_checkout_session',{reservation:quote.reservation_id,session:session.id});if(saveError)throw new Error('checkout_persistence_pending');
-  return reply({success:true,sessionId:session.id,listingId:payment.listing_id,url:session.url});
+  return reply({success:true,sessionId:session.id,listingId:payment.listing_id,applicationId:payment.job_application_id,url:session.url});
  }catch(error){
   if(error instanceof SyntaxError)return reply({error:'送信内容を確認してください。'},400);
   console.warn('REAUTHORIZATION_UNCONFIRMED',{name:error instanceof Error?error.name:'unknown'});

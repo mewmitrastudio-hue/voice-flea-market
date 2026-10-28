@@ -9,7 +9,7 @@ async function add(db,{owner=buyer,provider=seller,status='paid',delivery='none'
  const c=(await db.query('insert into conversations(listing_id,buyer_id,seller_id,payment_id,delivery_status,delivery_path) values($1,$2,$3,$4,$5,$6) returning id',[listing,owner,provider,p,delivery,delivery==='none'?null:'voice.m4a'])).rows[0].id;
  await db.query("update payments set status=$1,authorization_expires_at=case when $2 then now()-interval '1 day' else authorization_expires_at end,refunded_amount_jpy=case when $1='refunded' then 1000 else 0 end where id=$3",[status,expired,p]);return c;
 }
-const summary=(db,cursor)=>db.query('select public.pending_trade_summary($1,$2) r',[cursor?.created_at||null,cursor?.conversation_id||null]).then(r=>r.rows[0].r);
+const summary=(db,cursor)=>db.query('select public.pending_trade_summary($1,$2,$3) r',[cursor?.created_at||null,cursor?.item_id||null,cursor?.kind||null]).then(r=>r.rows[0].r);
 test('pending notices count all own unfinished trades, distinguish required actions, paginate tied dates and exclude completed/refunded/foreign trades',async()=>{
  const db=await receiptDatabase();try{
   await db.exec(migration);
@@ -34,5 +34,16 @@ test('buyer completion clears their notice while Production Apple seller proceed
   await db.query("update conversations set delivery_status='accepted',delivery_path=id::text||'/voice.m4a',accepted_at=now() where id=$1",[purchase.conversationId]);
   await db.exec(`set role authenticated;set request.jwt.claim.sub='${buyer}'`);assert.equal((await summary(db)).total,0);
   await db.exec(`set request.jwt.claim.sub='${seller}'`);const pending=await summary(db);assert.equal(pending.total,1);assert.equal(pending.rows[0].action,'settlement_wait');assert.equal(pending.needsAction,0);assert.equal(pending.waiting,1);
+ }finally{await db.close();}
+});
+
+test('unlinked receipts stay visible without duplicate chat rows and pagination includes both item kinds',async()=>{
+ const db=await receiptDatabase();try{
+ await db.exec(migration);await add(db);await add(db,{owner:other});
+ for(let i=0;i<12;i++)await db.query("insert into payments(listing_id,buyer_id,seller_id,amount_jpy,status,created_at) values($1,$2,$3,1000,$4,'2026-01-01')",[listing,buyer,seller,i===0?'refunded':'paid']);
+ await db.exec(`set role authenticated;set request.jwt.claim.sub='${buyer}'`);
+ let page=await summary(db);assert.equal(page.total,13);assert.equal(page.needsAction,12);const rows=[...page.rows];while(page.hasMore){page=await summary(db,page.rows.at(-1));rows.push(...page.rows);}
+ assert.equal(rows.length,13);assert.equal(new Set(rows.map(x=>x.kind+':'+x.item_id)).size,13);assert.equal(rows.filter(x=>x.kind==='payment').length,12);assert.ok(rows.filter(x=>x.kind==='payment').every(x=>x.conversation_id===null&&x.action==='payment_check'&&x.party==='buyer'));
+ await db.exec(`set request.jwt.claim.sub='${other}'`);assert.equal((await summary(db)).total,1);
  }finally{await db.close();}
 });

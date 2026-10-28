@@ -2403,7 +2403,7 @@ let accountDeletionInProgress=false;
 async function requestAccountDeletion(){
   if(accountDeletionInProgress)return;
   if(!sb||!currentUser){alert('ログイン後に操作してください。');return;}
-  const first=confirm('アカウントを削除すると、ログインできなくなります。未完了の取引・返金・売上金がある場合は先に対応が必要です。削除手続きを進めますか？');
+  const first=confirm('アカウントを削除すると、ログインできなくなります。未完了の取引・返金・売上金がある場合は先に対応が必要です。削除すると出品とブーストの表示は終了します。Apple購入の返金はAppleへの申請が必要です。削除手続きを進めますか？');
   if(!first)return;
   const typed=prompt('本人確認のため「削除」と入力してください。');
   if(typed!=='削除'){
@@ -2454,7 +2454,7 @@ function resetPendingTradeNotice(){
 }
 function pendingTradeRowMarkup(row){
  const title=esc(row.title||'音声の取引'),label=pendingTradeLabels[row.action]||'取引状況を確認してください';
- return `<button type="button" class="pending-trade-row" onclick="openPendingTrade('${row.conversation_id}')"><span>${title}${row.is_test?' <small>テスト取引</small>':''}</span><strong>${label}</strong></button>`;
+ return `<button type="button" class="pending-trade-row" onclick="openPendingTrade('${row.kind}','${row.item_id}')"><span>${title}${row.is_test?' <small>テスト取引</small>':''}</span><strong>${label}</strong></button>`;
 }
 function renderPendingTradeNotice(errorText=''){
  if(pendingTradeState.owner!==currentUser?.id)return;
@@ -2477,12 +2477,12 @@ async function loadPendingTradeNotice(more=false){
  const revision=++pendingTradeState.revision,cursor=more?pendingTradeState.cursor:null;
  pendingTradeState.busy=true;
  try{
-  const {data,error}=await sb.rpc('pending_trade_summary',{before_created:cursor?.created_at||null,before_id:cursor?.conversation_id||null});
+  const {data,error}=await sb.rpc('pending_trade_summary',{before_created:cursor?.created_at||null,before_id:cursor?.item_id||null,before_kind:cursor?.kind||null});
   if(currentUser?.id!==owner||pendingTradeState.owner!==owner||revision!==pendingTradeState.revision)return;
   if(error||!data||!Array.isArray(data.rows)||!Number.isSafeInteger(data.total)||data.total<0||!Number.isSafeInteger(data.needsAction)||data.needsAction<0||!Number.isSafeInteger(data.waiting)||data.waiting<0||data.needsAction+data.waiting!==data.total||typeof data.hasMore!=='boolean'||data.hasMore&&!data.rows.length)throw new Error('pending_trade_read_failed');
-  for(const row of data.rows){if(!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(row.conversation_id||'')||!Number.isFinite(Date.parse(row.created_at))||typeof row.title!=='string'||typeof row.action!=='string')throw new Error('pending_trade_invalid_row');}
+  for(const row of data.rows){if(!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(row.item_id||'')||!['trade','payment'].includes(row.kind)||row.kind==='trade'&&row.conversation_id!==row.item_id||!['buyer','seller'].includes(row.party)||!Number.isFinite(Date.parse(row.created_at))||typeof row.title!=='string'||typeof row.action!=='string')throw new Error('pending_trade_invalid_row');}
   const rows=more?[...pendingTradeState.rows,...data.rows]:data.rows;
-  pendingTradeState.rows=[...new Map(rows.map(row=>[row.conversation_id,row])).values()];pendingTradeState.summary={total:data.total,needsAction:data.needsAction,waiting:data.waiting};
+  pendingTradeState.rows=[...new Map(rows.map(row=>[row.kind+':'+row.item_id,row])).values()];pendingTradeState.summary={total:data.total,needsAction:data.needsAction,waiting:data.waiting};
   pendingTradeState.cursor=data.rows.at(-1)||cursor;pendingTradeState.hasMore=data.hasMore;pendingTradeState.busy=false;renderPendingTradeNotice();
  }catch{
   if(currentUser?.id===owner&&pendingTradeState.owner===owner&&revision===pendingTradeState.revision){pendingTradeState.busy=false;renderPendingTradeNotice('read_failed');}
@@ -2496,12 +2496,12 @@ async function openPendingTrades(){
  await loadPendingTradeNotice();
 }
 function closePendingTrades(){document.getElementById('pendingTradeOverlay')?.classList.remove('show');if(pendingTradeReturnFocus?.isConnected)pendingTradeReturnFocus.focus();}
-async function openPendingTrade(id){
+async function openPendingTrade(kind,id){
  const owner=currentUser?.id;
  if(!owner||pendingTradeState.owner!==owner)return;
- const row=pendingTradeState.rows.find(x=>x.conversation_id===id);if(!row)return;
+ const row=pendingTradeState.rows.find(x=>x.kind===kind&&x.item_id===id);if(!row)return;
  closePendingTrades();closeMainMenu();
- if(row.action==='settlement_wait'){await openFinanceCenter('seller');return;}
+ if(row.kind==='payment'||row.action==='settlement_wait'){await openFinanceCenter(row.party);return;}
  await go('messages');if(currentUser?.id!==owner)return;await openConversation(row.conversation_id,row.title);
 }
 document.getElementById('pendingTradeOverlay').addEventListener('keydown',event=>{
@@ -2589,12 +2589,12 @@ function closeCheckoutError(){
 }
 
 const checkoutInFlight=new Set();
-async function startStripeCheckout(listingId,btn){
+async function startStripeCheckout(listingId,btn,applicationId=null){
   if(!sb||!currentUser)return alert('購入するにはログインしてください。');
-  if(window.Capacitor?.isNativePlatform?.()===true&&window.Capacitor?.getPlatform?.()==='ios'){return startVoicePurchase(listingId,btn);}
+  if(window.Capacitor?.isNativePlatform?.()===true&&window.Capacitor?.getPlatform?.()==='ios'){return startVoicePurchase(listingId,applicationId);}
   const callerId=currentUser.id;
   const requireCaller=()=>{if(currentUser?.id!==callerId)throw new Error('ログイン中のアカウントが変わりました。決済は開始していません。');};
-  const operationKey=callerId+':'+listingId;
+  const operationKey=callerId+':'+(applicationId?'job:'+applicationId:listingId);
   if(checkoutInFlight.has(operationKey))return;checkoutInFlight.add(operationKey);
   const attemptKey='vf_checkout_attempt_'+operationKey;
   let attemptId;try{attemptId=safeLocalStorage.getItem(attemptKey);if(!attemptId){attemptId=crypto.randomUUID();safeLocalStorage.setItem(attemptKey,attemptId)}}catch{attemptId=crypto.randomUUID()}
@@ -2624,7 +2624,7 @@ async function startStripeCheckout(listingId,btn){
         'Authorization':`Bearer ${session.access_token}`,
         'apikey':window.VOICE_FLEA_CONFIG.SUPABASE_PUBLISHABLE_KEY
       },
-      body:JSON.stringify({listingId,attemptId})
+      body:JSON.stringify(applicationId?{applicationId,attemptId}:{listingId,attemptId})
     });
 
     const text = await response.text();
@@ -2656,7 +2656,7 @@ async function startStripeCheckout(listingId,btn){
     if(data?.awaitingReconciliation){
       requireCaller();
       if(typeof data.sessionId!=='string'||!/^cs_[A-Za-z0-9_]+$/.test(data.sessionId))throw new Error('購入状況を確認できません。再購入せず運営へお問い合わせください。');
-      safeLocalStorage.setItem(`vf_pending_purchase_${callerId}`,JSON.stringify({listingId,checkoutSessionId:data.sessionId,startedAt:new Date().toISOString()}));
+      safeLocalStorage.setItem(`vf_pending_purchase_${callerId}`,JSON.stringify({...applicationId?{applicationId}:{listingId},checkoutSessionId:data.sessionId,startedAt:new Date().toISOString()}));
       const reflected=await reconcilePendingPurchase();
       if(!reflected)throw new Error('購入状況を照合中です。再購入せず、時間をおいて画面を更新してください。');
       return;
@@ -2665,7 +2665,7 @@ async function startStripeCheckout(listingId,btn){
 
     requireCaller();
     if(typeof data.sessionId!=='string'||!/^cs_[A-Za-z0-9_]+$/.test(data.sessionId))throw new Error('今回の決済IDを確認できませんでした。再購入せずお問い合わせください。');
-    safeLocalStorage.setItem(`vf_pending_purchase_${callerId}`,JSON.stringify({listingId,checkoutSessionId:data.sessionId,startedAt:new Date().toISOString()}));
+    safeLocalStorage.setItem(`vf_pending_purchase_${callerId}`,JSON.stringify({...applicationId?{applicationId}:{listingId},checkoutSessionId:data.sessionId,startedAt:new Date().toISOString()}));
     const checkoutUrl=new URL(data.url);
     if(checkoutUrl.protocol!=='https:'||checkoutUrl.hostname!=='checkout.stripe.com')throw new Error('決済URLを確認できませんでした。');
     try{safeLocalStorage.removeItem(attemptKey)}catch{}
@@ -2690,7 +2690,9 @@ async function reconcilePendingPurchase(){
   const key=`vf_pending_purchase_${currentUser.id}`;
   let pending=null;
   try{pending=JSON.parse(safeLocalStorage.getItem(key)||'null')}catch(_){safeLocalStorage.removeItem(key);return null}
-  if(!pending?.listingId)return null;
+  if(!pending||!!pending.listingId===!!pending.applicationId)return null;
+  const targetId=pending.applicationId||pending.listingId;
+  if(typeof targetId!=='string'||!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(targetId))return null;
   const callerId=currentUser.id;
   // Legacy pending data has no exact session identity. Never guess from dates or "latest".
   if(typeof pending.checkoutSessionId!=='string'||!/^cs_[A-Za-z0-9_]+$/.test(pending.checkoutSessionId))return null;
@@ -2698,15 +2700,16 @@ async function reconcilePendingPurchase(){
   if(!Number.isFinite(started)||Date.now()-started>24*60*60*1000)return null;
   let payment=null;
   for(let i=0;i<8;i++){
-    const {data:rows,error}=await sb.from('payments')
-      .select('id,listing_id,buyer_id,seller_id,status,paid_at,created_at,stripe_checkout_session_id,stripe_reconciled_at,stripe_livemode,refunded_amount_jpy,stripe_capture_method,authorization_expires_at')
-      .eq('stripe_checkout_session_id',pending.checkoutSessionId)
-      .eq('listing_id',pending.listingId).eq('buyer_id',callerId).limit(2);
+    let query=sb.from('payments')
+      .select('id,listing_id,job_id,job_application_id,buyer_id,seller_id,status,paid_at,created_at,stripe_checkout_session_id,stripe_reconciled_at,stripe_livemode,refunded_amount_jpy,stripe_capture_method,authorization_expires_at')
+      .eq('stripe_checkout_session_id',pending.checkoutSessionId).eq('buyer_id',callerId);
+    query=pending.applicationId?query.eq('job_application_id',pending.applicationId):query.eq('listing_id',pending.listingId);
+    const {data:rows,error}=await query.limit(2);
     if(currentUser?.id!==callerId)return null;
     if(error)return null;
     if(rows?.length===1){
       const exact=rows[0];
-      if(exact.stripe_checkout_session_id!==pending.checkoutSessionId||exact.buyer_id!==callerId||exact.listing_id!==pending.listingId)return null;
+      if(exact.stripe_checkout_session_id!==pending.checkoutSessionId||exact.buyer_id!==callerId||(pending.applicationId?exact.job_application_id!==pending.applicationId:exact.listing_id!==pending.listingId))return null;
       if(!['paid','authorized'].includes(exact.status)||exact.refunded_amount_jpy!==0)return null;
       if(exact.status==='authorized'&&(exact.stripe_capture_method!=='manual'||!(new Date(exact.authorization_expires_at)>new Date())))return null;
       if(exact.stripe_reconciled_at&&typeof exact.stripe_livemode==='boolean'){payment=exact;break;}
@@ -2717,7 +2720,7 @@ async function reconcilePendingPurchase(){
   if(!payment)return null;
   const {data:conversation,error}=await sb.rpc('open_paid_purchase_conversation',{purchase_id:payment.id});
   if(currentUser?.id!==callerId||error||!conversation||conversation.payment_id!==payment.id)return null;
-  const title=await listingDisplayTitle(pending.listingId);
+  const title=pending.applicationId?'依頼した声の取引':await listingDisplayTitle(pending.listingId);
   if(currentUser?.id!==callerId)return null;
   // Do not erase a newer Checkout that another tab started during reconciliation.
   let currentPending=null;try{currentPending=JSON.parse(safeLocalStorage.getItem(key)||'null')}catch{}
@@ -2969,9 +2972,9 @@ const jobs=data||[];
 const ownIds=jobs.filter(j=>j.buyer_id===currentUser?.id).map(j=>j.id);
 const allIds=jobs.map(j=>j.id);
 let apps=[];
-if(ownIds.length){const r=await sb.from('applications').select('id,job_id,applicant_id,message,status,created_at,profiles!applications_applicant_id_fkey(display_name)').in('job_id',ownIds).order('created_at',{ascending:false});if(!r.error)apps=r.data||[]}
+if(ownIds.length){const r=await sb.from('applications').select('id,job_id,applicant_id,message,status,proposed_price_jpy,agreed_price_jpy,created_at,profiles!applications_applicant_id_fkey(display_name)').in('job_id',ownIds).order('created_at',{ascending:false});if(!r.error)apps=r.data||[]}
 let myApps=[];
-if(allIds.length&&currentUser){const r=await sb.from('applications').select('id,job_id,applicant_id,message,status,created_at').eq('applicant_id',currentUser.id).in('job_id',allIds);if(!r.error)myApps=r.data||[]}
+if(allIds.length&&currentUser){const r=await sb.from('applications').select('id,job_id,applicant_id,message,status,proposed_price_jpy,agreed_price_jpy,created_at').eq('applicant_id',currentUser.id).in('job_id',allIds);if(!r.error)myApps=r.data||[]}
 const byJob={};apps.forEach(a=>(byJob[a.job_id]??=[]).push(a));
 const mineByJob={};myApps.forEach(a=>mineByJob[a.job_id]=a);
 jobList.innerHTML=jobs.map(j=>{
@@ -2981,7 +2984,7 @@ jobList.innerHTML=jobs.map(j=>{
    return `<div class="card"><div class="row"><div><b>${esc(j.title)}</b><div class="small">${esc(j.profiles?.display_name||'依頼者')}</div></div><div class="price">${Number(j.budget_jpy).toLocaleString()}円</div></div><p class="small">${esc(j.description||'')}</p><span class="pill">AI:${esc(j.ai_use)}</span>${action}</div>`;
  }
  const list=byJob[j.id]||[];const pending=list.filter(a=>a.status==='pending').length;
- const appHtml=list.length?`<div class="${pending?'countbadge':'pill'}">応募 ${list.length}件${pending?'・未確認 '+pending+'件':''}</div>${list.map(a=>`<div class="appbox"><div class="row"><b>${esc(a.profiles?.display_name||'応募者')}</b><span class="pill">${statusLabel(a.status)}</span></div><div class="appmsg">${esc(a.message||'メッセージなし')}</div>${a.status==='pending'?`<div class="appactions"><button class="btn" onclick="reviewApplication('${a.id}','accepted')">承認</button><button class="btn reject" onclick="reviewApplication('${a.id}','rejected')">見送る</button></div>`:a.status==='accepted'?`<button class="btn full" onclick="openJobChat('${j.id}','${j.buyer_id}','${a.applicant_id}','${inlineText(j.title)}')">チャットする</button>`:''}</div>`).join('')}`:'<div class="small" style="margin-top:10px">まだ応募はありません。</div>';
+ const appHtml=list.length?`<div class="${pending?'countbadge':'pill'}">応募 ${list.length}件${pending?'・未確認 '+pending+'件':''}</div>${list.map(a=>`<div class="appbox"><div class="row"><b>${esc(a.profiles?.display_name||'応募者')}</b><span class="pill">${statusLabel(a.status)}</span></div><div class="appmsg">${esc(a.message||'メッセージなし')}</div><div class="small">提示金額：${financeYen(a.agreed_price_jpy??a.proposed_price_jpy??j.budget_jpy)}</div>${a.status==='pending'?`<div class="appactions"><button class="btn" onclick="reviewApplication('${a.id}','accepted')">承認</button><button class="btn reject" onclick="reviewApplication('${a.id}','rejected')">見送る</button></div>`:a.status==='accepted'?`<button class="btn full" onclick="openJobChat('${j.id}','${j.buyer_id}','${a.applicant_id}','${inlineText(j.title)}')">チャットする</button><button class="btn secondary full" type="button" onclick="startStripeCheckout(null,this,'${a.id}')">依頼の支払いを準備</button><button class="btn secondary full" type="button" onclick="reviewApplication('${a.id}','rejected')">承認を取り消す（支払い前）</button>`:''}</div>`).join('')}`:'<div class="small" style="margin-top:10px">まだ応募はありません。</div>';
  return `<div class="card"><div class="row"><div><b>${esc(j.title)}</b><div class="small">${esc(j.profiles?.display_name||'依頼者')}</div></div><div class="price">${Number(j.budget_jpy).toLocaleString()}円</div></div><p class="small">${esc(j.description||'')}</p><span class="pill">AI:${esc(j.ai_use)}</span><div class="ok">あなたの募集です</div>${appHtml}</div>`
 }).join('')||'<div class="card small">まだ募集がありません。</div>';
 loadJobBadge();loadMessageBadge();
@@ -2989,7 +2992,22 @@ loadJobBadge();loadMessageBadge();
 async function applyJob(jobId){const msg=prompt('応募メッセージを入力してください','対応できます。声サンプルも送れます。');if(msg===null)return;if(!msg.trim())return alert('応募メッセージを入力してください。');const {error}=await sb.from('applications').insert({job_id:jobId,applicant_id:currentUser.id,message:msg});if(error)return alert(error.code==='23505'?'この案件には応募済みです':error.message);alert('応募しました');await loadJobs()}
 function statusLabel(s){return ({pending:'確認待ち',accepted:'承認済み',rejected:'見送り',withdrawn:'辞退'})[s]||s}
 async function loadJobBadge(){if(!sb||!currentUser)return;const {data:jobs}=await sb.from('jobs').select('id').eq('buyer_id',currentUser.id).eq('status','open');const ids=(jobs||[]).map(x=>x.id);let count=0;if(ids.length){const {count:c}=await sb.from('applications').select('*',{count:'exact',head:true}).in('job_id',ids).eq('status','pending');count=c||0}if(jobBadge){jobBadge.textContent=count>99?'99+':String(count);jobBadge.classList.toggle('show',count>0);loadNotificationBadge()}}
-async function reviewApplication(appId,status){const text=status==='accepted'?'この応募を承認しますか？':'この応募を見送りますか？';if(!confirm(text))return;const {data:app,error:ae}=await sb.from('applications').select('id,job_id,applicant_id').eq('id',appId).single();if(ae)return alert(ae.message);const {error}=await sb.from('applications').update({status}).eq('id',appId);if(error)return alert(error.message);if(status==='accepted'){const {data:j,error:je}=await sb.from('jobs').select('buyer_id').eq('id',app.job_id).single();if(!je&&j){await ensureConversation(app.job_id,j.buyer_id,app.applicant_id)}}alert(status==='accepted'?'応募を承認しました。':'見送りにしました。');loadJobs();loadJobBadge();loadMessageBadge()}
+async function reviewApplication(appId,status){
+ if(!currentUser||!['accepted','rejected'].includes(status))return;
+ const owner=currentUser.id;
+ const {data:app,error}=await sb.from('applications').select('id,job_id,applicant_id,proposed_price_jpy,agreed_price_jpy').eq('id',appId).single();
+ if(error||!app)return alert('応募内容を確認できません。');
+ const {data:job,error:jobError}=await sb.from('jobs').select('buyer_id,title,budget_jpy').eq('id',app.job_id).single();
+ if(currentUser?.id!==owner||jobError||job?.buyer_id!==owner)return;
+ const amount=app.proposed_price_jpy??app.agreed_price_jpy??job.budget_jpy;
+ if(!confirm(status==='accepted'?`「${job.title}」を${financeYen(amount)}で依頼する応募として承認します。承認だけでは支払いは発生しません。続けますか？`:'この応募を見送りますか？支払い済みの依頼は先に取引の対応が必要です。'))return;
+ const {data:updated,error:decisionError}=await sb.rpc('review_job_application',{application_id:app.id,decision:status,expected_price:amount});
+ if(currentUser?.id!==owner)return;
+ if(decisionError||!updated)return alert(decisionError?.message||'提示条件が変わった可能性があります。再確認してください。');
+ if(status==='accepted'){const result=await ensureConversation(app.job_id,owner,app.applicant_id);if(result.error)alert('応募は承認しました。チャットの作成を確認できないため、もう一度チャットを開いてください。');}
+ await loadJobs();loadJobBadge();loadMessageBadge();loadPendingTradeNotice();
+}
+
 
 function seenKey(id){return `voice_flea_seen_${currentUser?.id||'none'}_${id}`}
 /* 2026-09-28: 未読が復活する問題の修正
@@ -3024,8 +3042,17 @@ async function ensureConversation(jobId,buyerId,sellerId){
  const r=await sb.from('conversations').insert({job_id:jobId,buyer_id:buyerId,seller_id:sellerId}).select('id,buyer_id,seller_id,job_id').single();return r
 }
 async function openJobChat(jobId,buyerId,sellerId,title='声の依頼チャット'){
- const {data,error}=await ensureConversation(jobId,buyerId,sellerId);if(error)return alert(error.message);await go('messages');await openConversation(data.id,title)
+ const owner=currentUser?.id;if(!owner)return;
+ const {data:payments,error}=await sb.from('payments').select('id').eq('job_id',jobId).eq('buyer_id',buyerId).eq('seller_id',sellerId).in('status',['authorized','paid']).order('created_at',{ascending:false}).limit(1);
+ if(currentUser?.id!==owner)return;
+ if(!error&&payments?.[0]){
+  const {data:chat,error:chatError}=await sb.from('conversations').select('id').eq('payment_id',payments[0].id).maybeSingle();
+  if(currentUser?.id!==owner)return;
+  if(!chatError&&chat){await go('messages');if(currentUser?.id===owner)await openConversation(chat.id,title);return;}
+ }
+ const {data,error:chatError}=await ensureConversation(jobId,buyerId,sellerId);if(currentUser?.id!==owner)return;if(chatError)return alert(chatError.message);await go('messages');if(currentUser?.id===owner)await openConversation(data.id,title);
 }
+
 
 async function tradeDisplayName(userId){
   if(!userId)return 'ユーザー';
@@ -3573,8 +3600,8 @@ async function renewTradeAuthorization(){
   if(error||!data?.success)throw new Error(detail||'再認証の結果を確認できません。新しく購入せず、この取引から再試行してください。');
   if(currentUser?.id!==owner||currentConversationId!==id)return;
   if(data.alreadyCaptured){info('chatMsg','決済済みの支払いを確認しました。納品内容を確認してから受取確認を行ってください。');await loadDeliveries();return;}
-  if(typeof data.listingId!=='string'||typeof data.sessionId!=='string'||!/^cs_[A-Za-z0-9_]+$/.test(data.sessionId))throw new Error('元の取引の支払いを確認できません。');
-  safeLocalStorage.setItem(`vf_pending_purchase_${owner}`,JSON.stringify({listingId:data.listingId,checkoutSessionId:data.sessionId,startedAt:new Date().toISOString()}));
+  if((typeof data.listingId!=='string'&&typeof data.applicationId!=='string')||typeof data.sessionId!=='string'||!/^cs_[A-Za-z0-9_]+$/.test(data.sessionId))throw new Error('元の取引の支払いを確認できません。');
+  safeLocalStorage.setItem(`vf_pending_purchase_${owner}`,JSON.stringify({...data.applicationId?{applicationId:data.applicationId}:{listingId:data.listingId},checkoutSessionId:data.sessionId,startedAt:new Date().toISOString()}));
   if(data.awaitingReconciliation){await reconcilePendingPurchase();return;}
   const url=new URL(data.url);if(url.protocol!=='https:'||url.hostname!=='checkout.stripe.com')throw new Error('認証画面を確認できません。');
   window.location.assign(url.href);
@@ -3594,6 +3621,12 @@ async function loadDeliveries(){
  authorizationActionStates.set(conversationId,authorization);
  if(authorization?.manual&&(authorization.state==='canceled'||authorization.paymentState==='canceled'&&!authorization.authorizationExpired)){deliveryArea.innerHTML='<div class="notice">この取引はキャンセル済みです。購入代金の決済は確定していません。</div>';return;}
  let html='';
+ if(authorization?.needsPayment||!authorization?.canFulfill&&!authorization?.authorizationExpired&&authorization?.state!=='queued'){
+  html='<div class="notice">支払いの確認が必要です。確認が終わるまで制作・納品・受取確認は進められません。</div>';
+  if(isBuyer&&authorization.needsPayment&&!conversation.delivery_path&&authorization.applicationId&&Number.isSafeInteger(authorization.agreedAmountJpy))html+=`<button class="btn full" type="button" onclick="startStripeCheckout(null,this,'${authorization.applicationId}')">${financeYen(authorization.agreedAmountJpy)}の依頼の支払いを準備</button>`;
+  else html+=`<button class="btn secondary full" type="button" onclick="openSafetyCenter('support')">支払い状況を運営に確認する</button>`;
+  if(!conversation.delivery_path){deliveryArea.innerHTML=html;return;}
+ }
  if(authorization?.authorizationExpired)html='<div class="notice">与信期限が切れています。購入者が支払い状況を確認し、必要に応じて再認証してください。納品と会話の履歴は引き継がれます。</div>'+(authorization.canRenew?'<button class="btn secondary full" type="button" onclick="renewTradeAuthorization()">支払い状況を確認・再認証</button>':'');
  if(authorization?.manual&&(authorization.canApprove||authorization.state==='queued')){
   const approved=isBuyer?authorization.buyerApproved:authorization.sellerApproved;
@@ -3602,7 +3635,7 @@ async function loadDeliveries(){
   if(authorization.state==='queued'){deliveryArea.innerHTML=html;return;}
  }
 
- if(isSeller&&!authorization?.authorizationExpired&&conversation.delivery_status==='none'&&!conversation.delivery_path){
+ if(isSeller&&authorization?.canFulfill&&!authorization?.authorizationExpired&&conversation.delivery_status==='none'&&!conversation.delivery_path){
    html+=`<div class="delivery-panel"><div class="row"><div><b style="font-size:12px">📦 音声を納品</b><div class="small">ここから送る音声は取引相手だけが確認できます。</div></div></div><input id="deliveryFile" type="file" accept="audio/*,.m4a,.mp3,.wav,.aac,.mp4" onchange="rememberDeliveryFile(this)"><div id="deliverySelectedName" class="small" style="margin-top:6px;font-weight:700"></div><button class="btn full" onclick="uploadDelivery()">納品する</button><div id="deliveryMsg"></div></div>`;
  }
  if(conversation.delivery_path){
@@ -3611,7 +3644,7 @@ async function loadDeliveries(){
    if(!ue&&u?.signedUrl)player=`<audio controls src="${u.signedUrl}"></audio>`;
    else if(ue)player=`<div class="err">納品音声を開けません：${esc(ue.message)}</div>`;
    const accepted=conversation.delivery_status==='accepted';
-   html+=`<div class="delivery-card"><div class="row"><div class="delivery-name">🎧 納品音声</div><span class="delivery-status ${accepted?'received':''}">${accepted?'受取済み':'納品済み'}</span></div>${player}${isBuyer&&!accepted?`<button class="btn full" onclick="confirmDelivery()">受取確認</button>`:''}</div>`;
+   html+=`<div class="delivery-card"><div class="row"><div class="delivery-name">🎧 納品音声</div><span class="delivery-status ${accepted?'received':''}">${accepted?'受取済み':'納品済み'}</span></div>${player}${isBuyer&&!accepted&&(authorization?.canFulfill||authorization?.authorizationExpired)?`<button class="btn full" onclick="confirmDelivery()">受取確認</button>`:''}</div>`;
  }
  if(conversation.delivery_status==='accepted')html+=`<div id="reviewArea"></div>`;
  if(currentConversationId!==conversationId)return;
@@ -4876,7 +4909,7 @@ async function voiceIapApi(body){
  if(error||message)throw new Error(typeof message==='string'?message:'購入を確認できません。再購入せず音声購入の反映を確認してください。');
  return data;
 }
-async function startVoicePurchase(listingId){
+async function startVoicePurchase(listingId,applicationId=null){
  if(voicePurchaseBusy||!currentUser||!isNativeBoost())return;
  const owner=currentUser.id,request=++voicePurchaseRequest;voicePurchaseBusy=true;voicePurchaseQuote=null;showVoicePurchase();voicePurchaseNotice('出品とAppleの商品情報を確認しています…');
  try{
@@ -4884,10 +4917,10 @@ async function startVoicePurchase(listingId){
   const pending=await plugin.pendingTransactions({kind:'voice'});
   if(currentUser?.id!==owner||request!==voicePurchaseRequest)return;
   if((pending.transactions||[]).length)throw new Error('購入済みで反映待ちの音声があります。再購入せず「音声購入の反映を確認」を押してください。');
-  const key='vf_voice_attempt_'+owner+':'+listingId;
+  const key='vf_voice_attempt_'+owner+':'+(applicationId?'job:'+applicationId:listingId);
   let attempt=safeLocalStorage.getItem(key);if(!attempt){attempt=crypto.randomUUID();safeLocalStorage.setItem(key,attempt);}
   let order;
-  try{order=await voiceIapApi({action:'prepare',listingId,attemptId:attempt});}
+  try{order=await voiceIapApi(applicationId?{action:'prepareJob',applicationId,attemptId:attempt}:{action:'prepare',listingId,attemptId:attempt});}
   catch(error){safeLocalStorage.removeItem(key);throw error;}
   if(currentUser?.id!==owner||request!==voicePurchaseRequest)return;
   if(order.state!=='prepared'){safeLocalStorage.removeItem(key);throw new Error('この購入はすでに処理済みです。購入履歴と取引を確認してください。');}

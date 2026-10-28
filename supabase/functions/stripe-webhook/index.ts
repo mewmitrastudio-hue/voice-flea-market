@@ -149,16 +149,16 @@ Deno.serve(async (req) => {
         ||!['requires_capture','succeeded','canceled'].includes(pi.status)
         ||pi.status==='requires_capture'&&(charge.captured!==false||charge.amount_captured!==0||pi.amount_capturable!==pi.amount)
         ||pi.status==='succeeded'&&(charge.captured!==true||charge.amount_captured!==pi.amount)
-        ||['capture_flow','listing_id','buyer_id','seller_id','reservation_id'].some(k=>pi.metadata?.[k]!==object.metadata?.[k]))
+        ||['capture_flow','listing_id','job_id','job_application_id','buyer_id','seller_id','reservation_id'].some(k=>pi.metadata?.[k]!==object.metadata?.[k]))
         return json({error:'Manual authorization could not be reconciled'},503);
       const snapshot={canceled:pi.status==='canceled',reservation_id:object.metadata.reservation_id,stripe_payment_intent_id:piId,stripe_charge_id:charge.id,stripe_checkout_session_id:object.id,
         stripe_livemode:live,stripe_reconciled_at:observed,amount_jpy:pi.amount,stripe_destination:pi.transfer_data.destination,
-        authorization_expires_at:new Date(expires*1000).toISOString(),listing_id:object.metadata.listing_id,
+        authorization_expires_at:new Date(expires*1000).toISOString(),listing_id:object.metadata.listing_id,job_id:object.metadata.job_id,job_application_id:object.metadata.job_application_id,
         buyer_id:object.metadata.buyer_id,seller_id:object.metadata.seller_id};
       const {error}=await db.rpc('record_stripe_authorization',{snapshot});
       if(error)return json({error:'Authorization persistence pending'},503);
       if(pi.status==='succeeded'){
-        const {error}=await db.rpc('record_stripe_payment_snapshot',{snapshot:{...snapshot,refunded_amount_jpy:0,paid_at:observed}});
+        const {error}=await db.rpc('record_stripe_payment_snapshot',{snapshot:{stripe_payment_intent_id:piId,stripe_charge_id:charge.id,stripe_livemode:live,stripe_reconciled_at:observed,amount_jpy:pi.amount,refunded_amount_jpy:0}});
         if(error)return json({error:'Captured payment persistence pending'},503);
       }
       const {error:finished}=await db.rpc('finish_checkout_reservation',{reservation:object.metadata.reservation_id,session:object.id});

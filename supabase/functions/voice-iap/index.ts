@@ -1,4 +1,6 @@
 import {createClient} from 'npm:@supabase/supabase-js@2.118.0';
+import Stripe from 'npm:stripe@23.0.0';
+import {requireRecipient} from '../_shared/recipient-readiness.mjs';
 import {appleConfig,verifiedTransaction,applyTransaction} from '../_shared/apple.ts';
 const headers={'Access-Control-Allow-Origin':'*','Access-Control-Allow-Headers':'authorization, x-client-info, apikey, content-type','Access-Control-Allow-Methods':'POST, OPTIONS','Content-Type':'application/json; charset=utf-8','Cache-Control':'no-store'};
 const json=(body:unknown,status=200)=>Response.json(body,{status,headers});
@@ -26,13 +28,18 @@ Deno.serve(async req=>{
    const result=await applyTransaction(admin,tx,user.id);
    return json({success:true,...result});
   }
-  if(body?.action!=='prepare'||!uuid(body.listingId)||!uuid(body.attemptId))return json({error:'出品を選択してください。'},400);
+  const jobPurchase=body?.action==='prepareJob'&&uuid(body.applicationId);
+  if(!(jobPurchase||body?.action==='prepare'&&uuid(body.listingId))||!uuid(body.attemptId))return json({error:'出品を選択してください。'},400);
   // Reconciliation above remains available even after new sales are disabled.
   if(Deno.env.get('VOICE_IAP_ENABLED')!=='true')return json({error:'Appleでの音声購入はまだ開始していません。',code:'voice_iap_not_ready'},409);
   appleConfig();
   const environment=Deno.env.get('VOICE_IAP_ENVIRONMENT')==='Production'?'Production':'Sandbox';
-  const {data,error}=await admin.rpc('prepare_voice_iap_order',{owner_id:user.id,listing:body.listingId,attempt:body.attemptId,tx_environment:environment});
+  const {data,error}=await admin.rpc(jobPurchase?'prepare_job_voice_iap_order':'prepare_voice_iap_order',jobPurchase?{owner_id:user.id,application:body.applicationId,attempt:body.attemptId,tx_environment:environment}:{owner_id:user.id,listing:body.listingId,attempt:body.attemptId,tx_environment:environment});
   if(error)return json({error:'この出品のApple購入設定を確認できません。購入は開始していません。'},409);
+  const stripeKey=Deno.env.get('STRIPE_SECRET_KEY')||'';
+  if(!uuid(data?.sellerId)||!(/^(sk|rk)_live_/.test(stripeKey)?environment==='Production':/^(sk|rk)_test_/.test(stripeKey)&&environment==='Sandbox'))return json({error:'販売・受取環境の設定を確認できません。購入は開始していません。'},409);
+  try{await requireRecipient({admin,sellerId:data.sellerId,stripe:new Stripe(stripeKey,{apiVersion:'2026-09-30.endive',maxNetworkRetries:0,timeout:20000}),live:environment==='Production'});}
+  catch{return json({error:'出品者の受取設定が完了していません。購入は開始していません。',code:'seller_not_ready'},409);}
   return json(data);
- }catch(error){console.error('VOICE_IAP_FAILED',{name:error?.name,code:error?.code});return json({error:'購入を確認できません。購入済みの場合は再購入せず「音声購入の反映を確認」を押してください。'},503);}
+ }catch(error){console.error('VOICE_IAP_FAILED',{name:error instanceof Error?error.name:'unknown'});return json({error:'購入を確認できません。購入済みの場合は再購入せず「音声購入の反映を確認」を押してください。'},503);}
 });

@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import vm from 'node:vm';
 const html=fs.readFileSync(new URL('../index.html',import.meta.url),'utf8');
-const row={conversation_id:'00000000-0000-4000-8000-000000000001',title:'<img src=x onerror=alert(1)>',action:'receipt_required',created_at:'2026-10-29T00:00:00Z',is_test:false};
+const row={kind:'trade',item_id:'00000000-0000-4000-8000-000000000001',party:'buyer',conversation_id:'00000000-0000-4000-8000-000000000001',title:'<img src=x onerror=alert(1)>',action:'receipt_required',created_at:'2026-10-29T00:00:00Z',is_test:false};
 const first={total:2,needsAction:1,waiting:1,rows:[row],hasMore:true};
 function fixture(){
  const ids=['homePendingTrades','mePendingTrades','home','pendingTradeItems','pendingTradeMore','pendingTradeBadge','pendingTradeOverlay'];
@@ -32,4 +32,11 @@ test('logout and account-switch responses cannot expose another accounts pending
  c.resetPendingTradeNotice();c.currentUser={id:'other'};c.sb.rpc=()=>new Promise(r=>resolveNew=r);const current=c.loadPendingTradeNotice();
  resolveOld({data:first});await old;assert.equal(c.state.rows.length,0);assert.equal(nodes.get('homePendingTrades').hidden,true);
  resolveNew({data:{total:0,needsAction:0,waiting:0,rows:[],hasMore:false}});await current;assert.equal(c.state.owner,'other');assert.equal(c.state.rows.length,0);
+});
+
+test('an unlinked payment routes its owner to finance without trying to open a missing chat',async()=>{
+ const {c}=fixture();const receipt={...row,kind:'payment',conversation_id:null,action:'payment_check',party:'seller'};
+ c.sb.rpc=async()=>({data:{total:1,needsAction:1,waiting:0,rows:[receipt],hasMore:false}});await c.loadPendingTradeNotice();
+ const opened=[];c.closeMainMenu=()=>{};c.openFinanceCenter=async party=>opened.push(party);c.openConversation=()=>assert.fail('missing conversation must not open');
+ await c.openPendingTrade('payment',receipt.item_id);assert.deepEqual(opened,['seller']);
 });

@@ -15,7 +15,7 @@ export async function receiptDatabase(){
  create table listings(id uuid primary key,seller_id uuid,price_jpy integer,is_active boolean,title text);
  insert into listings values('${listing}','${seller}',1000,true,'Voice');
  create table user_blocks(blocker_id uuid,blocked_user_id uuid);
- create table jobs(id uuid,buyer_id uuid,title text);create table applications(job_id uuid,applicant_id uuid,status text);
+ create table jobs(id uuid primary key,buyer_id uuid,title text,budget_jpy integer,status text default 'open');create table applications(id uuid primary key default gen_random_uuid(),job_id uuid,applicant_id uuid,status text,proposed_price_jpy integer,delivery_days integer,created_at timestamptz default now());
  create table payments(id uuid primary key default gen_random_uuid(),listing_id uuid,buyer_id uuid,seller_id uuid,
  amount_jpy integer not null,platform_fee_jpy integer not null default 0,seller_amount_jpy integer not null default 0,
  status text,stripe_checkout_session_id text,stripe_payment_intent_id text,stripe_charge_id text,
@@ -43,3 +43,4 @@ export async function receiptDatabase(){
  await db.exec(read('supabase/migrations/20261028223344_receipt_capture.sql'));
  return db;
 }
+export async function jobDatabase(){const db=await receiptDatabase();await db.exec(read('supabase/migrations/20261028232049_paid_job_orders.sql'));return db;}

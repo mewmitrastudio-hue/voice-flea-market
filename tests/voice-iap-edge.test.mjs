@@ -8,9 +8,9 @@ const listing='00000000-0000-4000-8000-000000000002';
 const attempt='00000000-0000-4000-8000-000000000003';
 function fixture({enabled=false,product='com.ayuhide.koenofurima.voice.jpy1000',applyFailure=false}={}){
  const calls=[];let handler;
- const admin={auth:{getUser:async token=>token==='valid'?{data:{user:{id:user}}}:{data:{user:null},error:{}}},rpc:async(name,args)=>{calls.push({name,args});return {data:{orderId:attempt,productId:product,amountJpy:1000,environment:'Sandbox',state:'prepared'}};}};
- const c={Response,Request,Uint8Array,TextDecoder,JSON,console:{error(){}},Deno:{env:{get:name=>({SUPABASE_URL:'https://test.invalid',SUPABASE_SERVICE_ROLE_KEY:'test-only',VOICE_IAP_ENABLED:enabled?'true':'false',VOICE_IAP_ENVIRONMENT:'Sandbox'})[name]},serve:fn=>handler=fn},
-  createClient:()=>admin,appleConfig(){},verifiedTransaction:async()=>({productId:product,price:1000000,currency:'JPY'}),
+ const admin={auth:{getUser:async token=>token==='valid'?{data:{user:{id:user}}}:{data:{user:null},error:{}}},rpc:async(name,args)=>{calls.push({name,args});return {data:{sellerId:'00000000-0000-4000-8000-000000000004',orderId:attempt,productId:product,amountJpy:1000,environment:'Sandbox',state:'prepared'}};}};
+ const c={Response,Request,Uint8Array,TextDecoder,JSON,console:{error(){}},Deno:{env:{get:name=>({SUPABASE_URL:'https://test.invalid',SUPABASE_SERVICE_ROLE_KEY:'test-only',STRIPE_SECRET_KEY:'sk_test_unit',VOICE_IAP_ENABLED:enabled?'true':'false',VOICE_IAP_ENVIRONMENT:'Sandbox'})[name]},serve:fn=>handler=fn},
+  createClient:()=>admin,Stripe:function(){},requireRecipient:async()=>{},appleConfig(){},verifiedTransaction:async()=>({productId:product,price:1000000,currency:'JPY'}),
   applyTransaction:async(db,tx,actor)=>{calls.push({actor,tx});if(applyFailure)throw Error('database unavailable');return {paymentId:'payment',conversationId:'trade'};}
  };
  const src=fs.readFileSync(new URL('../supabase/functions/voice-iap/index.ts',import.meta.url),'utf8').replace(/^import .*;\n/gm,'');
@@ -33,4 +33,9 @@ test('voice Edge rejects boost receipts and persistence failures never report a 
  const wrong=fixture({product:'com.ayuhide.koenofurima.boost.silver'});
  assert.equal((await wrong.send({action:'verify',signedTransaction:'signed'})).status,400);assert.equal(wrong.calls.length,0);
  const failed=fixture({applyFailure:true});const r=await failed.send({action:'verify',signedTransaction:'signed'});assert.equal(r.status,503);assert.equal((await r.json()).success,undefined);
+});
+
+test('Apple job prepare binds the authenticated job buyer and ignores client supplied price and seller',async()=>{
+ const e=fixture({enabled:true});const r=await e.send({action:'prepareJob',applicationId:listing,attemptId:attempt,amount:1,seller_id:'attacker'});assert.equal(r.status,200);
+ assert.equal(e.calls[0].name,'prepare_job_voice_iap_order');assert.equal(e.calls[0].args.owner_id,user);assert.equal(e.calls[0].args.application,listing);assert.equal(e.calls[0].args.tx_environment,'Sandbox');
 });

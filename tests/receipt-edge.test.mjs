@@ -12,8 +12,8 @@ function endpoint(slug,options={}){
  const env={SUPABASE_URL:'https://local.invalid',SUPABASE_SERVICE_ROLE_KEY:'test-only',STRIPE_SECRET_KEY:'sk_test_unit',STRIPE_RECEIPT_CAPTURE_ENABLED:options.enabled===false?'false':'true'};
  const conversation={id:trade,buyer_id:buyer,payment_id:'payment',delivery_status:'accepted'};
  const db={auth:{getUser:async()=>({data:{user:options.authFail?null:{id:buyer,email:'test@example.invalid'}},error:options.authFail?true:null})},
-  from(table){return {select(){return this},eq(){return this},async maybeSingle(){return {data:table==='listings'?{id:listing,seller_id:seller,is_active:true,title:'Changed title',price_jpy:1500}:{id:seller,stripe_account_id:'acct_seller'}};} }},
-  rpc:async(name,args)=>{calls.push({name,args});if(options.rpcFail===name)return {error:true};return {data:name==='prepare_voice_checkout'?{reservation_id:reservation,listing_id:listing,buyer_id:buyer,seller_id:seller,stripe_destination:'acct_seller',amount_jpy:1000,title:'Frozen quote'}:name==='prepare_delivery_acceptance'?{payment:{...payment,...options.payment},conversation,alreadyAccepted:options.alreadyAccepted}:name==='finalize_delivery_acceptance'?conversation:null};}
+  from(table){return {select(){return this},eq(){return this},async maybeSingle(){return {data:table==='listings'?{id:listing,seller_id:seller,is_active:true,title:'Changed title',price_jpy:1500}:table==='applications'?{id:trade,job_id:listing,applicant_id:seller,status:'accepted',agreed_price_jpy:1000,agreed_at:'2026-10-29T00:00:00Z'}:table==='jobs'?{id:listing,buyer_id:buyer,status:'open',title:'Job'}:{id:seller,stripe_account_id:'acct_seller'}};} }},
+  rpc:async(name,args)=>{calls.push({name,args});if(options.rpcFail===name)return {error:true};return {data:['prepare_voice_checkout','prepare_job_checkout'].includes(name)?{reservation_id:reservation,listing_id:options.job?null:listing,...options.job?{job_id:listing,job_application_id:trade}:{},buyer_id:buyer,seller_id:seller,stripe_destination:'acct_seller',amount_jpy:1000,title:'Frozen quote'}:name==='prepare_delivery_acceptance'?{payment:{...payment,...options.payment},conversation,alreadyAccepted:options.alreadyAccepted}:name==='finalize_delivery_acceptance'?conversation:null};}
  };
  function Stripe(){return {
   v2:{core:{accounts:{retrieve:async()=>({id:'acct_seller',livemode:false,configuration:{recipient:{capabilities:{stripe_balance:{stripe_transfers:{status:options.inactive?'inactive':'active'}}}}},requirements:{entries:[]}})}}},
@@ -55,4 +55,11 @@ test('unverified/refunded payments and persistence failures never report receipt
 test('Apple receipt acceptance uses the latest verified transaction and revoked purchases cannot finish',async()=>{
  const e=endpoint('accept-delivery',{payment:{payment_channel:'ios',apple_transaction_id:'123',apple_environment:'Sandbox'},revoked:true});
  assert.equal((await e.send({conversationId:trade})).status,503);assert.ok(e.calls.some(x=>x.name==='apple_get'));assert.equal(e.calls.some(x=>x.name==='capture'||x.name==='finalize_delivery_acceptance'),false);
+});
+
+test('job Checkout uses only the accepted application and its immutable quote, never a client supplied seller or budget',async()=>{
+ const e=endpoint('create-checkout-session',{job:true});assert.equal((await e.send({applicationId:trade,attemptId:reservation,amount:1,seller_id:'attacker'})).status,200);
+ const prepare=e.calls.find(x=>x.name==='prepare_job_checkout');assert.equal(prepare.args.application,trade);assert.equal(prepare.args.actor,buyer);
+ const checkout=e.calls.find(x=>x.name==='checkout');assert.equal(checkout.params.metadata.job_application_id,trade);assert.equal(checkout.params.metadata.job_id,listing);assert.equal(checkout.params.metadata.listing_id,undefined);assert.equal(checkout.params.line_items[0].price_data.unit_amount,1000);
+ const invalid=endpoint('create-checkout-session',{job:true});assert.equal((await invalid.send({applicationId:trade,listingId:listing,attemptId:reservation})).status,400);
 });
