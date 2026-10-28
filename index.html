@@ -1583,7 +1583,8 @@ async function fetchSellerFinance(){
  return data;
 }
 function sellerFinanceNotice(data){
- return `未照合 ${Number(data.unverified||0)}件・テスト ${Number(data.test||0)}件・返金記録のある取引 ${Number(data.adjusting||0)}件は金額に含めません。各件数は重複する場合があります。`;
+ const applePending=Number.isSafeInteger(data.apple_settlement_pending)&&data.apple_settlement_pending>=0?data.apple_settlement_pending:null;
+ return `未照合 ${Number(data.unverified||0)}件・テスト ${Number(data.test||0)}件・返金記録のある取引 ${Number(data.adjusting||0)}件は金額に含めません。各件数は重複する場合があります。${applePending===null?' Apple購入の精算状況は未確認です。':` Apple本番購入の精算待ち ${applePending}件は、実際のApple手数料・受取額の照合前のため金額に含めません。`}`;
 }
 function applySellerFinance(data){
  const home=document.getElementById('homeSalesAmount');

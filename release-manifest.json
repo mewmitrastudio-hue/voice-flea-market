@@ -1,6 +1,6 @@
 {
   "release": "2026.10.28-voice-iap-candidate",
-  "web_sha256": "6799d3bc7c2c73f714672daf7a40192b8e564fc67e9fa0bc73ba0ce0f8d0a68f",
+  "web_sha256": "9f596ff2dc545c74e7fed84ad4d4db8f2179885b98d01f6afac6b5997d936fa0",
   "bundle_id": "com.ayuhide.koenofurima",
   "minimum_build_number": 26,
   "production_backend_applied": false,

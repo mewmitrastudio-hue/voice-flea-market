@@ -28,10 +28,15 @@ changed by preparing this branch.
 
 - Boost purchase also checks the actual Apple price/currency before StoreKit and
   before its server grant. Refunds still revoke legacy/repriced boosts.
+- Seller finance distinguishes Apple Sandbox purchases from unverified records
+  and reports verified Production purchases awaiting proceeds reconciliation.
+  Apple purchases never enter the existing Stripe allocation total, even if a
+  row happens to contain Stripe evidence. The new aggregate remains owner-scoped
+  and does not authorize seller transfers or payouts.
 
 ## Validation
 
-- Root Node suite: 69 passing tests at candidate verification.
+- Root Node suite: 71 passing tests at candidate verification.
 - Apple verifier suite: 13 passing tests, including the actual deployed adapter.
 - `CI_BUILD_NUMBER=26 npm run capawesome:build` bundles identical current HTML,
   prepares the native plugin and verifies source hashes/build number locally.
