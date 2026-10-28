@@ -1327,6 +1327,12 @@ html body.normal-mode #home.page.on.home-scroll-required{
     </div>
 
     <div class="admin-dashboard-section">
+      <b>Stripe残高・振込記録</b>
+      <button id="adminStripeAuditButton" class="btn secondary full" type="button" onclick="loadAdminStripeAccountAudit()">接続口座と残高を照合</button>
+      <div id="adminStripeAuditResult" role="status" aria-live="polite" class="small"></div>
+      <div class="small">残高は利益とは異なります。Stripeの振込済み表示も銀行での着金確認とは別です。Appleの売上・入金は含みません。</div>
+    </div>
+    <div class="admin-dashboard-section">
       <b>出品ブーストの購入記録</b>
       <div id="adminBoostSummary" class="small">読み込み中...</div>
       <div id="adminBoostReceipts" class="admin-dashboard-list"></div>
@@ -1959,6 +1965,31 @@ function openAppNotice(id){
  document.getElementById('appNoticeOverlay').classList.add('show');
 }
 
+let adminStripeAuditRevision=0;
+function auditMoney(row){return row.currency==='jpy'?financeYen(row.amount):`${Number(row.amount).toLocaleString()} ${esc(String(row.currency).toUpperCase())}（最小通貨単位）`;}
+async function loadAdminStripeAccountAudit(){
+ if(!sb||!isVoiceFleaAdmin())return;
+ const owner=currentUser.id,request=++adminStripeAuditRevision;
+ const body=document.getElementById('adminStripeAuditResult'),button=document.getElementById('adminStripeAuditButton');
+ if(!body||!button)return;
+ body.textContent='Stripeの接続口座と記録を照合しています…';button.disabled=true;
+ try{
+  const {data,error}=await sb.functions.invoke('stripe-account-audit',{body:{}});
+  if(request!==adminStripeAuditRevision||currentUser?.id!==owner||!isVoiceFleaAdmin())return;
+  if(error||!data?.success||!/^acct_[A-Za-z0-9]+$/.test(data.accountId)||typeof data.livemode!=='boolean'
+   ||!Number.isFinite(Date.parse(data.observedAt)))throw Error('Audit unavailable');
+  const balances=data.balance?.state==='verified'
+   ?[['利用可能',data.balance.available],['入金待ち',data.balance.pending],['Connect留保額',data.balance.connectReserved]].map(([label,rows])=>`<p>${label}：${rows===null?'未取得':rows.length?rows.map(auditMoney).join(' ／ '):'該当通貨の記録なし'}</p>`).join('')
+   :'<p>残高を取得できません。金額は未確認です。</p>';
+  const statuses={pending:'手続き待ち',in_transit:'送金中',paid:'Stripeで振込済み',failed:'失敗',canceled:'取消'};
+  const payouts=data.payouts?.state==='verified'
+   ?`<p>直近の振込記録（最大10件）：${data.payouts.rows.length}件${data.payouts.hasMore?'・以前の記録あり':''}</p>`+data.payouts.rows.map(p=>`<p>${esc(statuses[p.status]||'状態未確認')} ／ ${auditMoney(p)}<br>予定到着日：${esc(formatJpDateTime(p.arrivalDate,false))}<br>${esc(p.id)}</p>`).join('')
+   :'<p>振込記録を取得できません。件数は未確認です。</p>';
+  body.innerHTML=`<p><b>${data.livemode?'Stripe・本番':'Stripe・テスト（実際の入金は発生しません）'}</b><br>接続口座：${esc(data.accountId)}<br>照合日時：${esc(formatJpDateTime(data.observedAt))}</p>${balances}${payouts}`;
+ }catch{
+  if(request===adminStripeAuditRevision&&currentUser?.id===owner&&isVoiceFleaAdmin())body.textContent='接続口座を照合できません。金額や振込件数を0件と判断せず、時間をおいて再確認してください。';
+ }finally{if(request===adminStripeAuditRevision)button.disabled=false;}
+}
 function closeAdminDashboard(){document.getElementById('adminDashboardOverlay')?.classList.remove('show')}
 
 async function openAdminDashboard(){
@@ -2229,6 +2260,9 @@ let authSubscription=null,authInitRunning=false,authBootstrapping=false;
 let authEventRevision=0,authUIRevision=0,authReloadPending=false,signOutPending=false;
 function reloadAfterAuthChange(){location.reload()}
 function resetPrivateUI(){
+ adminStripeAuditRevision++;
+ document.getElementById('adminStripeAuditResult')?.replaceChildren();
+ const auditButton=document.getElementById('adminStripeAuditButton');if(auditButton)auditButton.disabled=false;
  for(const id of ['adminStatUsers','adminStatListings','adminStatJobs','adminStatPaid','adminStatGross','adminStatFees'])adminSetStat(id,'-');
  resetAdminSupportDesk();
  adminMailRevision++;adminMailBusy=false;adminMailOverview=null;noticeMailDraft=null;appAnnouncementRows=[];

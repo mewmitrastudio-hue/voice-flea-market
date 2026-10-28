@@ -33,10 +33,17 @@ changed by preparing this branch.
   Apple purchases never enter the existing Stripe allocation total, even if a
   row happens to contain Stripe evidence. The new aggregate remains owner-scoped
   and does not authorize seller transfers or payouts.
+- An operator-only `stripe-account-audit` Edge endpoint reads the identity of
+  the account configured on the payment server, its balance and its latest ten
+  payouts. It never charges, refunds or transfers. Key values, bank details and
+  upstream errors are not returned. Failed or wrong-mode reads remain unknown.
+  The admin panel discards results after an account switch and keeps Apple
+  proceeds, Stripe balances, bank receipts and profit distinct. An empty or
+  limited payout page is not presented as an all-time transaction total.
 
 ## Validation
 
-- Root Node suite: 71 passing tests at candidate verification.
+- Root Node suite: 75 passing tests at candidate verification.
 - Apple verifier suite: 13 passing tests, including the actual deployed adapter.
 - `CI_BUILD_NUMBER=26 npm run capawesome:build` bundles identical current HTML,
   prepares the native plugin and verifies source hashes/build number locally.
