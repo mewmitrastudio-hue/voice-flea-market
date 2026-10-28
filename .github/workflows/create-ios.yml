@@ -1,6 +1,16 @@
 name: Verify and build iOS app
 on:
   workflow_dispatch:
+  pull_request:
+    branches: [main]
+    paths:
+      - 'index.html'
+      - 'BoostPlugin.swift'
+      - 'ios/**'
+      - 'scripts/**'
+      - 'tests/**'
+      - 'release-manifest.json'
+      - '.github/workflows/create-ios.yml'
   push:
     branches: [main]
     paths:
