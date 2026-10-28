@@ -1,6 +1,6 @@
 {
   "release": "2026.10.29-1",
-  "web_sha256": "03f8be22a52e4614a8970007ed4b2f4d1c766b648ab2536b5bee2e888065268d",
+  "web_sha256": "fcb356a95e348f3d6209bc6d64132541e814122c44a07f52106f76bd8e4129d6",
   "bundle_id": "com.ayuhide.koenofurima",
   "minimum_build_number": 27,
   "production_backend_applied": false,
