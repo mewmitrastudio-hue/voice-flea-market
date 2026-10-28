@@ -16,8 +16,9 @@ export async function verifiedTransaction(signed:string){return appleConfig().ve
 export async function applyTransaction(admin:any,tx:any,actor:string|null=null){
  const voice=/^com\.ayuhide\.koenofurima\.voice\.jpy[1-9][0-9]{0,7}$/.test(tx.productId||'');
  const args:any={order_id:tx.appAccountToken,tx_id:tx.transactionId,sku:tx.productId,tx_environment:tx.environment,purchased_at:new Date(tx.purchaseDate).toISOString(),revoked:Boolean(tx.revocationDate)};
- if(voice)Object.assign(args,{price_milliunits:tx.price,currency:tx.currency,actor});
- const {data,error}=await admin.rpc(voice?'apply_verified_apple_voice':'apply_verified_apple_boost',args);
+ Object.assign(args,{price_milliunits:tx.price??null,currency:tx.currency??null});
+ if(voice)Object.assign(args,{actor});
+ const {data,error}=await admin.rpc(voice?'apply_verified_apple_voice':'apply_priced_apple_boost',args);
  if(error)throw error;
  return data;
 }

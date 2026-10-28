@@ -82,16 +82,18 @@ public class KoeBoostPlugin: CAPPlugin, CAPBridgedPlugin {
                 guard let product = try await Product.products(for: [id]).first, product.type == .consumable else {
                     call.reject("このプランはまだ購入できません。"); return
                 }
-                if id.contains(".voice.") {
-                    guard let amount = call.getInt("amountJpy"), product.priceFormatStyle.currencyCode == "JPY",
-                          product.price == Decimal(amount) else {
-                        call.reject("出品価格とAppleの商品価格が一致しません。購入は開始していません。"); return
-                    }
+                let boostAmounts = ["com.ayuhide.koenofurima.boost.silver": 300,
+                                    "com.ayuhide.koenofurima.boost.gold": 800,
+                                    "com.ayuhide.koenofurima.boost.platinum": 1500]
+                guard let amount = boostAmounts[id] ?? call.getInt("amountJpy"),
+                      product.priceFormatStyle.currencyCode == "JPY", product.price == Decimal(amount) else {
+                    call.reject("出品・プランの価格とAppleの商品価格が一致しません。購入は開始していません。"); return
                 }
                 let result = try await product.purchase(options: [.appAccountToken(token)])
                 switch result {
                 case .success(let verification):
-                    guard case .verified(let transaction) = verification, isAllowed(transaction.productID) else {
+                    guard case .verified(let transaction) = verification, transaction.productID == id,
+                          transaction.appAccountToken == token else {
                         call.reject("購入を検証できません。再購入せず購入の反映を確認してください。"); return
                     }
                     // Never finish before the server has durably granted the purchase.

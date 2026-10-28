@@ -26,9 +26,12 @@ changed by preparing this branch.
   purchases retain history but cannot continue delivery or acceptance.
 - Private tables use RLS; service-only receipt/order RPCs are denied to clients.
 
+- Boost purchase also checks the actual Apple price/currency before StoreKit and
+  before its server grant. Refunds still revoke legacy/repriced boosts.
+
 ## Validation
 
-- Root Node suite: 67 passing tests at candidate verification.
+- Root Node suite: 69 passing tests at candidate verification.
 - Apple verifier suite: 13 passing tests, including the actual deployed adapter.
 - `CI_BUILD_NUMBER=26 npm run capawesome:build` bundles identical current HTML,
   prepares the native plugin and verifies source hashes/build number locally.
