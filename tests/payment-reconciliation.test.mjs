@@ -138,3 +138,18 @@ test('operator payment paging keeps loaded records on failure, includes partial 
  await c.loadAdminPaymentReceipts(true);assert.equal(c.state.dashboard.rows.length,2);assert.deepEqual(cursors[1],cursors[2]);assert.match(nodes.get('adminRecentPayments').innerHTML,/一部/);assert.match(nodes.get('adminRecentPayments').innerHTML,/300円/);assert.match(nodes.get('adminRecentPayments').innerHTML,/&lt;Voice>/);
  let resolve;const other=ui(()=>new Promise(r=>resolve=r));const pending=other.c.loadAdminPaymentReceipts();other.c.currentUser={id:'ordinary'};resolve({data:{rows:[row],summary:[],has_more:false}});await pending;assert.equal(other.c.state.dashboard.rows.length,0);
 });
+function manualCompletion(){const e=event();e.data.object.payment_status='unpaid';e.data.object.metadata.capture_flow='receipt-v1';return e;}
+function manualOptions(overrides={}){const e=manualCompletion();return {piOverrides:{status:'requires_capture',capture_method:'manual',amount_capturable:1000,application_fee_amount:150,transfer_data:{destination:'acct_seller'},metadata:e.data.object.metadata,...overrides},chargeOverrides:{captured:false,amount_captured:0,amount_refunded:0,payment_method_details:{card:{capture_before:2000000000}}}};}
+test('signed manual Checkout stores an authorization without recording captured money, and binds the quote and metadata',async()=>{
+ const h=webhook(manualOptions());assert.equal((await h.send(manualCompletion())).status,200);assert.deepEqual(h.calls.map(x=>x.name),['record_stripe_authorization','finish_checkout_reservation']);
+ const s=h.calls[0].args.snapshot;assert.equal(s.amount_jpy,1000);assert.equal(s.stripe_destination,'acct_seller');assert.equal(s.reservation_id,'reservation');assert.equal(s.canceled,false);assert.equal(s.authorization_expires_at,new Date(2000000000000).toISOString());
+ for(const changed of [{metadata:{capture_flow:'receipt-v1'}},{application_fee_amount:1},{capture_method:'automatic'},{amount_capturable:900}]){
+  const bad=webhook(manualOptions(changed));assert.equal((await bad.send(manualCompletion())).status,503);assert.equal(bad.calls.length,0);
+ }
+});
+test('canceled manual authorizations are not recorded as paid, and cancellation events reconcile the current provider state',async()=>{
+ const h=webhook(manualOptions({status:'canceled'}));assert.equal((await h.send(manualCompletion())).status,200);assert.equal(h.calls[0].args.snapshot.canceled,true);assert.equal(h.calls.some(x=>x.name==='record_stripe_payment_snapshot'),false);
+ const cancel=event({type:'payment_intent.canceled',data:{object:{id:'pi_test1',metadata:{capture_flow:'receipt-v1'}}}});
+ const current=webhook(manualOptions({status:'canceled'}));assert.equal((await current.send(cancel)).status,200);assert.equal(current.calls[0].name,'record_voice_authorization_canceled');
+ const late=webhook(manualOptions({status:'succeeded'}));assert.equal((await late.send(cancel)).status,200);assert.equal(late.calls.length,0);
+});

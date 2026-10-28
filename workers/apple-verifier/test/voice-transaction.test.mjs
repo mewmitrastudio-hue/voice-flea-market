@@ -22,3 +22,15 @@ test('actual Edge adapter checks authoritative Apple price and current revocatio
  assert.ok((await adapter.verifiedTransaction('incoming.signed.transaction')).revocationDate);
  price=999000;await assert.rejects(adapter.verifiedTransaction('incoming.signed.transaction'),/TRANSACTION_MISMATCH/);
 });
+test('receipt-time Apple lookup verifies requested identity and preserves revocation without a client receipt',async()=>{
+ const keys=await crypto.subtle.generateKey({name:'ECDSA',namedCurve:'P-256'},true,['sign','verify']);
+ const pem='-----BEGIN PRIVATE KEY-----\n'+Buffer.from(await crypto.subtle.exportKey('pkcs8',keys.privateKey)).toString('base64')+'\n-----END PRIVATE KEY-----';
+ const env={APPLE_VERIFIER_URL:'https://verify.example/',APPLE_VERIFIER_SHARED_SECRET:secret,APPLE_IAP_PRIVATE_KEY:pem,APPLE_IAP_KEY_ID:'TESTKEY',APPLE_IAP_ISSUER_ID:'test-issuer'};
+ let current={...tx,revocationDate:Date.now()},calls=0;
+ const adapter=createAppleAdapter({getEnv:k=>env[k],fetchImpl:async url=>{calls++;return String(url).startsWith('https://verify.example/')?Response.json({transaction:current}):Response.json({signedTransactionInfo:'latest.signed.transaction'});}});
+ assert.ok((await adapter.verifiedTransactionById(tx.transactionId,'Sandbox')).revocationDate);
+ const before=calls;await assert.rejects(adapter.verifiedTransactionById('../other','Sandbox'),/TRANSACTION_MISMATCH/);assert.equal(calls,before);
+ await assert.rejects(adapter.verifiedTransactionById(tx.transactionId,'Unknown'),/TRANSACTION_MISMATCH/);assert.equal(calls,before);
+ current={...tx,transactionId:'999'};await assert.rejects(adapter.verifiedTransactionById(tx.transactionId,'Sandbox'),/TRANSACTION_MISMATCH/);
+ current={...tx,environment:'Production'};await assert.rejects(adapter.verifiedTransactionById(tx.transactionId,'Sandbox'),/TRANSACTION_MISMATCH/);
+});

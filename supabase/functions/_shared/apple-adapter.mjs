@@ -35,12 +35,18 @@ export function createAppleAdapter({getEnv,fetchImpl=fetch,cryptoImpl=crypto}){
  }
  async function verifiedTransaction(signed){
   const submitted=await decodeTransaction(signed);
-  const response=await fetchImpl(`${hosts[submitted.environment]}/inApps/v1/transactions/${encodeURIComponent(submitted.transactionId)}`,{redirect:'error',signal:AbortSignal.timeout(20000),headers:{Authorization:`Bearer ${await jwt()}`}});
+  const tx=await verifiedTransactionById(submitted.transactionId,submitted.environment);
+  for(const field of ['transactionId','environment','productId','appAccountToken','purchaseDate','currency','price'])if(tx[field]!==submitted[field])throw new Error('TRANSACTION_MISMATCH');
+  return tx;
+ }
+ async function verifiedTransactionById(transactionId,environment){
+  if(!/^\d{1,40}$/.test(transactionId||'')||!hosts[environment])throw new Error('TRANSACTION_MISMATCH');
+  const response=await fetchImpl(`${hosts[environment]}/inApps/v1/transactions/${encodeURIComponent(transactionId)}`,{redirect:'error',signal:AbortSignal.timeout(20000),headers:{Authorization:`Bearer ${await jwt()}`}});
   if(!response.ok)throw new Error('APPLE_API_UNAVAILABLE');
   const latest=await response.json();
   if(typeof latest.signedTransactionInfo!=='string')throw new Error('TRANSACTION_MISSING');
   const tx=await decodeTransaction(latest.signedTransactionInfo);
-  for(const field of ['transactionId','environment','productId','appAccountToken','purchaseDate','currency','price'])if(tx[field]!==submitted[field])throw new Error('TRANSACTION_MISMATCH');
+  if(tx.transactionId!==transactionId||tx.environment!==environment)throw new Error('TRANSACTION_MISMATCH');
   return tx;
  }
  async function verifyAndDecodeNotification(signedPayload){
@@ -48,5 +54,5 @@ export function createAppleAdapter({getEnv,fetchImpl=fetch,cryptoImpl=crypto}){
   if(!n||!hosts[n.environment]||typeof n.notificationType!=='string'||n.data?.signedTransactionInfo!==undefined&&typeof n.data.signedTransactionInfo!=='string')throw new Error('NOTIFICATION_MISMATCH');
   return n;
  }
- return {verifiedTransaction,verifyAndDecodeNotification};
+ return {verifiedTransaction,verifiedTransactionById,verifyAndDecodeNotification};
 }
