@@ -47,6 +47,14 @@ test('the actual Capacitor proxy loads through async initialization and reaches 
  assert.equal(calls.length,2,'initialization must not dispatch a fictitious then method');
 });
 function deferred(){let resolve;const promise=new Promise(r=>{resolve=r});return {promise,resolve};}
+test('product loading from a previous login cannot enable purchases after the account changes',async()=>{
+ const s=screen([{id:'listing',title:'test'}]),products=deferred(),reached=deferred();
+ s.plugin.products=()=>{reached.resolve();return products.promise;};
+ const run=s.context.openBoostPreview('listing');await reached.promise;
+ s.context.currentUser={id:'other'};
+ products.resolve({environment:'Sandbox',products:[{id:'silver'}]});await run;
+ assert.equal(s.context.boostReady,false);assert.equal(s.context.boostStoreProducts.length,0);
+});
 function purchaseScreen(){
  const pending=deferred(),order=deferred(),purchase=deferred(),verify=deferred(),finish=deferred();
  const reached={pending:deferred(),prepare:deferred(),purchase:deferred(),verify:deferred(),finish:deferred()};
@@ -126,6 +134,46 @@ test('web reconciliation does not call native purchase APIs or alter purchase st
  await s.context.reconcileBoostPurchases();
  assert.deepEqual(s.calls,[]);assert.equal(s.context.boostBusy,false);assert.equal(s.context.boostReady,true);
  assert.match(s.notices.at(-1),/iPhoneアプリ/);
+});
+
+test('switching accounts while checking unfinished purchases never prepares a boost for the new account',async()=>{
+ const s=purchaseScreen(),run=s.context.purchaseBoost('silver');
+ await s.reached.pending.promise;s.context.currentUser={id:'other'};s.pending.resolve({transactions:[]});
+ // Resolve every deferred response so the previous implementation cannot hang.
+ s.order.resolve({orderId:'order',productId:'silver'});await run;
+ assert.deepEqual(s.calls,['pending']);assert.equal(s.context.boostBusy,false);
+});
+test('switching accounts in the Apple sheet preserves the receipt for the original purchaser',async()=>{
+ const s=purchaseScreen(),run=s.context.purchaseBoost('silver');
+ s.pending.resolve({transactions:[]});s.order.resolve({orderId:'order',productId:'silver'});
+ await s.reached.purchase.promise;s.context.currentUser={id:'other'};
+ s.purchase.resolve({status:'purchased',signedTransaction:'signed',transactionId:'tx'});
+ s.verify.resolve({success:true});s.finish.resolve();await run;
+ assert.deepEqual(s.calls,['pending','prepare','purchase']);
+ assert.match(s.notices.at(-1),/ログイン状態/);assert.equal(s.context.boostReady,false);
+});
+test('reconciliation does not submit another account receipt after login changes during the native read',async()=>{
+ const s=purchaseScreen();
+ vm.runInContext(html.slice(html.indexOf('async function reconcileBoostPurchases('),html.indexOf('function closeBoostPreview(')),s.context);
+ const run=s.context.reconcileBoostPurchases();await s.reached.pending.promise;
+ s.context.currentUser={id:'other'};s.pending.resolve({transactions:[{signedTransaction:'signed',transactionId:'tx'}]});
+ s.verify.resolve({success:true});s.finish.resolve();await run;
+ assert.deepEqual(s.calls,['pending']);assert.equal(s.context.boostBusy,false);
+});
+test('closing the boost preview during order preparation never opens a late Apple sheet',async()=>{
+ const s=purchaseScreen(),run=s.context.purchaseBoost('silver');s.pending.resolve({transactions:[]});
+ await s.reached.prepare.promise;s.context.boostRequest++;
+ s.order.resolve({orderId:'order',productId:'silver'});
+ s.purchase.resolve({status:'cancelled'});await run;
+ assert.deepEqual(s.calls,['pending','prepare']);assert.equal(s.context.boostBusy,false);
+});
+test('a login change during receipt verification leaves the transaction unfinished for recovery',async()=>{
+ const s=purchaseScreen();
+ vm.runInContext(html.slice(html.indexOf('async function reconcileBoostPurchases('),html.indexOf('function closeBoostPreview(')),s.context);
+ const run=s.context.reconcileBoostPurchases();s.pending.resolve({transactions:[{signedTransaction:'signed',transactionId:'tx'}]});
+ await s.reached.verify.promise;s.context.currentUser={id:'other'};
+ s.verify.resolve({success:true});s.finish.resolve();await run;
+ assert.deepEqual(s.calls,['pending','verify']);assert.equal(s.context.boostBusy,false);
 });
 for(const plan of ['silver','gold','platinum'])test(`verified ${plan} purchase completes in order and uses the server product`,async()=>{
  const s=purchaseScreen();let purchaseArgs;
