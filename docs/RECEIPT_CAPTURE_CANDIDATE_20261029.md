@@ -33,8 +33,13 @@ candidate. Apply schema and endpoints together with the matching Web/iOS source.
 
 1. Complete endpoint and UI regression coverage for renewal and cancellation,
    verify SDK/runtime compilation, and review concurrency/cancellation edge cases.
-2. Complete paid recruitment/job orders across Web and iOS. Existing job chats
-   are not evidence of an integrated payment or settlement flow.
+2. Validate staged paid recruitment/job orders across Web and iOS against the
+   deployed backend. Local SQL and endpoint tests cover frozen accepted offers,
+   exact payment/chat association, duplicate prevention, and Apple job receipts.
+   Two additional SQL lifecycle tests verify cancellation through both parties'
+   deletion eligibility and renewal through delivery acceptance and deletion
+   eligibility. Payment history is retained. These tests do not delete real
+   accounts, contact Stripe, or establish real-device purchase results.
 3. Complete actual Apple proceeds reconciliation and seller settlement evidence;
    actual provider reports must supply net amounts. Keep unconfirmed proceeds
    visibly pending and never estimate a fee rate to authorize payouts.
