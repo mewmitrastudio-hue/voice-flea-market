@@ -54,7 +54,10 @@ public class KoeBoostPlugin: CAPPlugin, CAPBridgedPlugin {
                 }
                 let items = try await Product.products(for: requested)
                 let environment = try await purchaseEnvironment()
-                call.resolve(["environment": environment, "products": items.filter { $0.type == .consumable }.map {
+                // Read immediately for this request; never persist a customer's
+                // storefront as profile data or infer currency from device locale.
+                let storefront = await Storefront.current
+                call.resolve(["environment": environment, "storefrontCountry": storefront?.countryCode ?? "", "products": items.filter { $0.type == .consumable }.map {
                     ["id": $0.id, "displayPrice": $0.displayPrice, "displayName": $0.displayName, "currencyCode": $0.priceFormatStyle.currencyCode, "price": NSDecimalNumber(decimal: $0.price).stringValue]
                 }])
             } catch { call.reject("商品情報を取得できません。時間をおいて再試行してください。") }

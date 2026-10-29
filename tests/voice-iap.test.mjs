@@ -140,6 +140,11 @@ test('voice preview distinguishes missing products, environment, currency and pr
   assert.match(f.elements.get('voicePurchaseStatus').textContent,new RegExp(code));
   assert.equal(f.elements.get('voicePurchaseConfirm').hidden,true);assert.deepEqual(f.events,[]);
  }
+ const reported=uiFixture();reported.plugin.products=async()=>({environment:'Sandbox',storefrontCountry:'JPN',products:[{id:sku,price:'5.99',currencyCode:'USD',displayPrice:'$5.99'}]});
+ await reported.c.startVoicePurchase(listing);
+ assert.match(reported.elements.get('voicePurchaseStatus').textContent,/USD.*\$5\.99.*JPN/);
+ assert.equal(reported.elements.get('voicePurchaseConfirm').hidden,true);assert.deepEqual(reported.events,[]);
+ assert.equal([...reported.storage.values()].some(value=>String(value).includes('JPN')),false,'storefront is not persisted with the purchase attempt');
  const f=uiFixture();await f.c.startVoicePurchase(listing);
  assert.equal(f.elements.get('voicePurchaseConfirm').hidden,false);
  assert.match(f.elements.get('voicePurchaseConfirm').textContent,/¥1,000/);
