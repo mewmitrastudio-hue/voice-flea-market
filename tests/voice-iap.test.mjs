@@ -111,15 +111,15 @@ test('new orders reject self-purchases, blocked and deleted accounts; pending pa
 });
 
 function uiFixture({verifyFailure=false,accountSwitch=false}={}){
- const events=[],elements=new Map(),storage=new Map();let resolvePurchase;
+ const events=[],elements=new Map(),storage=new Map(),timers=new Map();let resolvePurchase,timerId=0;
  const plugin={pendingTransactions:async options=>{assert.equal(options.kind,'voice');return {transactions:[]};},products:async()=>({environment:'Sandbox',products:[{id:sku,displayPrice:'¥1,000',currencyCode:'JPY',price:'1000'}]}),purchase:async()=>{events.push('purchase');return await new Promise(r=>resolvePurchase=r);},finish:async()=>events.push('finish')};
- const c={currentUser:{id:buyer},isNativeBoost:()=>true,nativeBoost:async()=>({plugin}),safeLocalStorage:{getItem:k=>storage.get(k),setItem:(k,v)=>storage.set(k,v),removeItem:k=>storage.delete(k)},crypto:{randomUUID:()=>attempt},document:{getElementById:id=>{if(!elements.has(id))elements.set(id,{classList:{add(){},remove(){}},hidden:false,textContent:''});return elements.get(id);}},alert(){},go(){events.push('go')},openConversation:async()=>events.push('open'),sb:{functions:{invoke:async(_,args)=>{
+ const c={setTimeout:(fn,ms)=>{timers.set(++timerId,{fn,ms});return timerId;},clearTimeout:id=>timers.delete(id),currentUser:{id:buyer},isNativeBoost:()=>true,nativeBoost:async()=>({plugin}),safeLocalStorage:{getItem:k=>storage.get(k),setItem:(k,v)=>storage.set(k,v),removeItem:k=>storage.delete(k)},crypto:{randomUUID:()=>attempt},document:{getElementById:id=>{if(!elements.has(id))elements.set(id,{classList:{add(){},remove(){}},hidden:false,textContent:''});return elements.get(id);}},alert(){},go(){events.push('go')},openConversation:async()=>events.push('open'),sb:{functions:{invoke:async(_,args)=>{
   if(args.body.action==='prepare')return {data:{orderId:attempt,productId:sku,amountJpy:1000,environment:'Sandbox',state:'prepared'}};
   events.push('verify');if(accountSwitch)c.currentUser={id:other};
   return verifyFailure?{error:{}}:{data:{success:true,paymentId:'payment',conversationId:'conversation'}};
  }}}};
  vm.createContext(c);const html=read('index.html');vm.runInContext(html.slice(html.indexOf('let voicePurchaseBusy='),html.indexOf('</script>',html.indexOf('let voicePurchaseBusy='))),c);
- return {c,events,elements,complete:result=>resolvePurchase(result)};
+ return {c,plugin,events,elements,storage,timers,expire:()=>{const [id,timer]=timers.entries().next().value;timers.delete(id);assert.equal(timer.ms,20000);timer.fn();},complete:result=>resolvePurchase(result)};
 }
 test('voice purchase locks repeated taps and finishes only after durable server verification',async()=>{
  const f=uiFixture();await f.c.startVoicePurchase(listing);const first=f.c.confirmVoicePurchase();await f.c.confirmVoicePurchase();assert.equal(f.events.filter(x=>x==='purchase').length,1);
@@ -127,4 +127,31 @@ test('voice purchase locks repeated taps and finishes only after durable server 
  const failed=uiFixture({verifyFailure:true});await failed.c.startVoicePurchase(listing);const p=failed.c.confirmVoicePurchase();failed.complete({status:'purchased',signedTransaction:'signed',transactionId:'123'});await p;assert.ok(!failed.events.includes('finish'));assert.match(failed.elements.get('voicePurchaseStatus').textContent,/再購入せず/);
  const cancelled=uiFixture();await cancelled.c.startVoicePurchase(listing);const q=cancelled.c.confirmVoicePurchase();cancelled.complete({status:'cancelled'});await q;assert.deepEqual(cancelled.events,['purchase']);
  const switched=uiFixture({accountSwitch:true});await switched.c.startVoicePurchase(listing);const t=switched.c.confirmVoicePurchase();switched.complete({status:'purchased',signedTransaction:'signed',transactionId:'123'});await t;assert.ok(!switched.events.includes('open'));
+});
+const tick=()=>new Promise(resolve=>setImmediate(resolve));
+test('a frozen Apple price read stops loading, preserves its order attempt, and cannot show a late purchase button',async()=>{
+ const f=uiFixture();let late;f.plugin.products=()=>new Promise(r=>late=r);
+ const first=f.c.startVoicePurchase(listing);await tick();assert.match(f.elements.get('voicePurchaseStatus').textContent,/Appleから商品価格/);
+ const key='vf_voice_attempt_'+buyer+':'+listing;assert.equal(f.storage.get(key),attempt);
+ f.expire();await first;assert.match(f.elements.get('voicePurchaseStatus').textContent,/Appleの商品価格を取得できませんでした/);assert.equal(f.elements.get('voicePurchaseConfirm').hidden,true);assert.equal(f.timers.size,0);
+ late({environment:'Sandbox',products:[{id:sku,displayPrice:'¥1,000',currencyCode:'JPY',price:'1000'}]});await tick();assert.equal(f.elements.get('voicePurchaseConfirm').hidden,true);assert.equal(f.events.length,0);
+ f.plugin.products=async()=>({environment:'Sandbox',products:[{id:sku,displayPrice:'¥1,000',currencyCode:'JPY',price:'1000'}]});await f.c.startVoicePurchase(listing);assert.equal(f.elements.get('voicePurchaseConfirm').hidden,false);assert.equal(f.storage.get(key),attempt);
+});
+test('stalled native setup, pending receipt scan and order preparation each recover without starting a purchase',async()=>{
+ for(const stage of ['native','pending','prepare']){
+  const f=uiFixture();if(stage==='native')f.c.nativeBoost=()=>new Promise(()=>{});if(stage==='pending')f.plugin.pendingTransactions=()=>new Promise(()=>{});if(stage==='prepare')f.c.sb.functions.invoke=()=>new Promise(()=>{});
+  const p=f.c.startVoicePurchase(listing);await tick();f.expire();await p;assert.equal(f.elements.get('voicePurchaseConfirm').hidden,true);assert.equal(f.events.length,0);
+  const count=f.timers.size;assert.equal(count,0);
+  if(stage==='prepare')assert.equal(f.storage.get('vf_voice_attempt_'+buyer+':'+listing),attempt,'a lost response must not replace the order ID');
+ }
+});
+test('closing a frozen preparation allows reopening; completion of the old request cannot unlock a newer preparation',async()=>{
+ const f=uiFixture();let calls=0;f.plugin.products=()=>{calls++;return new Promise(()=>{});};
+ const old=f.c.startVoicePurchase(listing);await tick();f.c.closeVoicePurchase();const current=f.c.startVoicePurchase(listing);await tick();assert.equal(calls,2);
+ f.expire();await old;await f.c.startVoicePurchase(listing);assert.equal(calls,2,'old finally cannot clear the new operation lock');
+ f.expire();await current;assert.equal(f.elements.get('voicePurchaseConfirm').hidden,true);
+});
+test('closing the Apple payment sheet overlay does not release the purchase lock or permit a second charge',async()=>{
+ const f=uiFixture();await f.c.startVoicePurchase(listing);const purchased=f.c.confirmVoicePurchase();f.c.closeVoicePurchase();await f.c.startVoicePurchase(listing);assert.equal(f.events.filter(x=>x==='purchase').length,1);
+ f.complete({status:'cancelled'});await purchased;assert.equal(f.events.filter(x=>x==='purchase').length,1);
 });
