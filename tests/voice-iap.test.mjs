@@ -128,6 +128,25 @@ test('voice purchase locks repeated taps and finishes only after durable server 
  const cancelled=uiFixture();await cancelled.c.startVoicePurchase(listing);const q=cancelled.c.confirmVoicePurchase();cancelled.complete({status:'cancelled'});await q;assert.deepEqual(cancelled.events,['purchase']);
  const switched=uiFixture({accountSwitch:true});await switched.c.startVoicePurchase(listing);const t=switched.c.confirmVoicePurchase();switched.complete({status:'purchased',signedTransaction:'signed',transactionId:'123'});await t;assert.ok(!switched.events.includes('open'));
 });
+test('voice preview distinguishes missing products, environment, currency and price errors; the matching quote reaches Apple purchase',async()=>{
+ const cases=[
+  [{environment:'Production',products:[{id:sku,price:'1000',currencyCode:'JPY'}]},'V01'],
+  [{environment:'Sandbox',products:[]},'V02'],
+  [{environment:'Sandbox',products:[{id:sku,price:'1000',currencyCode:'USD'}]},'V03'],
+  [{environment:'Sandbox',products:[{id:sku,price:'1500',currencyCode:'JPY',displayPrice:'¥1,500'}]},'V04'],
+ ];
+ for(const [result,code] of cases){
+  const f=uiFixture();f.plugin.products=async()=>result;await f.c.startVoicePurchase(listing);
+  assert.match(f.elements.get('voicePurchaseStatus').textContent,new RegExp(code));
+  assert.equal(f.elements.get('voicePurchaseConfirm').hidden,true);assert.deepEqual(f.events,[]);
+ }
+ const f=uiFixture();await f.c.startVoicePurchase(listing);
+ assert.equal(f.elements.get('voicePurchaseConfirm').hidden,false);
+ assert.match(f.elements.get('voicePurchaseConfirm').textContent,/¥1,000/);
+ const purchase=f.c.confirmVoicePurchase();assert.deepEqual(f.events,['purchase']);
+ f.complete({status:'purchased',signedTransaction:'signed',transactionId:'123'});await purchase;
+ assert.deepEqual(f.events,['purchase','verify','finish','go','open']);
+});
 const tick=()=>new Promise(resolve=>setImmediate(resolve));
 test('a frozen Apple price read stops loading, preserves its order attempt, and cannot show a late purchase button',async()=>{
  const f=uiFixture();let late;f.plugin.products=()=>new Promise(r=>late=r);
