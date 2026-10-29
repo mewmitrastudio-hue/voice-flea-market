@@ -31,5 +31,5 @@ jobs:
           type: app-store
           certificate: 声のフリマ iOS Distribution2026
           destination: Koe no Furima App Store
-          gitRef: 3ede3c1c02eab75e5597305cd889330e30afe0ba
+          gitRef: d56f4aa13708280c8e0b49b0f04f2f5993875482
           token: ${{ secrets.CAPAWESOME_TOKEN }}
