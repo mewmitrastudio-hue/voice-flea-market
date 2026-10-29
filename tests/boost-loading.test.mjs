@@ -60,7 +60,8 @@ function purchaseScreen(){
  const reached={pending:deferred(),prepare:deferred(),purchase:deferred(),verify:deferred(),finish:deferred()};
  const calls=[],notices=[],buttons=['silver','gold','platinum'].map(plan=>({dataset:{boostBuy:plan},closest:()=>({querySelector:()=>({textContent:''})})}));
  const plugin={pendingTransactions:()=>{calls.push('pending');reached.pending.resolve();return pending.promise},purchase:()=>{calls.push('purchase');reached.purchase.resolve();return purchase.promise},finish:()=>{calls.push('finish');reached.finish.resolve();return finish.promise}};
- const context=vm.createContext({isNativeBoost:()=>true,openBoostPreview:async()=>{},boostRequest:0,boostOwnHistory:[],boostHistoryReady:true,boostBusy:false,boostPurchasePlan:null,boostReady:true,currentUser:{id:'owner'},boostEnvironment:'Sandbox',boostStoreProducts:['silver','gold','platinum'].map(p=>({id:'com.ayuhide.koenofurima.boost.'+p,displayPrice:'¥300',currencyCode:'JPY'})),nativeBoost:async()=>({plugin}),boostNotice:t=>notices.push(t),formatJpDateTime:()=>'',boostApi:body=>{calls.push(body.action);reached[body.action].resolve();return body.action==='prepare'?order.promise:verify.promise},document:{getElementById:()=>({value:'listing'}),querySelectorAll:()=>buttons}});
+ const context=vm.createContext({setTimeout,clearTimeout,isNativeBoost:()=>true,openBoostPreview:async()=>{},boostRequest:0,boostOwnHistory:[],boostHistoryReady:true,boostBusy:false,boostPurchasePlan:null,boostReady:true,currentUser:{id:'owner'},boostEnvironment:'Sandbox',boostStoreProducts:['silver','gold','platinum'].map(p=>({id:'com.ayuhide.koenofurima.boost.'+p,displayPrice:'¥300',currencyCode:'JPY'})),nativeBoost:async()=>({plugin}),boostNotice:t=>notices.push(t),formatJpDateTime:()=>'',boostApi:body=>{calls.push(body.action);reached[body.action].resolve();return body.action==='prepare'?order.promise:verify.promise},document:{getElementById:()=>({value:'listing'}),querySelectorAll:()=>buttons}});
+ vm.runInContext(html.slice(html.indexOf('async function boostRead('),html.indexOf('async function openBoostPreview(')),context);
  vm.runInContext(html.slice(html.indexOf('function boostActiveListing('),html.indexOf('// Bound read-only')),context);
  vm.runInContext(html.slice(html.indexOf('async function purchaseBoost('),html.indexOf('async function reconcileBoostPurchases(')),context);
  return {context,pending,order,purchase,verify,finish,reached,calls,notices,buttons};
@@ -166,6 +167,17 @@ test('closing the boost preview during order preparation never opens a late Appl
  s.order.resolve({orderId:'order',productId:'silver'});
  s.purchase.resolve({status:'cancelled'});await run;
  assert.deepEqual(s.calls,['pending','prepare']);assert.equal(s.context.boostBusy,false);
+});
+test('a lost boost preparation response releases the lock and its late response cannot start Apple purchase',async()=>{
+ const s=purchaseScreen(),read=s.context.boostRead;
+ s.context.boostRead=(task,stage)=>read(task,stage,10);
+ const run=s.context.purchaseBoost('silver');s.pending.resolve({transactions:[]});
+ await s.reached.prepare.promise;await run;
+ assert.equal(s.context.boostBusy,false);assert.equal(s.context.boostReady,false);
+ assert.match(s.notices.at(-1),/購入条件の確認に時間がかかっています/);
+ s.order.resolve({orderId:'same-pending-order',productId:'silver'});
+ await new Promise(resolve=>setImmediate(resolve));
+ assert.deepEqual(s.calls,['pending','prepare']);
 });
 test('a login change during receipt verification leaves the transaction unfinished for recovery',async()=>{
  const s=purchaseScreen();
