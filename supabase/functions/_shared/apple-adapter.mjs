@@ -2,6 +2,7 @@
 // Apple credentials stay in Supabase; only signed data reaches the verifier.
 const bundleId='com.ayuhide.koenofurima';
 const products=new Set(['silver','gold','platinum'].map(x=>`${bundleId}.boost.${x}`));
+const voiceProduct=id=>/^com\.ayuhide\.koenofurima\.voice\.jpy[1-9][0-9]{0,7}$/.test(id||'');
 const hosts={Sandbox:'https://api.storekit-sandbox.apple.com',Production:'https://api.storekit.apple.com'};
 const encode=bytes=>btoa(String.fromCharCode(...new Uint8Array(bytes))).replace(/=/g,'').replace(/\+/g,'-').replace(/\//g,'_');
 const json64=x=>encode(new TextEncoder().encode(JSON.stringify(x)));
@@ -17,7 +18,8 @@ export function createAppleAdapter({getEnv,fetchImpl=fetch,cryptoImpl=crypto}){
   return await response.json();
  }
  function checkTransaction(tx){
-  if(!tx||!hosts[tx.environment]||!/^\d+$/.test(tx.transactionId||'')||!products.has(tx.productId)||tx.type!=='Consumable'||tx.quantity!==1||tx.inAppOwnershipType!=='PURCHASED'||!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/.test(tx.appAccountToken||'')||!Number.isFinite(tx.purchaseDate)||tx.purchaseDate<=0||tx.revocationDate!==undefined&&(!Number.isFinite(tx.revocationDate)||tx.revocationDate<=0))throw new Error('TRANSACTION_MISMATCH');
+  if(!tx||!hosts[tx.environment]||!/^\d{1,40}$/.test(tx.transactionId||'')||!(products.has(tx.productId)||voiceProduct(tx.productId))||tx.type!=='Consumable'||tx.quantity!==1||tx.inAppOwnershipType!=='PURCHASED'||!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/.test(tx.appAccountToken||'')||!Number.isFinite(tx.purchaseDate)||tx.purchaseDate<=0||tx.revocationDate!==undefined&&(!Number.isFinite(tx.revocationDate)||tx.revocationDate<=0))throw new Error('TRANSACTION_MISMATCH');
+  if(voiceProduct(tx.productId)&&(tx.currency!=='JPY'||!Number.isSafeInteger(tx.price)||tx.price<=0))throw new Error('TRANSACTION_PRICE_MISSING');
   return tx;
  }
  async function decodeTransaction(signed){return checkTransaction((await remote('/v1/transaction',{signedTransaction:signed})).transaction);}
@@ -33,12 +35,18 @@ export function createAppleAdapter({getEnv,fetchImpl=fetch,cryptoImpl=crypto}){
  }
  async function verifiedTransaction(signed){
   const submitted=await decodeTransaction(signed);
-  const response=await fetchImpl(`${hosts[submitted.environment]}/inApps/v1/transactions/${encodeURIComponent(submitted.transactionId)}`,{redirect:'error',signal:AbortSignal.timeout(20000),headers:{Authorization:`Bearer ${await jwt()}`}});
+  const tx=await verifiedTransactionById(submitted.transactionId,submitted.environment);
+  for(const field of ['transactionId','environment','productId','appAccountToken','purchaseDate','currency','price'])if(tx[field]!==submitted[field])throw new Error('TRANSACTION_MISMATCH');
+  return tx;
+ }
+ async function verifiedTransactionById(transactionId,environment){
+  if(!/^\d{1,40}$/.test(transactionId||'')||!hosts[environment])throw new Error('TRANSACTION_MISMATCH');
+  const response=await fetchImpl(`${hosts[environment]}/inApps/v1/transactions/${encodeURIComponent(transactionId)}`,{redirect:'error',signal:AbortSignal.timeout(20000),headers:{Authorization:`Bearer ${await jwt()}`}});
   if(!response.ok)throw new Error('APPLE_API_UNAVAILABLE');
   const latest=await response.json();
   if(typeof latest.signedTransactionInfo!=='string')throw new Error('TRANSACTION_MISSING');
   const tx=await decodeTransaction(latest.signedTransactionInfo);
-  for(const field of ['transactionId','environment','productId','appAccountToken','purchaseDate'])if(tx[field]!==submitted[field])throw new Error('TRANSACTION_MISMATCH');
+  if(tx.transactionId!==transactionId||tx.environment!==environment)throw new Error('TRANSACTION_MISMATCH');
   return tx;
  }
  async function verifyAndDecodeNotification(signedPayload){
@@ -46,5 +54,5 @@ export function createAppleAdapter({getEnv,fetchImpl=fetch,cryptoImpl=crypto}){
   if(!n||!hosts[n.environment]||typeof n.notificationType!=='string'||n.data?.signedTransactionInfo!==undefined&&typeof n.data.signedTransactionInfo!=='string')throw new Error('NOTIFICATION_MISMATCH');
   return n;
  }
- return {verifiedTransaction,verifyAndDecodeNotification};
+ return {verifiedTransaction,verifiedTransactionById,verifyAndDecodeNotification};
 }

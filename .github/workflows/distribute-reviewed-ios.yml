@@ -1,0 +1,35 @@
+name: Distribute reviewed iOS build
+on:
+  workflow_dispatch:
+  push:
+    branches: [codex/receipt-capture-20261029]
+    paths: ['.github/workflows/distribute-reviewed-ios.yml']
+permissions:
+  contents: read
+concurrency:
+  group: distribute-reviewed-ios-30
+  cancel-in-progress: false
+jobs:
+  testflight:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Require existing Capawesome connection
+        env:
+          CAPAWESOME_TOKEN: ${{ secrets.CAPAWESOME_TOKEN }}
+        shell: bash
+        run: |
+          if [ -z "$CAPAWESOME_TOKEN" ]; then
+            echo "::error::Add CAPAWESOME_TOKEN in this repository's Actions secrets, then rerun this job. Never paste the token in chat."
+            exit 1
+          fi
+      - name: Build and deploy reviewed source to TestFlight
+        uses: capawesome-team/cloud-build-action@d3735816632dfa5536a5d010f1c980816ba237c5 # v0.1.0
+        with:
+          appId: c0e475d8-2fde-404d-8963-89bc436c792b
+          platform: ios
+          type: app-store
+          certificate: 声のフリマ iOS Distribution2026
+          destination: Koe no Furima App Store
+          gitRef: ${{ github.sha }}
+          token: ${{ secrets.CAPAWESOME_TOKEN }}
