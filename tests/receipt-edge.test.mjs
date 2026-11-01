@@ -21,14 +21,20 @@ function endpoint(slug,options={}){
   paymentIntents:{retrieve:async()=>{calls.push({name:'pi_get'});return {id:'pi_test',currency:'jpy',livemode:false,amount:1000,application_fee_amount:150,capture_method:'manual',transfer_data:{destination:'acct_seller'},status:captured?'succeeded':'requires_capture',amount_capturable:captured?0:1000,latest_charge:{id:'ch_test',payment_intent:'pi_test',currency:'jpy',livemode:false,amount:1000,amount_refunded:options.refunded?1000:0,paid:true,captured,amount_captured:captured?1000:0,transfer:captured?'tr_test':null,payment_method_details:{card:{capture_before:2000000000}}}};},capture:async(...args)=>{calls.push({name:'capture',args});captured=true;}},
   transfers:{retrieve:async()=>({id:'tr_test',currency:'jpy',livemode:false,amount:1000,destination:'acct_seller',source_transaction:'ch_test',reversed:false,amount_reversed:0})}
  };}
- const c={Response,Request,URL,Date,JSON,Number,String,Error,SyntaxError,Set,ReceiptError,captureReceipt,Stripe,
+ const c={Response,Request,URL,Date,JSON,Number,String,Error,SyntaxError,Set,Uint8Array,TextDecoder,ReceiptError,captureReceipt,Stripe,
   createClient:()=>db,createReceiptCheckout,appleConfig:()=>({verifier:{verifiedTransactionById:async()=>{calls.push({name:'apple_get'});return {productId:'com.ayuhide.koenofurima.voice.jpy1000',currency:'JPY',price:1000000};}}}),
   applyTransaction:async()=>({paymentId:'payment',revoked:options.revoked}),console:{warn(){}},
   Deno:{env:{get:k=>env[k]},serve:fn=>handler=fn}};
  const source=fs.readFileSync(new URL('../supabase/functions/'+slug+'/index.ts',import.meta.url),'utf8').replace(/^import .*\n/gm,'');
  vm.runInNewContext(stripTypeScriptTypes(source),c);
- return {calls,send:(body={},authenticated=true)=>handler(new Request('https://local.invalid/'+slug,{method:'POST',headers:authenticated?{Authorization:'Bearer test-token'}:{},body:JSON.stringify(body)}))};
+ return {calls,handle:request=>handler(request),send:(body={},authenticated=true)=>handler(new Request('https://local.invalid/'+slug,{method:'POST',headers:authenticated?{Authorization:'Bearer test-token'}:{},body:JSON.stringify(body)}))};
 }
+test('receipt rejects streamed oversized byte payloads without reading the remainder or accessing payments',async()=>{
+ const e=endpoint('accept-delivery');let reads=0,cancelled=false;
+ const body=new ReadableStream({pull(controller){reads++;controller.enqueue(new TextEncoder().encode('あ'.repeat(1400)));},cancel(){cancelled=true;}},{highWaterMark:0});
+ const response=await e.handle(new Request('https://local.invalid/accept-delivery',{method:'POST',headers:{Authorization:'Bearer test-token'},body,duplex:'half'}));
+ assert.equal(response.status,413);assert.equal(cancelled,true);assert.equal(reads,1);assert.equal(e.calls.length,0);
+});
 test('Checkout uses a server frozen quote, manual card authorization and one durable idempotency key, ignoring client money and ownership',async()=>{
  const e=endpoint('create-checkout-session');const r=await e.send({listingId:listing,attemptId:trade,amount:1,buyer_id:seller,destination:'acct_attacker'});assert.equal(r.status,200);
  const call=e.calls.find(x=>x.name==='checkout');assert.equal(call.params.line_items[0].price_data.unit_amount,1000);assert.equal(call.params.line_items[0].price_data.product_data.name,'Frozen quote');
