@@ -29,8 +29,8 @@ function endpoint(slug,options={}){
  vm.runInNewContext(stripTypeScriptTypes(source),c);
  return {calls,handle:request=>handler(request),send:(body={},authenticated=true)=>handler(new Request('https://local.invalid/'+slug,{method:'POST',headers:authenticated?{Authorization:'Bearer test-token'}:{},body:JSON.stringify(body)}))};
 }
-test('receipt rejects streamed oversized byte payloads without reading the remainder or accessing payments',async()=>{
- const e=endpoint('accept-delivery');let reads=0,cancelled=false;
+for(const slug of ['accept-delivery','create-checkout-session'])test(slug+' rejects streamed oversized byte payloads without reading the remainder or accessing payments',async()=>{
+ const e=endpoint(slug);let reads=0,cancelled=false;
  const body=new ReadableStream({pull(controller){reads++;controller.enqueue(new TextEncoder().encode('あ'.repeat(1400)));},cancel(){cancelled=true;}},{highWaterMark:0});
  const response=await e.handle(new Request('https://local.invalid/accept-delivery',{method:'POST',headers:{Authorization:'Bearer test-token'},body,duplex:'half'}));
  assert.equal(response.status,413);assert.equal(cancelled,true);assert.equal(reads,1);assert.equal(e.calls.length,0);

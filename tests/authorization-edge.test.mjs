@@ -18,9 +18,23 @@ function endpoint(slug,o={}){
  transfers:{retrieve:async()=>({id:'tr_test',currency:'jpy',livemode:false,amount:1000,destination:'acct_seller',source_transaction:'ch_test',reversed:false,amount_reversed:0})},
  v2:{core:{accounts:{retrieve:async()=>({id:'acct_seller',livemode:false,configuration:{recipient:{capabilities:{stripe_balance:{stripe_transfers:{status:'active'}}}}},requirements:{entries:[]}})}}},
  checkout:{sessions:{create:async(params,options)=>{calls.push({name:'checkout',params,options});if(o.checkoutUnknown)throw Error('unknown');return {id:'cs_test_renewal',livemode:false,status:'open',url:'https://checkout.stripe.com/unit'};}}}};}
- const c={Request,Response,URL,Date,JSON,Number,String,Error,SyntaxError,console:{warn(){}},createClient:()=>db,Stripe,captureReceipt,cancelReceiptAuthorization,verifyReceiptPayment,createReceiptCheckout,Deno:{env:{get:k=>env[k]},serve:fn=>handler=fn}};
+ const c={Request,Response,URL,Date,JSON,Number,String,Error,SyntaxError,Uint8Array,TextDecoder,console:{warn(){}},createClient:()=>db,Stripe,captureReceipt,cancelReceiptAuthorization,verifyReceiptPayment,createReceiptCheckout,Deno:{env:{get:k=>env[k]},serve:fn=>handler=fn}};
  vm.runInNewContext(stripTypeScriptTypes(fs.readFileSync(new URL('../supabase/functions/'+slug+'/index.ts',import.meta.url),'utf8').replace(/^import .*\n/gm,'')),c);
- return {calls,send:()=>handler(new Request('https://local.invalid',{method:'POST',headers:{Authorization:'Bearer unit'},body:JSON.stringify({conversationId:trade,buyer_id:seller,amount:1})}))};
+ return {calls,handle:request=>handler(request),send:()=>handler(new Request('https://local.invalid',{method:'POST',headers:{Authorization:'Bearer unit'},body:JSON.stringify({conversationId:trade,buyer_id:seller,amount:1})}))};
+}
+for(const slug of ['cancel-authorization','renew-authorization']){
+ test(slug+' stops oversized multibyte streams before any database or Stripe operation',async()=>{
+  const e=endpoint(slug);let reads=0,cancelled=false;
+  const body=new ReadableStream({pull(controller){reads++;controller.enqueue(new TextEncoder().encode('あ'.repeat(1400)));},cancel(){cancelled=true;}},{highWaterMark:0});
+  const response=await e.handle(new Request('https://local.invalid',{method:'POST',headers:{Authorization:'Bearer unit'},body,duplex:'half'}));
+  assert.equal(response.status,413);assert.equal(cancelled,true);assert.equal(reads,1);assert.equal(e.calls.length,0);
+ });
+ test(slug+' rejects missing or malformed bodies without changing a payment',async()=>{
+  for(const body of [undefined,'{']){
+   const e=endpoint(slug);const r=await e.handle(new Request('https://local.invalid',{method:'POST',headers:{Authorization:'Bearer unit'},body}));
+   assert.equal(r.status,400);assert.equal(e.calls.length,0);
+  }
+ });
 }
 test('cancellation waits for both participants and persists only after an authoritative Stripe cancellation',async()=>{
  const waiting=endpoint('cancel-authorization',{ready:false});assert.equal((await waiting.send()).status,200);assert.deepEqual(waiting.calls.map(x=>x.name),['prepare_authorization_cancellation']);
