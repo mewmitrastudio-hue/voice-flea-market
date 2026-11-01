@@ -24,6 +24,25 @@ jobs:
             echo "::error::Add CAPAWESOME_TOKEN in this repository's Actions secrets, then rerun this job. Never paste the token in chat."
             exit 1
           fi
+      - name: Inspect signing and destination metadata
+        env:
+          CAPAWESOME_TOKEN: ${{ secrets.CAPAWESOME_TOKEN }}
+        shell: bash
+        run: |
+          node <<'NODE'
+          (async () => {
+            for (const resource of ['certificates', 'destinations']) {
+              const response = await fetch('https://api.cloud.capawesome.io/v1/apps/c0e475d8-2fde-404d-8963-89bc436c792b/' + resource + '?limit=100', {
+                headers: { Authorization: 'Bearer ' + process.env.CAPAWESOME_TOKEN },
+                signal: AbortSignal.timeout(30000)
+              });
+              if (!response.ok) throw new Error(resource + ' HTTP ' + response.status);
+              const rows = await response.json();
+              if (!Array.isArray(rows)) throw new Error('Unexpected metadata response');
+              console.log(resource + ': ' + JSON.stringify(rows.map(({id, name, platform, type}) => ({id, name, platform, type}))));
+            }
+          })().catch(() => { console.error('Signing metadata lookup failed'); process.exit(1); });
+          NODE
       - name: Build and deploy reviewed source to TestFlight
         uses: capawesome-team/cloud-build-action@d3735816632dfa5536a5d010f1c980816ba237c5 # v0.1.0
         with:
