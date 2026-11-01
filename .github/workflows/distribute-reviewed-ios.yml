@@ -8,7 +8,7 @@ on:
 permissions:
   contents: read
 concurrency:
-  group: distribute-reviewed-ios-30
+  group: distribute-reviewed-ios
   cancel-in-progress: false
 jobs:
   testflight:
@@ -26,7 +26,7 @@ jobs:
             echo "::error::Add CAPAWESOME_TOKEN in this repository's Actions secrets, then rerun this job. Never paste the token in chat."
             exit 1
           fi
-      - name: Build and deploy reviewed source to TestFlight
+      - name: Build and deploy reviewed build 31 source to TestFlight
         env:
           CAPAWESOME_TOKEN: ${{ secrets.CAPAWESOME_TOKEN }}
           REVIEWED_SHA: ${{ github.sha }}
