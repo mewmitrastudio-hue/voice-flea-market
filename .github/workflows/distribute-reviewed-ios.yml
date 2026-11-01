@@ -12,6 +12,8 @@ concurrency:
   cancel-in-progress: false
 jobs:
   testflight:
+    # Allow workflow maintenance without uploading the same app again.
+    if: github.event_name == 'workflow_dispatch' || !contains(github.event.head_commit.message, '[skip testflight]')
     runs-on: ubuntu-latest
     timeout-minutes: 30
     steps:
@@ -25,12 +27,16 @@ jobs:
             exit 1
           fi
       - name: Build and deploy reviewed source to TestFlight
-        uses: capawesome-team/cloud-build-action@d3735816632dfa5536a5d010f1c980816ba237c5 # v0.1.0
-        with:
-          appId: c0e475d8-2fde-404d-8963-89bc436c792b
-          platform: ios
-          type: app-store
-          certificate: 声のフリマ iOS Distribution 2026
-          destination: Koe no Furima App Store
-          gitRef: ${{ github.sha }}
-          token: ${{ secrets.CAPAWESOME_TOKEN }}
+        env:
+          CAPAWESOME_TOKEN: ${{ secrets.CAPAWESOME_TOKEN }}
+          REVIEWED_SHA: ${{ github.sha }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          # Use the CLI exit status directly; deployment logs are not one JSON document.
+          npx -y @capawesome/cli@4.11.0 apps:builds:create \
+            --app-id c0e475d8-2fde-404d-8963-89bc436c792b \
+            --yes --platform ios --type app-store \
+            --git-ref "$REVIEWED_SHA" \
+            --certificate "声のフリマ iOS Distribution 2026" \
+            --destination "Koe no Furima App Store"
