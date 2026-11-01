@@ -1,4 +1,5 @@
 name: Distribute reviewed iOS build
+run-name: TestFlight reviewed source ${{ github.sha }}
 on:
   workflow_dispatch:
   push:
