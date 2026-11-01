@@ -34,10 +34,12 @@ Deno.serve(async req=>{
   if(Deno.env.get('VOICE_IAP_ENABLED')!=='true')return json({error:'Appleでの音声購入はまだ開始していません。',code:'voice_iap_not_ready'},409);
   appleConfig();
   const environment=Deno.env.get('VOICE_IAP_ENVIRONMENT')==='Production'?'Production':'Sandbox';
+  // Reject an unusable payment environment before creating a durable order.
+  const stripeKey=Deno.env.get('STRIPE_SECRET_KEY')||'';
+  if(!(/^(sk|rk)_live_/.test(stripeKey)?environment==='Production':/^(sk|rk)_test_/.test(stripeKey)&&environment==='Sandbox'))return json({error:'販売・受取環境の設定を確認できません。購入は開始していません。'},409);
   const {data,error}=await admin.rpc(jobPurchase?'prepare_job_voice_iap_order':'prepare_voice_iap_order',jobPurchase?{owner_id:user.id,application:body.applicationId,attempt:body.attemptId,tx_environment:environment}:{owner_id:user.id,listing:body.listingId,attempt:body.attemptId,tx_environment:environment});
   if(error)return json({error:'この出品のApple購入設定を確認できません。購入は開始していません。'},409);
-  const stripeKey=Deno.env.get('STRIPE_SECRET_KEY')||'';
-  if(!uuid(data?.sellerId)||!(/^(sk|rk)_live_/.test(stripeKey)?environment==='Production':/^(sk|rk)_test_/.test(stripeKey)&&environment==='Sandbox'))return json({error:'販売・受取環境の設定を確認できません。購入は開始していません。'},409);
+  if(!uuid(data?.sellerId))return json({error:'販売者の設定を確認できません。購入は開始していません。'},409);
   try{await requireRecipient({admin,sellerId:data.sellerId,stripe:new Stripe(stripeKey,{apiVersion:'2026-09-30.endive',maxNetworkRetries:0,timeout:20000}),live:environment==='Production'});}
   catch{return json({error:'出品者の受取設定が完了していません。購入は開始していません。',code:'seller_not_ready'},409);}
   return json(data);

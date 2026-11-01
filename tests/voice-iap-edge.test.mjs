@@ -6,10 +6,10 @@ import {stripTypeScriptTypes} from 'node:module';
 const user='00000000-0000-4000-8000-000000000001';
 const listing='00000000-0000-4000-8000-000000000002';
 const attempt='00000000-0000-4000-8000-000000000003';
-function fixture({enabled=false,product='com.ayuhide.koenofurima.voice.jpy1000',applyFailure=false}={}){
+function fixture({enabled=false,product='com.ayuhide.koenofurima.voice.jpy1000',applyFailure=false,stripeKey='sk_test_unit',environment='Sandbox'}={}){
  const calls=[];let handler;
  const admin={auth:{getUser:async token=>token==='valid'?{data:{user:{id:user}}}:{data:{user:null},error:{}}},rpc:async(name,args)=>{calls.push({name,args});return {data:{sellerId:'00000000-0000-4000-8000-000000000004',orderId:attempt,productId:product,amountJpy:1000,environment:'Sandbox',state:'prepared'}};}};
- const c={Response,Request,Uint8Array,TextDecoder,JSON,console:{error(){}},Deno:{env:{get:name=>({SUPABASE_URL:'https://test.invalid',SUPABASE_SERVICE_ROLE_KEY:'test-only',STRIPE_SECRET_KEY:'sk_test_unit',VOICE_IAP_ENABLED:enabled?'true':'false',VOICE_IAP_ENVIRONMENT:'Sandbox'})[name]},serve:fn=>handler=fn},
+ const c={Response,Request,Uint8Array,TextDecoder,JSON,console:{error(){}},Deno:{env:{get:name=>({SUPABASE_URL:'https://test.invalid',SUPABASE_SERVICE_ROLE_KEY:'test-only',STRIPE_SECRET_KEY:stripeKey,VOICE_IAP_ENABLED:enabled?'true':'false',VOICE_IAP_ENVIRONMENT:environment})[name]},serve:fn=>handler=fn},
   createClient:()=>admin,Stripe:function(){},requireRecipient:async()=>{},appleConfig(){},verifiedTransaction:async()=>({productId:product,price:1000000,currency:'JPY'}),
   applyTransaction:async(db,tx,actor)=>{calls.push({actor,tx});if(applyFailure)throw Error('database unavailable');return {paymentId:'payment',conversationId:'trade'};}
  };
@@ -38,4 +38,20 @@ test('voice Edge rejects boost receipts and persistence failures never report a 
 test('Apple job prepare binds the authenticated job buyer and ignores client supplied price and seller',async()=>{
  const e=fixture({enabled:true});const r=await e.send({action:'prepareJob',applicationId:listing,attemptId:attempt,amount:1,seller_id:'attacker'});assert.equal(r.status,200);
  assert.equal(e.calls[0].name,'prepare_job_voice_iap_order');assert.equal(e.calls[0].args.owner_id,user);assert.equal(e.calls[0].args.application,listing);assert.equal(e.calls[0].args.tx_environment,'Sandbox');
+});
+
+for(const action of ['prepare','prepareJob']){
+ test(`${action} rejects missing or mismatched payment configuration before reserving an order`,async()=>{
+  for(const config of [{stripeKey:''},{stripeKey:'invalid'},{stripeKey:'sk_live_unit'},{stripeKey:'sk_test_unit',environment:'Production'}]){
+   const f=fixture({enabled:true,...config});
+   const r=await f.send({action,listingId:listing,applicationId:listing,attemptId:attempt});
+   assert.equal(r.status,409);assert.equal(f.calls.length,0,'must not leave a prepared order');
+  }
+ });
+}
+test('paid receipt recovery remains available when the new purchase payment environment is missing',async()=>{
+ const f=fixture({stripeKey:''});
+ const r=await f.send({action:'verify',signedTransaction:'signed'});
+ assert.equal(r.status,200);assert.equal((await r.json()).paymentId,'payment');
+ assert.equal(f.calls.length,1);assert.equal(f.calls[0].actor,user);
 });
