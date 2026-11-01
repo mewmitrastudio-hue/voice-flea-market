@@ -10,8 +10,13 @@ Deno.serve(async(req)=>{
  const token=(req.headers.get('Authorization')||'').match(/^Bearer (\S+)$/i)?.[1];
  if(!token)return reply({error:'ログインしてください。'},401);
  try{
-  const raw=await req.text();if(raw.length>4096)return reply({error:'送信内容が大きすぎます。'},413);
-  const body=JSON.parse(raw),tradeId=body?.conversationId;
+  // Stop oversized requests while reading, before allocating the full body or touching a payment.
+  const reader=req.body?.getReader();if(!reader)return reply({error:'送信内容を確認してください。'},400);
+  const chunks:Uint8Array[]=[];let size=0;
+  for(;;){const {value,done}=await reader.read();if(done)break;size+=value.byteLength;
+   if(size>4096){await reader.cancel();return reply({error:'送信内容が大きすぎます。'},413);}chunks.push(value);}
+  const bytes=new Uint8Array(size);let offset=0;for(const chunk of chunks){bytes.set(chunk,offset);offset+=chunk.length;}
+  const body=JSON.parse(new TextDecoder().decode(bytes)),tradeId=body?.conversationId;
   if(typeof tradeId!=='string'||!/^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(tradeId))return reply({error:'取引を確認してください。'},400);
   const url=Deno.env.get('SUPABASE_URL'),key=Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')||JSON.parse(Deno.env.get('SUPABASE_SECRET_KEYS')||'{}').default;
   if(!url||!key)return reply({error:'受取確認の設定を確認できません。'},503);
