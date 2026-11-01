@@ -50,7 +50,26 @@ public class KoeBoostPlugin: CAPPlugin, CAPBridgedPlugin {
         allowed.contains(id) || id.range(of: "^com\\.ayuhide\\.koenofurima\\.voice\\.jpy[1-9][0-9]{0,7}$", options: .regularExpression) != nil
     }
     private var purchaseInProgress = false
-    private var purchaseEnvironment: String { Bundle.main.appStoreReceiptURL?.lastPathComponent == "sandboxReceipt" ? "Sandbox" : "Production" }
+    private func purchaseEnvironment() async throws -> String {
+        if #available(iOS 16.0, *) {
+            // A TestFlight install may not have an app receipt yet. Absence is
+            // not evidence of Production. Use Apple's verified app transaction.
+            let result = try await AppTransaction.shared
+            guard case .verified(let transaction) = result,
+                  transaction.bundleID == Bundle.main.bundleIdentifier else {
+                throw NSError(domain: "KoeStore", code: 1)
+            }
+            if transaction.environment == .sandbox { return "Sandbox" }
+            if transaction.environment == .production { return "Production" }
+            throw NSError(domain: "KoeStore", code: 2)
+        }
+        // iOS 15 has no AppTransaction. Only recognize explicit receipt names.
+        switch Bundle.main.appStoreReceiptURL?.lastPathComponent {
+        case "sandboxReceipt": return "Sandbox"
+        case "receipt": return "Production"
+        default: throw NSError(domain: "KoeStore", code: 3)
+        }
+    }
 
     @objc func products(_ call: CAPPluginCall) {
         Task { @MainActor in
@@ -60,7 +79,11 @@ public class KoeBoostPlugin: CAPPlugin, CAPBridgedPlugin {
                     call.reject("商品を確認できません。"); return
                 }
                 let items = try await Product.products(for: requested)
-                call.resolve(["environment": purchaseEnvironment, "products": items.filter { $0.type == .consumable }.map {
+                let environment = try await purchaseEnvironment()
+                // Read immediately for this request; never persist a customer's
+                // storefront as profile data or infer currency from device locale.
+                let storefront = await Storefront.current
+                call.resolve(["environment": environment, "storefrontCountry": storefront?.countryCode ?? "", "products": items.filter { $0.type == .consumable }.map {
                     ["id": $0.id, "displayPrice": $0.displayPrice, "displayName": $0.displayName, "currencyCode": $0.priceFormatStyle.currencyCode, "price": NSDecimalNumber(decimal: $0.price).stringValue]
                 }])
             } catch { call.reject("商品情報を取得できません。時間をおいて再試行してください。") }
@@ -68,9 +91,6 @@ public class KoeBoostPlugin: CAPPlugin, CAPBridgedPlugin {
     }
     @objc func purchase(_ call: CAPPluginCall) {
         Task { @MainActor in
-            guard call.getString("environment") == purchaseEnvironment else {
-                call.reject("購入環境の設定が一致しません。購入は開始していません。"); return
-            }
             guard !purchaseInProgress else { call.reject("購入の確認中です。"); return }
             guard let id = call.getString("productId"), isAllowed(id),
                   let raw = call.getString("orderId"), let token = UUID(uuidString: raw) else {
@@ -79,6 +99,10 @@ public class KoeBoostPlugin: CAPPlugin, CAPBridgedPlugin {
             purchaseInProgress = true
             defer { purchaseInProgress = false }
             do {
+                let environment = try await purchaseEnvironment()
+                guard call.getString("environment") == environment else {
+                    call.reject("購入環境の設定が一致しません。購入は開始していません。"); return
+                }
                 guard let product = try await Product.products(for: [id]).first, product.type == .consumable else {
                     call.reject("このプランはまだ購入できません。"); return
                 }
@@ -88,6 +112,18 @@ public class KoeBoostPlugin: CAPPlugin, CAPBridgedPlugin {
                 guard let amount = boostAmounts[id] ?? call.getInt("amountJpy"),
                       product.priceFormatStyle.currencyCode == "JPY", product.price == Decimal(amount) else {
                     call.reject("出品・プランの価格とAppleの商品価格が一致しません。購入は開始していません。"); return
+                }
+                // Recheck at the point of purchase: approval may have arrived
+                // after the JavaScript preview scanned unfinished transactions.
+                for await outstanding in Transaction.unfinished {
+                    switch outstanding {
+                    case .verified(let transaction):
+                        if isAllowed(transaction.productID) {
+                            call.reject("未反映の購入があります。再購入せず購入の反映を確認してください。"); return
+                        }
+                    case .unverified:
+                        call.reject("未処理の購入を検証できません。新しい購入は開始していません。"); return
+                    }
                 }
                 let result = try await product.purchase(options: [.appAccountToken(token)])
                 switch result {
@@ -109,7 +145,10 @@ public class KoeBoostPlugin: CAPPlugin, CAPBridgedPlugin {
         Task { @MainActor in
             var rows: [[String: String]] = []
             for await result in Transaction.unfinished {
-                if case .verified(let transaction) = result, isAllowed(transaction.productID) {
+                guard case .verified(let transaction) = result else {
+                    call.reject("未処理の購入を検証できません。再購入せず、時間をおいて反映を確認してください。"); return
+                }
+                if isAllowed(transaction.productID) {
                     if let kind = call.getString("kind"),
                        (kind == "voice" && !transaction.productID.contains(".voice.")) ||
                        (kind == "boost" && !allowed.contains(transaction.productID)) { continue }

@@ -87,6 +87,18 @@ public class KoeBoostPlugin: CAPPlugin, CAPBridgedPlugin {
                       product.priceFormatStyle.currencyCode == "JPY", product.price == Decimal(amount) else {
                     call.reject("出品・プランの価格とAppleの商品価格が一致しません。購入は開始していません。"); return
                 }
+                // Recheck at the point of purchase: approval may have arrived
+                // after the JavaScript preview scanned unfinished transactions.
+                for await outstanding in Transaction.unfinished {
+                    switch outstanding {
+                    case .verified(let transaction):
+                        if isAllowed(transaction.productID) {
+                            call.reject("未反映の購入があります。再購入せず購入の反映を確認してください。"); return
+                        }
+                    case .unverified:
+                        call.reject("未処理の購入を検証できません。新しい購入は開始していません。"); return
+                    }
+                }
                 let result = try await product.purchase(options: [.appAccountToken(token)])
                 switch result {
                 case .success(let verification):
@@ -107,7 +119,10 @@ public class KoeBoostPlugin: CAPPlugin, CAPBridgedPlugin {
         Task { @MainActor in
             var rows: [[String: String]] = []
             for await result in Transaction.unfinished {
-                if case .verified(let transaction) = result, isAllowed(transaction.productID) {
+                guard case .verified(let transaction) = result else {
+                    call.reject("未処理の購入を検証できません。再購入せず、時間をおいて反映を確認してください。"); return
+                }
+                if isAllowed(transaction.productID) {
                     if let kind = call.getString("kind"),
                        (kind == "voice" && !transaction.productID.contains(".voice.")) ||
                        (kind == "boost" && !allowed.contains(transaction.productID)) { continue }

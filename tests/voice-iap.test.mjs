@@ -179,3 +179,17 @@ test('closing the Apple payment sheet overlay does not release the purchase lock
  const f=uiFixture();await f.c.startVoicePurchase(listing);const purchased=f.c.confirmVoicePurchase();f.c.closeVoicePurchase();await f.c.startVoicePurchase(listing);assert.equal(f.events.filter(x=>x==='purchase').length,1);
  f.complete({status:'cancelled'});await purchased;assert.equal(f.events.filter(x=>x==='purchase').length,1);
 });
+
+for(const status of ['cancelled','pending'])test(`a ${status} result consumes the displayed quote and cannot replay the Apple purchase`,async()=>{
+ const f=uiFixture();await f.c.startVoicePurchase(listing);
+ const run=f.c.confirmVoicePurchase();f.complete({status});await run;
+ await f.c.confirmVoicePurchase();
+ assert.deepEqual(f.events,['purchase']);
+ assert.equal(f.storage.get('vf_voice_attempt_'+buyer+':'+listing),attempt,'keep order identity for recovery');
+});
+test('failed receipt verification cannot replay the same displayed purchase quote',async()=>{
+ const f=uiFixture({verifyFailure:true});await f.c.startVoicePurchase(listing);
+ const run=f.c.confirmVoicePurchase();f.complete({status:'purchased',signedTransaction:'signed',transactionId:'123'});await run;
+ await f.c.confirmVoicePurchase();assert.deepEqual(f.events,['purchase','verify']);
+ await f.c.reconcileVoicePurchases();assert.equal(f.events.filter(x=>x==='purchase').length,1);
+});
