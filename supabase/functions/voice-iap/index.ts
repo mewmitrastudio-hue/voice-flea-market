@@ -37,11 +37,26 @@ Deno.serve(async req=>{
   // Reject an unusable payment environment before creating a durable order.
   const stripeKey=Deno.env.get('STRIPE_SECRET_KEY')||'';
   if(!(/^(sk|rk)_live_/.test(stripeKey)?environment==='Production':/^(sk|rk)_test_/.test(stripeKey)&&environment==='Sandbox'))return json({error:'販売・受取環境の設定を確認できません。購入は開始していません。'},409);
+  // Resolve the seller from server-owned records before reserving an order.
+  // The preparation RPC still revalidates the contract under database locks.
+  let sellerId:string;
+  if(jobPurchase){
+   const {data:application,error}=await admin.from('applications').select('id,job_id,applicant_id,status').eq('id',body.applicationId).maybeSingle();
+   if(error||!application||application.status!=='accepted')return json({error:'承認済みの依頼を確認してください。'},409);
+   const {data:job,error:jobError}=await admin.from('jobs').select('id,buyer_id,status').eq('id',application.job_id).maybeSingle();
+   if(jobError||!job||job.buyer_id!==user.id||job.status!=='open')return json({error:'購入できる依頼を確認してください。'},409);
+   sellerId=application.applicant_id;
+  }else{
+   const {data:listing,error}=await admin.from('listings').select('id,seller_id,is_active').eq('id',body.listingId).maybeSingle();
+   if(error||!listing?.is_active)return json({error:'この出品は現在購入できません。'},409);
+   sellerId=listing.seller_id;
+  }
+  if(!uuid(sellerId)||sellerId===user.id)return json({error:'販売者の設定を確認できません。購入は開始していません。'},409);
+  try{await requireRecipient({admin,sellerId,stripe:new Stripe(stripeKey,{apiVersion:'2026-09-30.endive',maxNetworkRetries:0,timeout:20000}),live:environment==='Production'});}
+  catch{return json({error:'出品者の受取設定が完了していません。購入は開始していません。',code:'seller_not_ready'},409);}
   const {data,error}=await admin.rpc(jobPurchase?'prepare_job_voice_iap_order':'prepare_voice_iap_order',jobPurchase?{owner_id:user.id,application:body.applicationId,attempt:body.attemptId,tx_environment:environment}:{owner_id:user.id,listing:body.listingId,attempt:body.attemptId,tx_environment:environment});
   if(error)return json({error:'この出品のApple購入設定を確認できません。購入は開始していません。'},409);
-  if(!uuid(data?.sellerId))return json({error:'販売者の設定を確認できません。購入は開始していません。'},409);
-  try{await requireRecipient({admin,sellerId:data.sellerId,stripe:new Stripe(stripeKey,{apiVersion:'2026-09-30.endive',maxNetworkRetries:0,timeout:20000}),live:environment==='Production'});}
-  catch{return json({error:'出品者の受取設定が完了していません。購入は開始していません。',code:'seller_not_ready'},409);}
+  if(data?.sellerId!==sellerId)return json({error:'販売者の情報が変更されました。購入は開始していません。'},409);
   return json(data);
  }catch(error){console.error('VOICE_IAP_FAILED',{name:error instanceof Error?error.name:'unknown'});return json({error:'購入を確認できません。購入済みの場合は再購入せず「音声購入の反映を確認」を押してください。'},503);}
 });
