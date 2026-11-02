@@ -27,6 +27,7 @@ async function setup(){
   await db.query(`insert into voice_flea_private.voice_iap_orders values($1,'paid','Production',$2,$3,$4,$5,1000)`,[id,sku,String(100+index),other,seller]);
  }
  await db.exec(fs.readFileSync(new URL('../supabase/migrations/20261029033154_apple_proceeds_allocation_ledger.sql',import.meta.url),'utf8'));
+ await db.exec(fs.readFileSync(new URL('../supabase/migrations/20261102003116_keep_allocated_apple_proceeds_pending.sql',import.meta.url),'utf8'));
  return db;
 }
 const allocate=(db,purchases=ids)=>db.query('select public.allocate_apple_proceeds($1,2,$2,$3) r',[reportId,purchases,'Operator explicitly matched all three report units to the selected payments.']);
