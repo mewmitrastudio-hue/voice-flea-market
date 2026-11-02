@@ -1,4 +1,5 @@
 import { createClient } from "npm:@supabase/supabase-js@2.118.0";
+import {reconcileAppleSettlementEvent} from '../_shared/apple-settlement.mjs';
 
 function json(data: unknown, status = 200) {
   return new Response(JSON.stringify(data), {
@@ -130,6 +131,17 @@ Deno.serve(async (req) => {
     const object = event.data.object;
     const completed = ["checkout.session.completed","checkout.session.async_payment_succeeded"].includes(event.type);
     const refundEvent = ["charge.refunded","refund.created","refund.updated","refund.failed"].includes(event.type);
+
+    if (['transfer.created','transfer.updated','transfer.reversed'].includes(event.type) && object.metadata?.apple_settlement_id) {
+      const get=async(path:string)=>{
+        const response=await fetch(`https://api.stripe.com/v1/${path}`,{headers:{Authorization:`Bearer ${stripeKey}`,'Stripe-Version':'2026-09-30.endive'}});
+        if(!response.ok)throw Error('Settlement evidence unavailable');
+        return response.json();
+      };
+      await reconcileAppleSettlementEvent({event,db,platformId:Deno.env.get('APPLE_SETTLEMENT_STRIPE_ACCOUNT_ID'),
+        stripe:{accounts:{retrieve:()=>get('account')},transfers:{retrieve:(id:string)=>get('transfers/'+encodeURIComponent(id))}}});
+      return json({received:true});
+    }
 
     // Checkout reports manual authorizations as unpaid. Store them as authorized,
     // never as captured revenue. Only the receipt endpoint may capture them.

@@ -98,3 +98,9 @@ apple_settlement_pending_for_userにallocated_unpaid/adjustment_requiredの出�
 退会・返金・配分の関連テスト11件成功。Supabaseへ反映済み。配布関数本体MD5はb7272913630ee4138d8a2b4bd9fc1df7でローカルと一致。空search_pathとanon/authenticated直接実行不可を維持。セキュリティ検査は変更前後で同じ既知WARN、ERRORなし。実際の退会・送金・返金は実行していない。
 
 これは未解決の精算を保護する修正。送金作成、回収・調整完了、銀行着金証跡の実装・実取引確認が完了したことを意味しない。
+
+## 追加実装：2026-11-02 — Apple精算の送金予約・証跡
+
+Apple配分台帳に結びついた一意の送金予約、送金直前の署名・失効・受取能力・残高確認、DBロックによる一度だけのdispatch、取得し直したStripe送金証跡の保存を実装。通信切断・記録失敗後も予約を初期化しない。返金後のadjustment_requiredと銀行着金未確認を維持。新規12件を含む全195テスト成功。
+
+本番migration 20261102040815、apple-settlement v1、stripe-webhook v21反映・全ソース一致確認。未認証401。配分・予約とも0件で実送金なし。Stripe通知イベント追加は認証要求が繰り返され未確認。設定有効化、資金供給承認、外部送金の実地検証、自動回収、部分返金精算、銀行着金突合、精算後の退会解除は残る。詳細はAPPLE_SETTLEMENT_OPERATIONS.md。精算全体・審査準備の完了とは報告しない。

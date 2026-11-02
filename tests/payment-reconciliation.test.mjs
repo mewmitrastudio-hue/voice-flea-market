@@ -96,7 +96,7 @@ function webhook({chargeOverrides={},piOverrides={},rpcError=false}={}){
   fetch:async()=>{gets++;return Response.json({id:'pi_test1',livemode:false,status:'succeeded',currency:'jpy',amount:1000,
    latest_charge:{id:'ch_test1',livemode:false,payment_intent:'pi_test1',currency:'jpy',amount:1000,amount_captured:1000,amount_refunded:300,paid:true,captured:true,...chargeOverrides},...piOverrides})},
  };
- vm.runInNewContext(stripTypeScriptTypes(source.replace(/^import .*\n/,'')),context);
+ vm.runInNewContext(stripTypeScriptTypes(source.replace(/^import .*\n/gm,'')),context);
  const send=async(event,{invalidSignature=false}={})=>{
   const raw=JSON.stringify(event);const t=Math.floor(Date.now()/1000);
   const sig=createHmac('sha256',env.STRIPE_WEBHOOK_SECRET).update(`${t}.${raw}`).digest('hex');
