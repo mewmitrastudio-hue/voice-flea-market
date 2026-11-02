@@ -13,8 +13,12 @@ export function appleConfig(){
  return {verifier:adapter,environment:getEnv('BOOST_IAP_ENVIRONMENT')==='Production'?'Production':'Sandbox'};
 }
 export async function verifiedTransaction(signed:string){return appleConfig().verifier.verifiedTransaction(signed);}
-export async function applyTransaction(admin:any,tx:any){
- const {data,error}=await admin.rpc('apply_verified_apple_boost',{order_id:tx.appAccountToken,tx_id:tx.transactionId,sku:tx.productId,tx_environment:tx.environment,purchased_at:new Date(tx.purchaseDate).toISOString(),revoked:Boolean(tx.revocationDate)});
+export async function applyTransaction(admin:any,tx:any,actor:string|null=null){
+ const voice=/^com\.ayuhide\.koenofurima\.voice\.jpy[1-9][0-9]{0,7}$/.test(tx.productId||'');
+ const args:any={order_id:tx.appAccountToken,tx_id:tx.transactionId,sku:tx.productId,tx_environment:tx.environment,purchased_at:new Date(tx.purchaseDate).toISOString(),revoked:Boolean(tx.revocationDate)};
+ Object.assign(args,{price_milliunits:tx.price??null,currency:tx.currency??null});
+ if(voice)Object.assign(args,{actor});
+ const {data,error}=await admin.rpc(voice?'apply_verified_apple_voice':'apply_priced_apple_boost',args);
  if(error)throw error;
  return data;
 }

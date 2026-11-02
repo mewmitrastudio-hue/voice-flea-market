@@ -23,6 +23,7 @@ Deno.serve(async(req)=>{
   if(body?.action==='verify'){
    if(typeof body.signedTransaction!=='string'||body.signedTransaction.length>30000)return json({error:'購入情報を読み取れません。'},400);
    const tx=await verifiedTransaction(body.signedTransaction);
+   if(!['silver','gold','platinum'].some(plan=>tx.productId===`com.ayuhide.koenofurima.boost.${plan}`))return json({error:'ブーストの購入情報ではありません。'},400);
    const result=await applyTransaction(admin,tx);
    return json({success:true,...result});
   }

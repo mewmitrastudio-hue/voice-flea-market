@@ -4,6 +4,7 @@ import {rootBase64} from './trust.mjs';
 
 const bundleId='com.ayuhide.koenofurima';
 const products=new Set(['silver','gold','platinum'].map(x=>`${bundleId}.boost.${x}`));
+const voiceProduct=id=>/^com\.ayuhide\.koenofurima\.voice\.jpy[1-9][0-9]{0,7}$/.test(id||'');
 const reply=(data,status=200)=>Response.json(data,{status,headers:{'Cache-Control':'no-store'}});
 
 async function configurations(env){
@@ -47,8 +48,9 @@ export function createSignatureHandler(configure=configurations){
    const configs=await configure(env);
    if(route==='/v1/transaction'){
     const {data:tx,environment}=await decode(configs,'verifyAndDecodeTransaction',signed);
-    if(tx.environment!==environment||!/^\d+$/.test(tx.transactionId||'')||!products.has(tx.productId)||tx.type!=='Consumable'||tx.quantity!==1||tx.inAppOwnershipType!=='PURCHASED'||!tx.appAccountToken||!Number.isFinite(tx.purchaseDate))throw new Error('TRANSACTION_MISMATCH');
-    return reply({transaction:{transactionId:tx.transactionId,environment,productId:tx.productId,type:tx.type,quantity:tx.quantity,inAppOwnershipType:tx.inAppOwnershipType,appAccountToken:tx.appAccountToken,purchaseDate:tx.purchaseDate,revocationDate:tx.revocationDate}});
+    if(tx.environment!==environment||!/^\d{1,40}$/.test(tx.transactionId||'')||!(products.has(tx.productId)||voiceProduct(tx.productId))||tx.type!=='Consumable'||tx.quantity!==1||tx.inAppOwnershipType!=='PURCHASED'||!tx.appAccountToken||!Number.isFinite(tx.purchaseDate))throw new Error('TRANSACTION_MISMATCH');
+    if(voiceProduct(tx.productId)&&(tx.currency!=='JPY'||!Number.isSafeInteger(tx.price)||tx.price<=0))throw new Error('TRANSACTION_PRICE_MISSING');
+    return reply({transaction:{transactionId:tx.transactionId,environment,productId:tx.productId,type:tx.type,quantity:tx.quantity,inAppOwnershipType:tx.inAppOwnershipType,appAccountToken:tx.appAccountToken,purchaseDate:tx.purchaseDate,revocationDate:tx.revocationDate,price:tx.price,currency:tx.currency}});
    }
    const {data:n,environment}=await decode(configs,'verifyAndDecodeNotification',signed);
    return reply({notification:{notificationType:n.notificationType,environment,data:n.data?.signedTransactionInfo?{signedTransactionInfo:n.data.signedTransactionInfo}:undefined}});

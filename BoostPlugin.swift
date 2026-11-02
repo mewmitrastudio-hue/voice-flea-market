@@ -2,6 +2,31 @@ import UIKit
 import Capacitor
 import StoreKit
 
+// KOEFURIMA_PURCHASE_JOURNAL_BEGIN
+// Persist before opening StoreKit. An empty unfinished stream is not proof
+// that an Ask to Buy request was cancelled. Never expire this record by time.
+struct KoePurchaseAttempt: Codable, Equatable {
+    let productID: String
+    let token: UUID
+}
+struct KoePurchaseJournal {
+    let url: URL
+    func read() throws -> KoePurchaseAttempt? {
+        guard FileManager.default.fileExists(atPath: url.path) else { return nil }
+        return try JSONDecoder().decode(KoePurchaseAttempt.self, from: Data(contentsOf: url))
+    }
+    func begin(productID: String, token: UUID) throws {
+        guard try read() == nil else { throw NSError(domain: "KoePurchasePending", code: 1) }
+        try FileManager.default.createDirectory(at: url.deletingLastPathComponent(), withIntermediateDirectories: true)
+        try JSONEncoder().encode(KoePurchaseAttempt(productID: productID, token: token)).write(to: url, options: .atomic)
+    }
+    func clear(productID: String, token: UUID?) throws {
+        guard let attempt = try read(), attempt.productID == productID, attempt.token == token else { return }
+        try FileManager.default.removeItem(at: url)
+    }
+}
+// KOEFURIMA_PURCHASE_JOURNAL_END
+
 // This code is appended to the existing SceneDelegate.swift by the preparation script.
 class KoeBridgeViewController: CAPBridgeViewController {
     override func capacitorDidLoad() {
@@ -20,44 +45,103 @@ public class KoeBoostPlugin: CAPPlugin, CAPBridgedPlugin {
         CAPPluginMethod(name: "finish", returnType: CAPPluginReturnPromise)
     ]
     private let allowed = Set(["silver", "gold", "platinum"].map { "com.ayuhide.koenofurima.boost.\($0)" })
+    private func isAllowed(_ id: String) -> Bool {
+        allowed.contains(id) || id.range(of: "^com\\.ayuhide\\.koenofurima\\.voice\\.jpy[1-9][0-9]{0,7}$", options: .regularExpression) != nil
+    }
     private var purchaseInProgress = false
-    private var purchaseEnvironment: String { Bundle.main.appStoreReceiptURL?.lastPathComponent == "sandboxReceipt" ? "Sandbox" : "Production" }
+    private func purchaseJournal() throws -> KoePurchaseJournal {
+        let directory = try FileManager.default.url(for: .applicationSupportDirectory, in: .userDomainMask, appropriateFor: nil, create: true)
+        return KoePurchaseJournal(url: directory.appendingPathComponent("koe-purchase-attempt.json"))
+    }
+    private func purchaseEnvironment() async throws -> String {
+        if #available(iOS 16.0, *) {
+            // A TestFlight install may not have an app receipt yet. Absence is
+            // not evidence of Production. Use Apple's verified app transaction.
+            let result = try await AppTransaction.shared
+            guard case .verified(let transaction) = result,
+                  transaction.bundleID == Bundle.main.bundleIdentifier else {
+                throw NSError(domain: "KoeStore", code: 1)
+            }
+            if transaction.environment == .sandbox { return "Sandbox" }
+            if transaction.environment == .production { return "Production" }
+            throw NSError(domain: "KoeStore", code: 2)
+        }
+        // iOS 15 has no AppTransaction. Only recognize explicit receipt names.
+        switch Bundle.main.appStoreReceiptURL?.lastPathComponent {
+        case "sandboxReceipt": return "Sandbox"
+        case "receipt": return "Production"
+        default: throw NSError(domain: "KoeStore", code: 3)
+        }
+    }
 
     @objc func products(_ call: CAPPluginCall) {
         Task { @MainActor in
             do {
-                let items = try await Product.products(for: Array(allowed))
-                call.resolve(["environment": purchaseEnvironment, "products": items.filter { $0.type == .consumable }.map {
-                    ["id": $0.id, "displayPrice": $0.displayPrice, "displayName": $0.displayName, "currencyCode": $0.priceFormatStyle.currencyCode]
+                let requested = call.getArray("productIds", String.self) ?? Array(allowed)
+                guard !requested.isEmpty, requested.count <= 30, requested.allSatisfy({ isAllowed($0) }) else {
+                    call.reject("商品を確認できません。"); return
+                }
+                let items = try await Product.products(for: requested)
+                let environment = try await purchaseEnvironment()
+                // Read immediately for this request; never persist a customer's
+                // storefront as profile data or infer currency from device locale.
+                let storefront = await Storefront.current
+                call.resolve(["environment": environment, "storefrontCountry": storefront?.countryCode ?? "", "products": items.filter { $0.type == .consumable }.map {
+                    ["id": $0.id, "displayPrice": $0.displayPrice, "displayName": $0.displayName, "currencyCode": $0.priceFormatStyle.currencyCode, "price": NSDecimalNumber(decimal: $0.price).stringValue]
                 }])
             } catch { call.reject("商品情報を取得できません。時間をおいて再試行してください。") }
         }
     }
     @objc func purchase(_ call: CAPPluginCall) {
         Task { @MainActor in
-            guard call.getString("environment") == purchaseEnvironment else {
-                call.reject("購入環境の設定が一致しません。購入は開始していません。"); return
-            }
             guard !purchaseInProgress else { call.reject("購入の確認中です。"); return }
-            guard let id = call.getString("productId"), allowed.contains(id),
+            guard let id = call.getString("productId"), isAllowed(id),
                   let raw = call.getString("orderId"), let token = UUID(uuidString: raw) else {
                 call.reject("出品とプランを確認してください。"); return
             }
             purchaseInProgress = true
             defer { purchaseInProgress = false }
             do {
+                let environment = try await purchaseEnvironment()
+                guard call.getString("environment") == environment else {
+                    call.reject("購入環境の設定が一致しません。購入は開始していません。"); return
+                }
                 guard let product = try await Product.products(for: [id]).first, product.type == .consumable else {
                     call.reject("このプランはまだ購入できません。"); return
                 }
+                let boostAmounts = ["com.ayuhide.koenofurima.boost.silver": 300,
+                                    "com.ayuhide.koenofurima.boost.gold": 800,
+                                    "com.ayuhide.koenofurima.boost.platinum": 1500]
+                guard let amount = boostAmounts[id] ?? call.getInt("amountJpy"),
+                      product.priceFormatStyle.currencyCode == "JPY", product.price == Decimal(amount) else {
+                    call.reject("出品・プランの価格とAppleの商品価格が一致しません。購入は開始していません。"); return
+                }
+                // Recheck at the point of purchase: approval may have arrived
+                // after the JavaScript preview scanned unfinished transactions.
+                for await outstanding in Transaction.unfinished {
+                    switch outstanding {
+                    case .verified(let transaction):
+                        if isAllowed(transaction.productID) {
+                            call.reject("未反映の購入があります。再購入せず購入の反映を確認してください。"); return
+                        }
+                    case .unverified:
+                        call.reject("未処理の購入を検証できません。新しい購入は開始していません。"); return
+                    }
+                }
+                let journal = try purchaseJournal()
+                try journal.begin(productID: id, token: token)
                 let result = try await product.purchase(options: [.appAccountToken(token)])
                 switch result {
                 case .success(let verification):
-                    guard case .verified(let transaction) = verification, allowed.contains(transaction.productID) else {
+                    guard case .verified(let transaction) = verification, transaction.productID == id,
+                          transaction.appAccountToken == token else {
                         call.reject("購入を検証できません。再購入せず購入の反映を確認してください。"); return
                     }
-                    // Never finish before the server has durably granted the boost.
+                    // Never finish before the server has durably granted the purchase.
                     call.resolve(["status": "purchased", "transactionId": String(transaction.id), "signedTransaction": verification.jwsRepresentation])
-                case .userCancelled: call.resolve(["status": "cancelled"])
+                case .userCancelled:
+                    try journal.clear(productID: id, token: token)
+                    call.resolve(["status": "cancelled"])
                 case .pending: call.resolve(["status": "pending"])
                 @unknown default: call.reject("購入結果を確認できません。購入の反映を確認してください。")
                 }
@@ -66,20 +150,35 @@ public class KoeBoostPlugin: CAPPlugin, CAPBridgedPlugin {
     }
     @objc func pendingTransactions(_ call: CAPPluginCall) {
         Task { @MainActor in
+            let attempt: KoePurchaseAttempt?
+            do { attempt = try purchaseJournal().read() }
+            catch { call.reject("前回の購入記録を確認できません。新しい購入は開始できません。"); return }
+            var matchingTransaction = false
             var rows: [[String: String]] = []
             for await result in Transaction.unfinished {
-                if case .verified(let transaction) = result, allowed.contains(transaction.productID) {
+                guard case .verified(let transaction) = result else {
+                    call.reject("未処理の購入を検証できません。再購入せず、時間をおいて反映を確認してください。"); return
+                }
+                if isAllowed(transaction.productID) {
+                    if let kind = call.getString("kind"),
+                       (kind == "voice" && !transaction.productID.contains(".voice.")) ||
+                       (kind == "boost" && !allowed.contains(transaction.productID)) { continue }
+                    if attempt?.productID == transaction.productID, attempt?.token == transaction.appAccountToken { matchingTransaction = true }
                     rows.append(["transactionId": String(transaction.id), "signedTransaction": result.jwsRepresentation])
                 }
             }
-            call.resolve(["transactions": rows])
+            call.resolve(["transactions": rows, "purchaseBlocked": attempt != nil, "approvalPending": attempt != nil && !matchingTransaction])
         }
     }
     @objc func finish(_ call: CAPPluginCall) {
         Task { @MainActor in
             guard let raw = call.getString("transactionId"), let id = UInt64(raw) else { call.reject("購入番号を確認できません。"); return }
             for await result in Transaction.unfinished {
-                if case .verified(let transaction) = result, transaction.id == id, allowed.contains(transaction.productID) {
+                if case .verified(let transaction) = result, transaction.id == id, isAllowed(transaction.productID) {
+                    // JS calls finish only after the server confirms the grant.
+                    // Clear first: a crash before finish leaves StoreKit unfinished.
+                    do { try purchaseJournal().clear(productID: transaction.productID, token: transaction.appAccountToken) }
+                    catch { call.reject("購入記録を更新できません。購入の反映を再確認してください。"); return }
                     await transaction.finish()
                     call.resolve(["finished": true]); return
                 }
