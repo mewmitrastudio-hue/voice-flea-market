@@ -41,6 +41,7 @@ export async function receiptDatabase(){
  create table voice_flea_private.trade_cancellations(conversation_id uuid,state text,buyer_approved boolean default false,seller_approved boolean default false);
  create table messages(conversation_id uuid,sender_id uuid,body text);`);
  await db.exec(read('supabase/migrations/20261028223344_receipt_capture.sql'));
+ await db.exec(read('supabase/migrations/20261102001450_serialize_voice_purchase_channels.sql'));
  return db;
 }
-export async function jobDatabase(){const db=await receiptDatabase();await db.exec(read('supabase/migrations/20261028232049_paid_job_orders.sql'));return db;}
+export async function jobDatabase(){const db=await receiptDatabase();await db.exec(read('supabase/migrations/20261028232049_paid_job_orders.sql'));await db.exec(read('supabase/migrations/20261102001450_serialize_voice_purchase_channels.sql'));return db;}
