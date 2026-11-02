@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {dispatchAppleSettlement,reconcileAppleSettlement} from '../supabase/functions/_shared/apple-settlement.mjs';
+import {dispatchAppleSettlement,reconcileAppleSettlement,recoverAppleSettlement,reconcileAppleRecovery} from '../supabase/functions/_shared/apple-settlement.mjs';
 const id='00000000-0000-4000-8000-000000000001',payment='00000000-0000-4000-8000-000000000002';
 function setup(){
  const op={id,payment_id:payment,seller_id:'seller',platform_id:'acct_platform',destination:'acct_seller',amount_jpy:541,currency:'jpy',livemode:true,state:'prepared'};
@@ -46,5 +46,31 @@ test('simultaneous dispatch is claimed once; mismatched evidence never records s
  assert.equal(results.filter(r=>r.status==='fulfilled').length,1);assert.equal(x.counts().creates,1);
  for(const mutate of [t=>t.metadata.payment_id='other',t=>t.amount=542,t=>t.livemode=false,t=>t.destination='acct_other',t=>t.source_transaction='ch_other']){
   const y=setup();mutate(y.transfer);await assert.rejects(dispatchAppleSettlement(y.args));assert.equal(y.counts().records,0);assert.equal(y.op.state,'dispatching');
+ }
+});
+
+test('refund recovery is one-shot across lost responses and reconciles without another debit',async()=>{
+ const x=setup();x.op.state='transferred';x.op.transfer_id='tr_apple';
+ let claimed=false,creates=0,recorded=false;
+ const recovery={id:'recovery',transfer_id:'tr_apple',amount_jpy:541};
+ x.journal.claimRecovery=async()=>{if(claimed)throw Error('already claimed');claimed=true;return recovery;};
+ x.journal.recordRecovery=async(id,e)=>{assert.equal(e.id,'trr_recovery');recorded=true;};
+ x.stripe.transfers.createReversal=async(id,p,opts)=>{creates++;assert.equal(p.amount,541);assert.equal(opts.idempotencyKey,'apple-recovery:recovery');x.transfer.amount_reversed=541;x.transfer.reversed=true;throw Error('lost response');};
+ x.stripe.transfers.retrieveReversal=async()=>({id:'trr_recovery'});
+ const args={op:x.op,stripe:x.stripe,journal:x.journal,platformId:'acct_platform',enabled:true,verifyRefund:async()=>{}};
+ await assert.rejects(recoverAppleSettlement(args),/lost response/);
+ await assert.rejects(recoverAppleSettlement(args),/already claimed/);assert.equal(creates,1);
+ const result=await reconcileAppleRecovery({...args,reversalId:'trr_recovery'});
+ assert.equal(recorded,true);assert.equal(result.financialAdjustment,'pending');assert.equal(result.bankPayout,'unverified');assert.equal(creates,1);
+});
+test('unverified refund, disabled recovery or foreign platform never claim recovery',async()=>{
+ for(const kind of ['disabled','platform','refund']){
+  const x=setup();x.op.transfer_id='tr_apple';x.op.state='transferred';let claimed=false;
+  x.journal.claimRecovery=async()=>{claimed=true;throw Error('unexpected claim');};
+  const args={op:x.op,stripe:x.stripe,journal:x.journal,platformId:'acct_platform',enabled:true,verifyRefund:async()=>{}};
+  if(kind==='disabled')args.enabled=false;
+  if(kind==='platform')args.platformId='acct_other';
+  if(kind==='refund')args.verifyRefund=async()=>{throw Error('not refunded');};
+  await assert.rejects(recoverAppleSettlement(args));assert.equal(claimed,false);
  }
 });

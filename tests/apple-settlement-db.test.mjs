@@ -11,6 +11,7 @@ async function setup(){
  await db.exec(read('20261102003116_keep_allocated_apple_proceeds_pending.sql'));
  await db.exec(read('20261102020226_guard_apple_refund_settlement_on_deletion.sql'));
  await db.exec(read('20261102040116_apple_settlement_dispatch_journal.sql'));
+ await db.exec(read('20261102055040_apple_refund_recovery_journal.sql'));
  await db.exec('update voice_flea_private.voice_iap_products set production_enabled=true');
  const order=(await db.query('select public.prepare_voice_iap_order($1,$2,$3,$4) r',[buyer,listing,'00000000-0000-4000-8000-000000000009','Production'])).rows[0].r;
  const purchase=(await db.query("select public.apply_verified_apple_voice($1,'123','com.ayuhide.koenofurima.voice.jpy1000','Production',now(),1000000,'JPY',false,$2) r",[order.orderId,buyer])).rows[0].r;
@@ -62,6 +63,34 @@ test('refund during dispatch preserves transfer evidence, reversal cannot erase 
   await assert.rejects(record(db,op.id,evidence(op)),/Reversal evidence mismatch/);
   const full={...evidence(op),amount_reversed:541,reversed:true};assert.equal((await record(db,op.id,full)).rows[0].r.state,'reversed');
   await db.exec('reset role');assert.equal((await db.query('select state from voice_flea_private.apple_proceeds_allocations')).rows[0].state,'adjustment_required');
+  assert.equal((await db.query('select voice_flea_private.apple_settlement_pending_for_user($1) pending',[seller])).rows[0].pending,true);
+ }finally{await db.close();}
+});
+
+test('recovery requires full verified refund, claims once and preserves financial liabilities',async()=>{
+ const {db,prepare,purchase}=await setup();try{
+  const op=await prepare();
+  const recover=()=>db.query('select public.claim_apple_recovery($1) r',[op.id]);
+  await assert.rejects(recover(),/permission denied/);
+  await db.exec('reset role;set role service_role');await claim(db,op.id);await record(db,op.id,evidence(op));
+  await assert.rejects(recover(),/Verified full refund/);
+  await db.exec('reset role');await db.query("update payments set status='refunded',refunded_amount_jpy=100 where id=$1",[purchase.paymentId]);
+  await db.exec('set role service_role');await assert.rejects(recover(),/Verified full refund/);
+  await db.exec('reset role');await db.query("update payments set refunded_amount_jpy=1000 where id=$1",[purchase.paymentId]);
+  await db.exec('set role service_role');
+  await record(db,op.id,{...evidence(op),amount_reversed:100});
+  const r=(await recover()).rows[0].r;assert.equal(r.amount_jpy,441);
+  await assert.rejects(recover(),/already claimed/);
+  const e={id:'trr_recovery',object:'transfer_reversal',transfer:'tr_apple',currency:'jpy',amount:441,metadata:{apple_recovery_id:r.id,apple_settlement_id:op.id}};
+  const save=e=>db.query('select public.record_apple_recovery($1,$2) r',[op.id,e]);
+  await assert.rejects(save(e),/evidence mismatch/);
+  await record(db,op.id,{...evidence(op),amount_reversed:541,reversed:true});
+  await assert.rejects(save({...e,amount:442}),/evidence mismatch/);
+  assert.equal((await save(e)).rows[0].r.state,'recovered');
+  assert.equal((await save(e)).rows[0].r.reversal_id,e.id);
+  await assert.rejects(save({...e,id:'trr_foreign'}),/evidence mismatch/);
+  await db.exec('reset role');
+  assert.equal((await db.query('select state from voice_flea_private.apple_proceeds_allocations')).rows[0].state,'adjustment_required');
   assert.equal((await db.query('select voice_flea_private.apple_settlement_pending_for_user($1) pending',[seller])).rows[0].pending,true);
  }finally{await db.close();}
 });

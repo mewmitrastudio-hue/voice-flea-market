@@ -104,3 +104,12 @@ apple_settlement_pending_for_userにallocated_unpaid/adjustment_requiredの出�
 Apple配分台帳に結びついた一意の送金予約、送金直前の署名・失効・受取能力・残高確認、DBロックによる一度だけのdispatch、取得し直したStripe送金証跡の保存を実装。通信切断・記録失敗後も予約を初期化しない。返金後のadjustment_requiredと銀行着金未確認を維持。新規12件を含む全195テスト成功。
 
 本番migration 20261102040815、apple-settlement v1、stripe-webhook v21反映・全ソース一致確認。未認証401。配分・予約とも0件で実送金なし。Stripe通知イベント追加は認証要求が繰り返され未確認。設定有効化、資金供給承認、外部送金の実地検証、自動回収、部分返金精算、銀行着金突合、精算後の退会解除は残る。詳細はAPPLE_SETTLEMENT_OPERATIONS.md。精算全体・審査準備の完了とは報告しない。
+
+
+## 2026-11-02 06:00 UTC — verified progress, not release completion
+
+- Build 33: source `7a6dc754770b774f41988573c4bf3c28ce5832cc`; GitHub distribution run `41395716110` succeeded. Capawesome build `23222212-4ef2-47e6-aaa9-a77171b26ca6`, deployment `8fbfca2d-a25d-42c9-827a-6d8e65099c2e`. App Store Connect binary upload succeeded at 05:47 UTC. Processing/testing availability was NOT checked: browser is signed out. No review submission.
+- Existing isolated Stripe sandbox `acct_1UEbZAIUiTTiT5wG`: simulated JPY 1,000 funding; test transfer `tr_1UXE67IUiTTiT5wGYSQkdUlz` for JPY 541 to existing fake test recipient `acct_1UEfvAIUiTtY4ux4`. Reversals `trr_1UXE6WIUiTTiT5wGFfKFoA45` (100) and `trr_1UXE70IUiTTiT5wGQw4uHDoO` (441). Fresh transfer retrieval confirmed amount_reversed=541, reversed=true, livemode=false. This proves Stripe sandbox mechanics only, not production funding or application end-to-end delivery. No real money moved.
+- Apple settlement recovery journal migration applied; apple-settlement Edge v2 ACTIVE, JWT verification enabled. Recovery requires fresh authoritative Apple revocation and database-confirmed full refund. Durable one-shot claim prevents a second reversal after unknown response. Explicit reconciliation retrieves Stripe evidence. Financial adjustment remains pending and account deletion remains blocked.
+- Full local suite: 198 passed, 0 failed. Security advisor has no new recovery RPC exposure; private RLS table intentionally has no client policies. Existing unrelated advisories remain.
+- Production funding approval, real bank payout reconciliation, refund report allocation/partial refund adjustment and terminal resolution of ambiguous StoreKit pending remain incomplete. Do not label groups 1–4 complete or the app ready for review/recording on this evidence.

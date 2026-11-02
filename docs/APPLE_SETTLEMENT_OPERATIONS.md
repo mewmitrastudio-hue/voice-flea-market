@@ -61,3 +61,10 @@ Stripe既存エンドポイント `we_1UQwAXIMjQxpA8ItQSPza3m6` は、許可済�
 1. 資金供給承認・設定を確認する。管理画面にはConnect送金用決済残高への「資金を追加」が表示された。金額入力・申請・実入金は実施していないため、資金供給完了とは扱わない。
 2. 返金調整の回収処理と、実際の銀行入金に結びつけた照合・退会解除を実装する。
 3. 利用可能な隔離テスト環境で送金・取消・通知再送を検証してから本番送金有効化を判断する。API連携は本番口座だけだが、管理画面には既存の「声のフリマサンドボックス」`acct_1UEbZAIUiTTiT5wG` があり、切替先URLを確認した。APIアクセス・外部送金の実地テストは未確認。
+
+
+### Verified full-refund recovery (2026-11-02)
+
+`apple-settlement` now accepts moderator-authorized `recover` and `reconcileRecovery` actions. Recover remains disabled unless APPLE_SETTLEMENT_TRANSFERS_ENABLED is true. It verifies the Apple transaction again, requires a full verified refund, retrieves the original Stripe transfer, then claims the remaining recoverable amount once in `apple_settlement_recoveries`. A timeout must be handled with `reconcileRecovery` and an existing Stripe reversal ID, never by resetting the claim. The reconciliation checks both transfer and reversal metadata, frozen amount, currency and transfer identity. Client-supplied refund amounts are not used. Partial buyer refunds are deliberately rejected until report-backed adjustment is implemented.
+
+A successful recovery is NOT final settlement: Apple report debits, any remaining seller liability, and bank payout reconciliation still need evidence. No deletion guard is released by this endpoint.

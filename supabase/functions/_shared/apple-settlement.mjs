@@ -42,6 +42,31 @@ export async function reconcileAppleSettlement({op,transferId,stripe,journal}) {
   return {...evidence,settlement:'bank_payout_unverified'};
 }
 
+// Claim is durable and one-shot even if the Stripe response is lost. Never
+// derive a refund from a client assertion or from an empty StoreKit list.
+export async function recoverAppleSettlement({op,stripe,journal,platformId,enabled=false,verifyRefund}) {
+  if(!enabled)throw Error('settlement_recovery_disabled');
+  if(op?.platform_id!==platformId||(await stripe.accounts.retrieve()).id!==platformId)throw Error('settlement_platform_mismatch');
+  await verifyRefund(op.payment_id);
+  await reconcileAppleSettlement({op,transferId:op.transfer_id,stripe,journal});
+  const recovery=await journal.claimRecovery(op.id);
+  if(recovery.transfer_id!==op.transfer_id||!Number.isSafeInteger(recovery.amount_jpy)||recovery.amount_jpy<=0)throw Error('settlement_recovery_mismatch');
+  const reversal=await stripe.transfers.createReversal(recovery.transfer_id,{
+    amount:recovery.amount_jpy,metadata:{apple_recovery_id:recovery.id,apple_settlement_id:op.id}
+  },{idempotencyKey:`apple-recovery:${recovery.id}`,maxNetworkRetries:0});
+  return reconcileAppleRecovery({op,stripe,journal,reversalId:reversal.id});
+}
+
+export async function reconcileAppleRecovery({op,stripe,journal,reversalId}) {
+  if(!/^trr_[A-Za-z0-9]+$/.test(reversalId||'')||!/^tr_[A-Za-z0-9]+$/.test(op?.transfer_id||''))throw Error('settlement_recovery_mismatch');
+  // The transfer (which has livemode and destination) and reversal must both
+  // be freshly retrieved. The reversal object itself has no livemode field.
+  await reconcileAppleSettlement({op,transferId:op.transfer_id,stripe,journal});
+  const evidence=await stripe.transfers.retrieveReversal(op.transfer_id,reversalId);
+  await journal.recordRecovery(op.id,evidence);
+  return {recovery:'verified',financialAdjustment:'pending',bankPayout:'unverified'};
+}
+
 // Called only after the webhook endpoint verifies signature and live mode.
 export async function reconcileAppleSettlementEvent({event,db,stripe,platformId}) {
   if (!['transfer.created','transfer.updated','transfer.reversed'].includes(event.type) ||
