@@ -26,7 +26,7 @@ jobs:
             echo "::error::Add CAPAWESOME_TOKEN in this repository's Actions secrets, then rerun this job. Never paste the token in chat."
             exit 1
           fi
-      - name: Build and deploy reviewed build 32 source to TestFlight
+      - name: Build and deploy reviewed build 33 source to TestFlight
         env:
           CAPAWESOME_TOKEN: ${{ secrets.CAPAWESOME_TOKEN }}
           REVIEWED_SHA: ${{ github.sha }}
