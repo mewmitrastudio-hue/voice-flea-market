@@ -1,3 +1,4 @@
+import {verifyTransferEvidence} from './transfer-evidence.mjs';
 // Never treat a browser confirmation or a successful POST as settled money.
 // Stripe must confirm the immutable payment again before the database accepts delivery.
 export class ReceiptError extends Error {
@@ -46,9 +47,11 @@ export async function captureReceipt({payment, stripe, live, now = () => Date.no
   if (payment.stripe_capture_method === 'manual' && !/^tr_[A-Za-z0-9]+$/.test(transferId || '')) fail('transfer_unconfirmed');
   if (payment.stripe_capture_method === 'manual') {
     const transfer = await stripe.get(`transfers/${transferId}`, {});
-    if (transfer?.id !== transferId || transfer.livemode !== live || transfer.currency !== 'jpy' ||
-        transfer.amount !== payment.amount_jpy || id(transfer.destination) !== payment.stripe_destination ||
-        id(transfer.source_transaction) !== charge.id || transfer.reversed !== false || transfer.amount_reversed !== 0) fail('transfer_unconfirmed');
+    try {
+      const evidence = verifyTransferEvidence(transfer, {id:transferId, livemode:live, currency:'jpy',
+        amount:payment.amount_jpy, destination:payment.stripe_destination, sourceTransaction:charge.id});
+      if (evidence.state !== 'transferred') fail('transfer_unconfirmed');
+    } catch { fail('transfer_unconfirmed'); }
   }
   return {stripe_payment_intent_id:pi.id, stripe_charge_id:charge.id, stripe_livemode:live,
     amount_jpy:charge.amount, refunded_amount_jpy:0, stripe_reconciled_at:new Date(now()).toISOString(),

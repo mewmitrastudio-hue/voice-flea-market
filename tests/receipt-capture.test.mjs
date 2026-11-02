@@ -3,13 +3,13 @@ import assert from 'node:assert/strict';
 import {captureReceipt,cancelReceiptAuthorization} from '../supabase/functions/_shared/receipt-capture.mjs';
 const base={id:'payment',status:'authorized',stripe_payment_intent_id:'pi_test',stripe_charge_id:'ch_test',stripe_livemode:false,
   stripe_capture_method:'manual',stripe_destination:'acct_seller',amount_jpy:1000,platform_fee_jpy:150,seller_amount_jpy:850};
-function fixture({payment={},pi={},charge={},captureError=false,readError=false,after={}}={}){
+function fixture({payment={},pi={},charge={},captureError=false,readError=false,after={},transfer={}}={}){
  const calls=[];let captured=false;
  const provider=()=>({id:'pi_test',livemode:false,currency:'jpy',amount:1000,capture_method:'manual',application_fee_amount:150,
    transfer_data:{destination:'acct_seller'},status:captured?'succeeded':'requires_capture',amount_capturable:captured?0:1000,...pi,
    latest_charge:{id:'ch_test',payment_intent:'pi_test',livemode:false,currency:'jpy',amount:1000,paid:true,amount_refunded:0,
     captured,amount_captured:captured?1000:0,transfer:captured?'tr_test':null,payment_method_details:{card:{capture_before:2000000000}},...charge,...(captured?after:{})}});
- const stripe={get:async path=>{calls.push('get');if(captured&&readError)throw Error('read unknown');return path.startsWith('transfers/')?{id:'tr_test',livemode:false,currency:'jpy',amount:1000,destination:'acct_seller',source_transaction:'ch_test',reversed:false,amount_reversed:0}:provider();},capture:async(...args)=>{calls.push(args);captured=true;if(captureError)throw Error('capture unknown');}};
+ const stripe={get:async path=>{calls.push('get');if(captured&&readError)throw Error('read unknown');return path.startsWith('transfers/')?{object:'transfer',id:'tr_test',livemode:false,currency:'jpy',amount:1000,destination:'acct_seller',source_transaction:'ch_test',reversed:false,amount_reversed:0,...transfer}:provider();},capture:async(...args)=>{calls.push(args);captured=true;if(captureError)throw Error('capture unknown');}};
  return {calls,stripe,payment:{...base,...payment}};
 }
 test('receipt capture verifies exact amount, destination and post-capture transfer before returning evidence',async()=>{
@@ -46,4 +46,10 @@ test('cancellation waits for Stripe to confirm release and uses the same durable
  const result=await cancelReceiptAuthorization({payment:base,stripe,live:false});assert.equal(result.canceled,true);
  await cancelReceiptAuthorization({payment:base,stripe,live:false});assert.deepEqual(calls,[['pi_test',{},'authorization-cancel:payment']]);
  status='succeeded';await assert.rejects(cancelReceiptAuthorization({payment:base,stripe,live:false}),/unconfirmed/);assert.equal(calls.length,1);
+});
+
+test('partial reversals and mismatched transfer identities cannot finalize an already captured purchase',async()=>{
+ for(const transfer of [{object:'payout'},{id:'tr_other'},{livemode:true},{currency:'usd'},{amount:999},{destination:'acct_other'},{source_transaction:'ch_other'},{amount_reversed:1},{amount_reversed:1000,reversed:true},{amount_reversed:-1},{amount_reversed:null}]){
+  const f=fixture({transfer});await assert.rejects(captureReceipt({...f,live:false}),/transfer_unconfirmed/);
+ }
 });

@@ -80,3 +80,11 @@ CLIの外部分析サービス通信は自動承認レビューに拒否され�
 Supabase migration 20261102003116を反映済み。関数本体MD5はpending_trade_summary=d6ed36392272dce262358693bf58acf8、allocate_apple_proceeds=57b827282a0bff8fe8541d7e94ded9c9でローカルと一致。authenticated限定の既存権限と空search_pathを維持。反映前の既存配分は0件。売上配分・送金・返金などの実取引は作成していない。
 
 この修正は配分処理の不具合修正であり、送金照合・返金回収・銀行着金連動の完成ではない。build32の署名/アップロード、実機検証、未確定予約の解消も引き続き未完了。
+
+## 追加確認：2026-11-02 — build32配布・送金証跡照合
+
+- build32を10:30:52 JSTにApp Store Connectへアップロード成功。ソースe4c7535b5766e3d6f08991eaa69fa56b87e9f00f。GitHub distribution #9: https://github.com/mewmitrastudio-hue/voice-flea-market/actions/runs/41372593623 。Capawesome build d423c6f6-ba94-44e6-8a3f-e2f15f86b1c5、deployment 1b00389f-6632-4ff5-85f8-3969f5f5dce2。Apple側の処理完了・TestFlight表示・実機成功・審査提出は未確認。上記のbuild32未アップロードという過去時点の記述を更新する。
+- Web受取のStripe Transfer照合を共通化・厳格化。object、ID、相手、金額、通貨、本番/テスト、元決済、取消額・取消フラグの整合を検証。不一致と部分/全額取消では受取を確定しない。Stripe残高への送金と銀行着金を分離し、銀行着金は常に未確認と返す。
+- 全アプリテスト181件成功。実エンドポイントのハーネスでも不一致時に台帳記録・受取確定RPCへ進まないことを確認。
+- Supabase accept-delivery / renew-authorization / cancel-authorizationを各v4へ反映。取得した全配布ファイルがローカルと一致、verify_jwt=trueを維持。既存配布との差分はreceipt-captureと新規transfer-evidenceのみ。
+- 今回の変更でApple配分からの送金作成、返金回収、銀行着金・退会連動が完成したわけではない。実送金・返金・一般販売・main統合・Apple審査提出は実施していない。

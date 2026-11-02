@@ -19,7 +19,7 @@ function endpoint(slug,options={}){
   v2:{core:{accounts:{retrieve:async()=>({id:'acct_seller',livemode:false,configuration:{recipient:{capabilities:{stripe_balance:{stripe_transfers:{status:options.inactive?'inactive':'active'}}}}},requirements:{entries:[]}})}}},
   checkout:{sessions:{create:async(params,request)=>{calls.push({name:'checkout',params,request});if(options.providerUnknown)throw Error('unknown');return {id:'cs_test_1',livemode:false,url:'https://checkout.stripe.com/test'};}}},
   paymentIntents:{retrieve:async()=>{calls.push({name:'pi_get'});return {id:'pi_test',currency:'jpy',livemode:false,amount:1000,application_fee_amount:150,capture_method:'manual',transfer_data:{destination:'acct_seller'},status:captured?'succeeded':'requires_capture',amount_capturable:captured?0:1000,latest_charge:{id:'ch_test',payment_intent:'pi_test',currency:'jpy',livemode:false,amount:1000,amount_refunded:options.refunded?1000:0,paid:true,captured,amount_captured:captured?1000:0,transfer:captured?'tr_test':null,payment_method_details:{card:{capture_before:2000000000}}}};},capture:async(...args)=>{calls.push({name:'capture',args});captured=true;}},
-  transfers:{retrieve:async()=>({id:'tr_test',currency:'jpy',livemode:false,amount:1000,destination:'acct_seller',source_transaction:'ch_test',reversed:false,amount_reversed:0})}
+  transfers:{retrieve:async()=>({object:'transfer',id:'tr_test',currency:'jpy',livemode:false,amount:1000,destination:'acct_seller',source_transaction:'ch_test',reversed:false,amount_reversed:0,...options.transfer})}
  };}
  const c={Response,Request,URL,Date,JSON,Number,String,Error,SyntaxError,Set,Uint8Array,TextDecoder,ReceiptError,captureReceipt,Stripe,
   createClient:()=>db,createReceiptCheckout,appleConfig:()=>({verifier:{verifiedTransactionById:async()=>{calls.push({name:'apple_get'});return {productId:'com.ayuhide.koenofurima.voice.jpy1000',currency:'JPY',price:1000000};}}}),
@@ -68,4 +68,12 @@ test('job Checkout uses only the accepted application and its immutable quote, n
  const prepare=e.calls.find(x=>x.name==='prepare_job_checkout');assert.equal(prepare.args.application,trade);assert.equal(prepare.args.actor,buyer);
  const checkout=e.calls.find(x=>x.name==='checkout');assert.equal(checkout.params.metadata.job_application_id,trade);assert.equal(checkout.params.metadata.job_id,listing);assert.equal(checkout.params.metadata.listing_id,undefined);assert.equal(checkout.params.line_items[0].price_data.unit_amount,1000);
  const invalid=endpoint('create-checkout-session',{job:true});assert.equal((await invalid.send({applicationId:trade,listingId:listing,attemptId:reservation})).status,400);
+});
+
+test('reversed or foreign Connect transfer evidence never reaches database finalization',async()=>{
+ for(const transfer of [{amount_reversed:1},{amount_reversed:1000,reversed:true},{destination:'acct_other'},{livemode:true},{object:'payout'}]){
+  const e=endpoint('accept-delivery',{transfer});
+  assert.ok((await e.send({conversationId:trade})).status>=400);
+  assert.equal(e.calls.some(x=>['record_stripe_payment_snapshot','finalize_delivery_acceptance'].includes(x.name)),false);
+ }
 });
