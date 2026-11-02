@@ -88,3 +88,13 @@ Supabase migration 20261102003116を反映済み。関数本体MD5はpending_tra
 - 全アプリテスト181件成功。実エンドポイントのハーネスでも不一致時に台帳記録・受取確定RPCへ進まないことを確認。
 - Supabase accept-delivery / renew-authorization / cancel-authorizationを各v4へ反映。取得した全配布ファイルがローカルと一致、verify_jwt=trueを維持。既存配布との差分はreceipt-captureと新規transfer-evidenceのみ。
 - 今回の変更でApple配分からの送金作成、返金回収、銀行着金・退会連動が完成したわけではない。実送金・返金・一般販売・main統合・Apple審査提出は実施していない。
+
+## 追加修正：2026-11-02 — 返金後の出品者精算と退会
+
+実際の退会準備関数を使った回帰テストで、Apple売上の配分後に全額返金されると、adjustment_requiredの配分が残っていても出品者の退会が許可される不具合を再現した（修正前6成功・1失敗）。
+
+apple_settlement_pending_for_userにallocated_unpaid/adjustment_requiredの出品者配分を確認する条件を追加。既存の未精算Production売上の条件も維持。調整中は退会記録を作らず、出品も無効化しない。購入者への返金が完了している場合、出品者側の精算待ちを購入者へ転嫁しない。配分のない全額返金に架空の精算待ちを作らない。
+
+退会・返金・配分の関連テスト11件成功。Supabaseへ反映済み。配布関数本体MD5はb7272913630ee4138d8a2b4bd9fc1df7でローカルと一致。空search_pathとanon/authenticated直接実行不可を維持。セキュリティ検査は変更前後で同じ既知WARN、ERRORなし。実際の退会・送金・返金は実行していない。
+
+これは未解決の精算を保護する修正。送金作成、回収・調整完了、銀行着金証跡の実装・実取引確認が完了したことを意味しない。
