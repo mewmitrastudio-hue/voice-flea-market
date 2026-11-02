@@ -2,6 +2,31 @@ import UIKit
 import Capacitor
 import StoreKit
 
+// KOEFURIMA_PURCHASE_JOURNAL_BEGIN
+// Persist before opening StoreKit. An empty unfinished stream is not proof
+// that an Ask to Buy request was cancelled. Never expire this record by time.
+struct KoePurchaseAttempt: Codable, Equatable {
+    let productID: String
+    let token: UUID
+}
+struct KoePurchaseJournal {
+    let url: URL
+    func read() throws -> KoePurchaseAttempt? {
+        guard FileManager.default.fileExists(atPath: url.path) else { return nil }
+        return try JSONDecoder().decode(KoePurchaseAttempt.self, from: Data(contentsOf: url))
+    }
+    func begin(productID: String, token: UUID) throws {
+        guard try read() == nil else { throw NSError(domain: "KoePurchasePending", code: 1) }
+        try FileManager.default.createDirectory(at: url.deletingLastPathComponent(), withIntermediateDirectories: true)
+        try JSONEncoder().encode(KoePurchaseAttempt(productID: productID, token: token)).write(to: url, options: .atomic)
+    }
+    func clear(productID: String, token: UUID?) throws {
+        guard let attempt = try read(), attempt.productID == productID, attempt.token == token else { return }
+        try FileManager.default.removeItem(at: url)
+    }
+}
+// KOEFURIMA_PURCHASE_JOURNAL_END
+
 // This code is appended to the existing SceneDelegate.swift by the preparation script.
 class KoeBridgeViewController: CAPBridgeViewController {
     override func capacitorDidLoad() {
@@ -24,6 +49,10 @@ public class KoeBoostPlugin: CAPPlugin, CAPBridgedPlugin {
         allowed.contains(id) || id.range(of: "^com\\.ayuhide\\.koenofurima\\.voice\\.jpy[1-9][0-9]{0,7}$", options: .regularExpression) != nil
     }
     private var purchaseInProgress = false
+    private func purchaseJournal() throws -> KoePurchaseJournal {
+        let directory = try FileManager.default.url(for: .applicationSupportDirectory, in: .userDomainMask, appropriateFor: nil, create: true)
+        return KoePurchaseJournal(url: directory.appendingPathComponent("koe-purchase-attempt.json"))
+    }
     private func purchaseEnvironment() async throws -> String {
         if #available(iOS 16.0, *) {
             // A TestFlight install may not have an app receipt yet. Absence is
@@ -99,6 +128,8 @@ public class KoeBoostPlugin: CAPPlugin, CAPBridgedPlugin {
                         call.reject("未処理の購入を検証できません。新しい購入は開始していません。"); return
                     }
                 }
+                let journal = try purchaseJournal()
+                try journal.begin(productID: id, token: token)
                 let result = try await product.purchase(options: [.appAccountToken(token)])
                 switch result {
                 case .success(let verification):
@@ -108,7 +139,9 @@ public class KoeBoostPlugin: CAPPlugin, CAPBridgedPlugin {
                     }
                     // Never finish before the server has durably granted the purchase.
                     call.resolve(["status": "purchased", "transactionId": String(transaction.id), "signedTransaction": verification.jwsRepresentation])
-                case .userCancelled: call.resolve(["status": "cancelled"])
+                case .userCancelled:
+                    try journal.clear(productID: id, token: token)
+                    call.resolve(["status": "cancelled"])
                 case .pending: call.resolve(["status": "pending"])
                 @unknown default: call.reject("購入結果を確認できません。購入の反映を確認してください。")
                 }
@@ -117,6 +150,10 @@ public class KoeBoostPlugin: CAPPlugin, CAPBridgedPlugin {
     }
     @objc func pendingTransactions(_ call: CAPPluginCall) {
         Task { @MainActor in
+            let attempt: KoePurchaseAttempt?
+            do { attempt = try purchaseJournal().read() }
+            catch { call.reject("前回の購入記録を確認できません。新しい購入は開始できません。"); return }
+            var matchingTransaction = false
             var rows: [[String: String]] = []
             for await result in Transaction.unfinished {
                 guard case .verified(let transaction) = result else {
@@ -126,10 +163,11 @@ public class KoeBoostPlugin: CAPPlugin, CAPBridgedPlugin {
                     if let kind = call.getString("kind"),
                        (kind == "voice" && !transaction.productID.contains(".voice.")) ||
                        (kind == "boost" && !allowed.contains(transaction.productID)) { continue }
+                    if attempt?.productID == transaction.productID, attempt?.token == transaction.appAccountToken { matchingTransaction = true }
                     rows.append(["transactionId": String(transaction.id), "signedTransaction": result.jwsRepresentation])
                 }
             }
-            call.resolve(["transactions": rows])
+            call.resolve(["transactions": rows, "purchaseBlocked": attempt != nil, "approvalPending": attempt != nil && !matchingTransaction])
         }
     }
     @objc func finish(_ call: CAPPluginCall) {
@@ -137,6 +175,10 @@ public class KoeBoostPlugin: CAPPlugin, CAPBridgedPlugin {
             guard let raw = call.getString("transactionId"), let id = UInt64(raw) else { call.reject("購入番号を確認できません。"); return }
             for await result in Transaction.unfinished {
                 if case .verified(let transaction) = result, transaction.id == id, isAllowed(transaction.productID) {
+                    // JS calls finish only after the server confirms the grant.
+                    // Clear first: a crash before finish leaves StoreKit unfinished.
+                    do { try purchaseJournal().clear(productID: transaction.productID, token: transaction.appAccountToken) }
+                    catch { call.reject("購入記録を更新できません。購入の反映を再確認してください。"); return }
                     await transaction.finish()
                     call.resolve(["finished": true]); return
                 }

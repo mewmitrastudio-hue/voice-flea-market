@@ -193,3 +193,10 @@ test('failed receipt verification cannot replay the same displayed purchase quot
  await f.c.confirmVoicePurchase();assert.deepEqual(f.events,['purchase','verify']);
  await f.c.reconcileVoicePurchases();assert.equal(f.events.filter(x=>x==='purchase').length,1);
 });
+
+test('a durable unresolved purchase blocks a fresh quote even when StoreKit returns no transactions',async()=>{
+ const f=uiFixture();f.plugin.pendingTransactions=async()=>({transactions:[],purchaseBlocked:true,approvalPending:true});
+ await f.c.startVoicePurchase(listing);await f.c.confirmVoicePurchase();assert.deepEqual(f.events,[]);
+ await f.c.reconcileVoicePurchases();assert.match(f.elements.get('voicePurchaseStatus').textContent,/承認待ち/);
+ assert.doesNotMatch(f.elements.get('voicePurchaseStatus').textContent,/未反映の購入はありません/);
+});
