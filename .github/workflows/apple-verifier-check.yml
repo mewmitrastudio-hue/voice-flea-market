@@ -3,6 +3,7 @@ on:
   pull_request:
     paths:
       - 'workers/apple-verifier/**'
+      - 'supabase/functions/_shared/apple-adapter.mjs'
       - '.github/workflows/apple-verifier-check.yml'
   workflow_dispatch:
 permissions:

@@ -65,9 +65,9 @@ test('trade information never borrows a different repeat purchase or lists a rec
  pays=[{id:payment,amount_jpy:1000,paid_at:'2026-09-11'}];await c.loadTradeInfoPanel(trade);assert.match(panel.innerHTML,/対応が未照合/);await c.loadTradeInfoPanel({...trade,payment_id:payment});assert.match(panel.innerHTML,/1,000円/);assert.match(panel.innerHTML,/購入日/);
  await c.loadTradeInfoPanel({...trade,listing_id:null,job_id:'job'});assert.match(panel.innerHTML,/募集予算/);assert.match(panel.innerHTML,/支払い完了を示すものではありません/);
 });
-test('unfinished native iOS normal purchases stop before creating an external Checkout session',async()=>{
- const errors=[];let fetched=0;
- const c={sb:{},currentUser:{id:buyer},window:{Capacitor:{isNativePlatform:()=>true,getPlatform:()=> 'ios'}},showCheckoutError:error=>errors.push(error.message),fetch:()=>{fetched++;throw Error('Unexpected network')},Set,Error};
+test('native iOS purchases route to StoreKit without creating an external Checkout session',async()=>{
+ const routed=[];let fetched=0;
+ const c={sb:{},currentUser:{id:buyer},window:{Capacitor:{isNativePlatform:()=>true,getPlatform:()=> 'ios'}},startVoicePurchase:async id=>routed.push(id),fetch:()=>{fetched++;throw Error('Unexpected network')},Set,Error};
  vm.createContext(c);vm.runInContext(html.slice(html.indexOf('const checkoutInFlight='),html.indexOf('async function reconcilePendingPurchase(')),c);
- await c.startStripeCheckout(listing);assert.equal(fetched,0);assert.match(errors[0],/iPhone.*準備中/);
+ await c.startStripeCheckout(listing);assert.equal(fetched,0);assert.deepEqual(routed,[listing]);
 });

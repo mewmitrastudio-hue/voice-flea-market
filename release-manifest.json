@@ -1,10 +1,11 @@
 {
-  "release": "2026.10.24-8",
-  "web_sha256": "5222bb57f6ce7a379b471c452f59900a904e86cbdabea8e395c647f641a5ac9c",
+  "release": "2026.11.04-2",
+  "web_sha256": "4705e74c3cf5fd898d8a22703e7469e810fc5255a21fc7a928c544822cb94991",
   "bundle_id": "com.ayuhide.koenofurima",
-  "minimum_build_number": 25,
-  "production_backend_applied": true,
-  "production_backend_applied_at": "2026-10-16T22:09:17.179653+00:00",
-  "boost_native_sha256": "38876812b17a6bc6aa30578bc583ca40c602055251a860da2b70bc89301f1fa0",
-  "boost_sales_enabled": false
+  "minimum_build_number": 36,
+  "production_backend_applied": false,
+  "production_backend_applied_at": null,
+  "boost_native_sha256": "259971ce55b32bdb49946b86e66f450dc73ce7a59bb1425935165603121eee21",
+  "boost_sales_enabled": false,
+  "voice_sales_enabled": false
 }
