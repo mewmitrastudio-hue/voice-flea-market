@@ -79,18 +79,20 @@ Deno.serve(async(req)=>{
   if(planError)throw planError;
   if(!plan?.allowed)return respond({message:plan?.message||'未完了の取引を確認してください。'},409);
   prepared=true;
+  const files: {bucket:string;name:string}[]=plan.files||[];
+  if(!Array.isArray(files)||files.some(x=>!x||typeof x.bucket!=='string'||typeof x.name!=='string'))throw new Error('Invalid deletion file plan');
+  // Commit the authoritative financial recheck before any irreversible Storage/Auth
+  // mutation. A late refund must roll back anonymization without deleting files.
+  const {error:finishError}=await admin.rpc('finish_account_deletion',{target:user.id});
+  if(finishError)throw finishError;
   // Remove only this account's public samples/avatars. Transaction deliveries stay private
   // for the other party's purchased rights; no storage metadata is deleted via SQL.
   for(const bucket of ['voice-samples','profile-avatars']){
-   const files: {bucket:string;name:string}[]=plan.files||[];
-   if(!Array.isArray(files)||files.some(x=>!x||typeof x.bucket!=='string'||typeof x.name!=='string'))throw new Error('Invalid deletion file plan');
    const paths=files.filter(x=>x.bucket===bucket).map(x=>x.name);
    for(let i=0;i<paths.length;i+=100){
     const {error}=await admin.storage.from(bucket).remove(paths.slice(i,i+100));if(error)throw error;
    }
   }
-  const {error:finishError}=await admin.rpc('finish_account_deletion',{target:user.id});
-  if(finishError)throw finishError;
   const {error:signOutError}=await admin.auth.admin.signOut(auth.slice(7),'global');
   if(signOutError)throw signOutError;
   // Irreversible Auth soft deletion scrubs login identity without cascading transaction FKs.

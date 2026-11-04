@@ -29,7 +29,7 @@ test('shared Apple dispatcher passes signed price and current buyer without inve
  const calls=[],admin={rpc:async(name,args)=>{calls.push({name,args});return {data:{success:true}};}};
  const tx={productId:'com.ayuhide.koenofurima.boost.gold',transactionId:'123',appAccountToken:'order',environment:'Sandbox',purchaseDate:Date.now(),price:800000,currency:'JPY'};
  await c.applyTransaction(admin,tx);assert.equal(calls[0].name,'apply_priced_apple_boost');assert.equal(calls[0].args.price_milliunits,800000);
- await c.applyTransaction(admin,{...tx,price:undefined,currency:undefined,revocationDate:Date.now()});assert.equal(calls[1].args.price_milliunits,null);assert.equal(calls[1].args.revoked,true);
+ await c.applyTransaction(admin,{...tx,price:undefined,currency:undefined,revocationDate:Date.now(),refundEvidenceVersion:1});assert.equal(calls[1].args.price_milliunits,null);assert.equal(calls[1].args.revoked,true);
  await c.applyTransaction(admin,{...tx,productId:'com.ayuhide.koenofurima.voice.jpy1000',price:1000000},'buyer');
  assert.equal(calls[2].name,'apply_verified_apple_voice');assert.equal(calls[2].args.actor,'buyer');assert.equal(calls[2].args.price_milliunits,1000000);
 });

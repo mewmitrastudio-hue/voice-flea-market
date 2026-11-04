@@ -34,3 +34,9 @@ test('receipt-time Apple lookup verifies requested identity and preserves revoca
  current={...tx,transactionId:'999'};await assert.rejects(adapter.verifiedTransactionById(tx.transactionId,'Sandbox'),/TRANSACTION_MISMATCH/);
  current={...tx,environment:'Production'};await assert.rejects(adapter.verifiedTransactionById(tx.transactionId,'Sandbox'),/TRANSACTION_MISMATCH/);
 });
+test('signature worker preserves prorated refund evidence instead of collapsing it into a full refund',async()=>{
+ const value={...tx,revocationDate:Date.now(),revocationType:'REFUND_PRORATED',revocationPercentage:50000};
+ const h=createSignatureHandler(async()=>[{environment:'Sandbox',verifier:{verifyAndDecodeTransaction:async()=>value}}]);
+ const r=await h(new Request('https://local.invalid/v1/transaction',{method:'POST',headers:{Authorization:`Bearer ${secret}`},body:JSON.stringify({signedTransaction:'a.b.c'})}),{APPLE_VERIFIER_SHARED_SECRET:secret});
+ assert.equal(r.status,200);assert.deepEqual((await r.json()).transaction,{...value,refundEvidenceVersion:1});
+});

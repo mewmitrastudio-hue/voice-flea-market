@@ -58,5 +58,8 @@ Deno.serve(async req=>{
   if(error)return json({error:'この出品のApple購入設定を確認できません。購入は開始していません。'},409);
   if(data?.sellerId!==sellerId)return json({error:'販売者の情報が変更されました。購入は開始していません。'},409);
   return json(data);
- }catch(error){console.error('VOICE_IAP_FAILED',{name:error instanceof Error?error.name:'unknown'});return json({error:'購入を確認できません。購入済みの場合は再購入せず「音声購入の反映を確認」を押してください。'},503);}
+ }catch(error){
+  if(error?.message==='APPLE_REFUND_REVIEW_HELD')return json({error:'Appleの返金内容を照合中です。金額を確定せず、この取引の新しい納品・受取・送金手続きを保留しています。運営へお問い合わせください。',code:'apple_refund_review_required'},409);
+  if(error?.message==='APPLE_REFUND_RECONCILIATION_REQUIRED')return json({error:'Appleの返金内容を確認する必要があります。購入や返金額は確定していません。再購入せず運営へお問い合わせください。',code:'apple_refund_evidence_required'},409);
+console.error('VOICE_IAP_FAILED',{name:error instanceof Error?error.name:'unknown'});return json({error:'購入を確認できません。購入済みの場合は再購入せず「音声購入の反映を確認」を押してください。'},503);}
 });

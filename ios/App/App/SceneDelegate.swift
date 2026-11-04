@@ -180,20 +180,28 @@ public class KoeBoostPlugin: CAPPlugin, CAPBridgedPlugin {
             do { attempt = try purchaseJournal().read() }
             catch { call.reject("前回の購入記録を確認できません。新しい購入は開始できません。"); return }
             var matchingTransaction = false
+            var pendingKinds = Set<String>()
             var rows: [[String: String]] = []
             for await result in Transaction.unfinished {
                 guard case .verified(let transaction) = result else {
                     call.reject("未処理の購入を検証できません。再購入せず、時間をおいて反映を確認してください。"); return
                 }
                 if isAllowed(transaction.productID) {
+                    pendingKinds.insert(transaction.productID.contains(".voice.") ? "voice" : "boost")
+                    // Match the durable attempt before filtering: the other
+                    // purchase screen must not mislabel a verified purchase as approval pending.
+                    if attempt?.productID == transaction.productID, attempt?.token == transaction.appAccountToken { matchingTransaction = true }
                     if let kind = call.getString("kind"),
                        (kind == "voice" && !transaction.productID.contains(".voice.")) ||
                        (kind == "boost" && !allowed.contains(transaction.productID)) { continue }
-                    if attempt?.productID == transaction.productID, attempt?.token == transaction.appAccountToken { matchingTransaction = true }
                     rows.append(["transactionId": String(transaction.id), "signedTransaction": result.jwsRepresentation])
                 }
             }
-            call.resolve(["transactions": rows, "purchaseBlocked": attempt != nil, "approvalPending": attempt != nil && !matchingTransaction])
+            let requestedKind = call.getString("kind") ?? ""
+            let otherKind = requestedKind == "voice" ? "boost" : "voice"
+            let blockingKind = attempt.map { $0.productID.contains(".voice.") ? "voice" : "boost" }
+                ?? (pendingKinds.contains(otherKind) ? otherKind : pendingKinds.sorted().first ?? "")
+            call.resolve(["transactions": rows, "purchaseBlocked": attempt != nil || !pendingKinds.isEmpty, "approvalPending": attempt != nil && !matchingTransaction, "blockingKind": blockingKind])
         }
     }
     @objc func finish(_ call: CAPPluginCall) {

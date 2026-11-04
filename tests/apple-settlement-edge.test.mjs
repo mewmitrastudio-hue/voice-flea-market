@@ -11,7 +11,7 @@ function endpoint(options={}){
  const env={SUPABASE_URL:'https://local.invalid',SUPABASE_SERVICE_ROLE_KEY:'unit-only',STRIPE_SECRET_KEY:'sk_live_unit',APPLE_SETTLEMENT_STRIPE_ACCOUNT_ID:'acct_platform',...options.enabled?{APPLE_SETTLEMENT_TRANSFERS_ENABLED:'true',APPLE_SETTLEMENT_FUNDING_APPROVED:'true'}:{}};
  function createClient(url,key,opts){const operator=!!opts.global;return {
   auth:{getUser:async()=>({data:{user:options.authFail?null:{id:'operator'}},error:null})},
-  from(){return {select(){return this},eq(){return this},single:async()=>({data:{id:payment,buyer_id:'buyer',apple_transaction_id:'123',apple_environment:'Production',amount_jpy:1000}})};},
+  from(){return {select(){return this},eq(){return this},single:async()=>({data:{id:payment,buyer_id:'buyer',apple_transaction_id:'123',apple_environment:options.paymentEnvironment||'Production',amount_jpy:1000}})};},
   rpc:async(name,args)=>{
    calls.push({name,args,operator});
    if(name==='prepare_apple_settlement'){assert.equal(operator,true);assert.equal(opts.global.headers.Authorization,'Bearer unit');return options.nonAdmin?{error:true}:{data:{...op}};}
@@ -45,4 +45,10 @@ test('oversized streamed requests stop before authentication or finance access',
  const body=new ReadableStream({pull(c){c.enqueue(new Uint8Array(2049));},cancel(){canceled=true;}},{highWaterMark:0});
  const response=await e.handle(new Request('https://local.invalid',{method:'POST',headers:{Authorization:'Bearer unit'},body,duplex:'half'}));
  assert.equal(response.status,413);assert.equal(canceled,true);assert.equal(e.calls.length,0);
+});
+
+test('a Sandbox Apple payment cannot dispatch to production Stripe even with both production switches enabled',async()=>{
+ const e=endpoint({enabled:true,paymentEnvironment:'Sandbox'});
+ assert.equal((await e.send('dispatch')).status,409);
+ assert.equal(e.calls.some(c=>c.name==='claim_apple_settlement'||c.name==='transfer'||c.name==='record_apple_settlement'),false);
 });

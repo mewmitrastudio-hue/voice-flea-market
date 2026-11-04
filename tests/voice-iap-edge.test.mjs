@@ -12,7 +12,7 @@ function fixture({enabled=false,product='com.ayuhide.koenofurima.voice.jpy1000',
  const admin={from:table=>({select(){return this;},eq(){return this;},async maybeSingle(){return {data:table==='applications'?{id:listing,job_id:listing,applicant_id:seller,status:'accepted'}:table==='jobs'?{id:listing,buyer_id:foreignJob?seller:user,status:'open'}:{id:listing,seller_id:seller,is_active:true}};}}),auth:{getUser:async token=>token==='valid'?{data:{user:{id:user}}}:{data:{user:null},error:{}}},rpc:async(name,args)=>{calls.push({name,args});return {data:{sellerId:changedSeller?user:seller,orderId:attempt,productId:product,amountJpy:1000,environment:'Sandbox',state:'prepared'}};}};
  const c={Response,Request,Uint8Array,TextDecoder,JSON,console:{error(){}},Deno:{env:{get:name=>({SUPABASE_URL:'https://test.invalid',SUPABASE_SERVICE_ROLE_KEY:'test-only',STRIPE_SECRET_KEY:stripeKey,VOICE_IAP_ENABLED:enabled?'true':'false',VOICE_IAP_ENVIRONMENT:environment})[name]},serve:fn=>handler=fn},
   createClient:()=>admin,Stripe:function(){},requireRecipient:async args=>{recipientCalls.push(args.sellerId);assert.equal(calls.length,0,'readiness precedes reservation');if(recipientFailure)throw Error('not ready');},appleConfig(){},verifiedTransaction:async()=>({productId:product,price:1000000,currency:'JPY'}),
-  applyTransaction:async(db,tx,actor)=>{calls.push({actor,tx});if(applyFailure)throw Error('database unavailable');return {paymentId:'payment',conversationId:'trade'};}
+  applyTransaction:async(db,tx,actor)=>{calls.push({actor,tx});if(applyFailure)throw Error(typeof applyFailure==='string'?applyFailure:'database unavailable');return {paymentId:'payment',conversationId:'trade'};}
  };
  const src=fs.readFileSync(new URL('../supabase/functions/voice-iap/index.ts',import.meta.url),'utf8').replace(/^import .*;\n/gm,'');
  vm.createContext(c);vm.runInContext(stripTypeScriptTypes(src),c);
@@ -74,4 +74,8 @@ test('a different job buyer cannot probe seller readiness or reserve an order',a
  const f=fixture({enabled:true,foreignJob:true});
  const r=await f.send({action:'prepareJob',applicationId:listing,attemptId:attempt});
  assert.equal(r.status,409);assert.equal(f.calls.length,0);assert.equal(f.recipientCalls.length,0);
+});
+
+test('a durably held refund returns actionable Japanese guidance, not purchase success',async()=>{
+ const f=fixture({applyFailure:'APPLE_REFUND_REVIEW_HELD'});const r=await f.send({action:'verify',signedTransaction:'signed'});assert.equal(r.status,409);const body=await r.json();assert.equal(body.code,'apple_refund_review_required');assert.match(body.error,/運営へお問い合わせ/);assert.equal(body.success,undefined);
 });

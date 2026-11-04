@@ -34,5 +34,8 @@ Deno.serve(async(req)=>{
   const {data,error:orderError}=await admin.rpc('prepare_boost_order',{owner_id:user.id,listing:body.listingId,tier:body.plan});
   if(orderError)return json({error:'公開中の自分の出品を選択してください。有効なブーストがある場合は期間終了後に購入できます。'},409);
   return json(data);
- }catch(error){console.error('BOOST_IAP_FAILED',{name:error?.name,code:error?.code});return json({error:'購入情報を確認できません。購入済みの場合は再購入せず「購入の反映を確認」を押してください。'},503);}
+ }catch(error){
+  if(error?.message==='APPLE_REFUND_REVIEW_HELD')return json({error:'Appleの返金内容を照合中です。金額を確定せず、この取引の新しい納品・受取・送金手続きを保留しています。運営へお問い合わせください。',code:'apple_refund_review_required'},409);
+  if(error?.message==='APPLE_REFUND_RECONCILIATION_REQUIRED')return json({error:'Appleの返金内容を確認する必要があります。購入や返金額は確定していません。再購入せず運営へお問い合わせください。',code:'apple_refund_evidence_required'},409);
+console.error('BOOST_IAP_FAILED',{name:error?.name,code:error?.code});return json({error:'購入情報を確認できません。購入済みの場合は再購入せず「購入の反映を確認」を押してください。'},503);}
 });

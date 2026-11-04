@@ -50,6 +50,9 @@ Deno.serve(async(req)=>{
   if(error||!conversation||conversation.delivery_status!=='accepted')throw new ReceiptError('receipt_persistence_pending');
   return reply({success:true,conversation});
  }catch(error){
+  if(error?.message==='APPLE_REFUND_REVIEW_HELD')return reply({error:'Appleの返金内容を照合中です。金額を確定せず、この取引の新しい納品・受取・送金手続きを保留しています。運営へお問い合わせください。',code:'apple_refund_review_required'},409);
+  if(error?.message==='APPLE_REFUND_RECONCILIATION_REQUIRED')return reply({error:'Appleの返金内容を確認する必要があります。購入や返金額は確定していません。再購入せず運営へお問い合わせください。',code:'apple_refund_evidence_required'},409);
+
   if(error instanceof SyntaxError)return reply({error:'送信内容を確認してください。'},400);
   const code=error instanceof ReceiptError?error.code:'receipt_result_unknown';
   console.warn('RECEIPT_NOT_CONFIRMED',{code});

@@ -14,6 +14,30 @@ export function appleConfig(){
 }
 export async function verifiedTransaction(signed:string){return appleConfig().verifier.verifiedTransaction(signed);}
 export async function applyTransaction(admin:any,tx:any,actor:string|null=null){
+ // A revocation date alone no longer proves a full refund. The signature
+ // service must preserve current Apple refund fields; an older worker cannot
+ // silently erase a prorated refund and authorize full seller recovery.
+ const hasRevocation=tx.revocationDate!==undefined;
+ if(hasRevocation && (!Number.isFinite(tx.revocationDate) || tx.revocationDate<=0 || tx.refundEvidenceVersion!==1 ||
+    (tx.revocationType!==undefined && tx.revocationType!=='REFUND_FULL') ||
+    (tx.revocationPercentage!==undefined && tx.revocationPercentage!==100000))) {
+  if(tx.refundEvidenceVersion===1 && Number.isFinite(tx.revocationDate) && tx.revocationDate>0 &&
+     /^com\.ayuhide\.koenofurima\.voice\.jpy[1-9][0-9]{0,7}$/.test(tx.productId||'')) {
+   const {error}=await admin.rpc('record_apple_refund_review',{
+    order_id:tx.appAccountToken,tx_id:tx.transactionId,tx_environment:tx.environment,
+    sku:tx.productId,price_milliunits:tx.price,currency:tx.currency,actor,
+    evidence:{refundEvidenceVersion:1,revocationDate:tx.revocationDate,
+     revocationType:tx.revocationType??null,revocationPercentage:tx.revocationPercentage??null}
+   });
+   if(error)throw new Error('APPLE_REFUND_HOLD_NOT_CONFIRMED');
+   throw new Error('APPLE_REFUND_REVIEW_HELD');
+  }
+  throw new Error('APPLE_REFUND_RECONCILIATION_REQUIRED');
+ }
+ if(!hasRevocation && (tx.revocationType!==undefined || tx.revocationPercentage!==undefined)) {
+  throw new Error('APPLE_REFUND_EVIDENCE_INCONSISTENT');
+ }
+
  const voice=/^com\.ayuhide\.koenofurima\.voice\.jpy[1-9][0-9]{0,7}$/.test(tx.productId||'');
  const args:any={order_id:tx.appAccountToken,tx_id:tx.transactionId,sku:tx.productId,tx_environment:tx.environment,purchased_at:new Date(tx.purchaseDate).toISOString(),revoked:Boolean(tx.revocationDate)};
  Object.assign(args,{price_milliunits:tx.price??null,currency:tx.currency??null});

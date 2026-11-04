@@ -67,6 +67,9 @@ Deno.serve(async(req)=>{
    }});
   return reply(result);
  }catch(error){
+  if(error?.message==='APPLE_REFUND_REVIEW_HELD')return reply({error:'Appleの返金内容を照合中です。金額を確定せず、この取引の新しい納品・受取・送金手続きを保留しています。運営へお問い合わせください。',code:'apple_refund_review_required'},409);
+  if(error?.message==='APPLE_REFUND_RECONCILIATION_REQUIRED')return reply({error:'Appleの返金内容を確認する必要があります。購入や返金額は確定していません。再購入せず運営へお問い合わせください。',code:'apple_refund_evidence_required'},409);
+
   if(error instanceof SyntaxError)return reply({error:'Invalid request'},400);
   // Do not expose Stripe bodies, financial reports or keys in logs/responses.
   console.warn('APPLE_SETTLEMENT_NOT_CONFIRMED');

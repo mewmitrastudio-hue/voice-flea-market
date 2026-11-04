@@ -77,7 +77,7 @@ test('SQL import is operator-only, idempotent, keeps report evidence, and cannot
 test('report UI escapes file names, refuses stale previews, and discards reads after an account switch',async()=>{
  const elements=new Map(),el=id=>{if(!elements.has(id))elements.set(id,{textContent:'',innerHTML:'',disabled:false,value:'',replaceChildren(){this.textContent='';this.innerHTML='';}});return elements.get(id);};
  let resolvePreview,resolveHistory;
- const c={currentUser:{id:operator},TextDecoder,Number,Array,Error,document:{getElementById:el},isVoiceFleaAdmin:()=>c.currentUser?.id===operator,esc:x=>String(x).replaceAll('&','&amp;').replaceAll('<','&lt;').replaceAll('>','&gt;'),sb:{functions:{invoke:()=>new Promise(r=>resolvePreview=r)},rpc:()=>new Promise(r=>resolveHistory=r)}};
+ const c={currentUser:{id:operator},TextDecoder,Number,Array,Error,document:{getElementById:el,querySelectorAll:()=>[]},isVoiceFleaAdmin:()=>c.currentUser?.id===operator,esc:x=>String(x).replaceAll('&','&amp;').replaceAll('<','&lt;').replaceAll('>','&gt;'),sb:{functions:{invoke:()=>new Promise(r=>resolvePreview=r)},rpc:()=>new Promise(r=>resolveHistory=r)}};
  const html=fs.readFileSync(new URL('../index.html',import.meta.url),'utf8'),src=html.slice(html.indexOf('let appleFinanceRevision='),html.indexOf('const adminPaymentViews='));vm.createContext(c);vm.runInContext(src,c);
  const file={size:10,name:'finance.txt',arrayBuffer:async()=>new TextEncoder().encode(report()).buffer};
  const first=c.previewAppleFinancialReport(file);await new Promise(r=>setImmediate(r));
