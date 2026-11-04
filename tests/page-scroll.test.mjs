@@ -9,7 +9,7 @@ function setup(overrides={}){
   const classes=initial=>{const values=new Set(initial);return {contains:k=>values.has(k),add:k=>values.add(k),remove:k=>values.delete(k),toggle(k,on){on?values.add(k):values.delete(k)}}};
   const pages=Object.fromEntries(['home','voices','sell','jobs','messages','me'].map(id=>[id,{id,scrollTop:27,classList:classes(id==='voices'?['on']:[])}]));
   const app={scrollTop:0};
-  const context=vm.createContext({pageHistory:[],currentUser:null,selectedListingId:null,setShellMode(){},updateGlobalPageNav(){},loadListings:async()=>{},loadJobs:async()=>{},loadConversations:async()=>{},loadMe:async()=>{},window:{scrollTo(){}},document:{getElementById:id=>pages[id],querySelector:s=>s==='.app'?app:Object.values(pages).find(p=>p.classList.contains('on')),querySelectorAll:s=>s==='.page'?Object.values(pages):[]}});
+  const context=vm.createContext({pageHistory:[],pageNavigationRequest:0,currentUser:null,selectedListingId:null,setShellMode(){},updateGlobalPageNav(){},loadListings:async()=>{},loadJobs:async()=>{},loadConversations:async()=>{},loadMe:async()=>{},window:{scrollTo(){}},document:{getElementById:id=>pages[id],querySelector:s=>s==='.app'?app:Object.values(pages).find(p=>p.classList.contains('on')),querySelectorAll:s=>s==='.page'?Object.values(pages):[]}});
   Object.assign(context,overrides);
   vm.runInContext(source,context);
   return {pages,go:context.go};
