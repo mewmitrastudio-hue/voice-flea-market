@@ -11,7 +11,7 @@ for(const d of ['www','ios/App/App/public','ios/App/App.xcodeproj','node_modules
 const bytes=fs.readFileSync(root+'index.html'),native=fs.readFileSync(root+'BoostPlugin.swift');
 for(const p of ['index.html','www/index.html','ios/App/App/public/index.html'])fs.writeFileSync(path.join(dir,p),bytes);
 fs.writeFileSync(path.join(dir,'BoostPlugin.swift'),native);
-fs.writeFileSync(path.join(dir,'release-manifest.json'),JSON.stringify({web_sha256:crypto.createHash('sha256').update(bytes).digest('hex'),boost_native_sha256:crypto.createHash('sha256').update(native).digest('hex'),minimum_build_number:10}));
+fs.writeFileSync(path.join(dir,'release-manifest.json'),JSON.stringify({...JSON.parse(fs.readFileSync(root+'release-manifest.json','utf8')),web_sha256:crypto.createHash('sha256').update(bytes).digest('hex'),boost_native_sha256:crypto.createHash('sha256').update(native).digest('hex'),minimum_build_number:10}));
 fs.writeFileSync(path.join(dir,'ios/App/App/SceneDelegate.swift'),'import Capacitor\nclass SceneDelegate { func create(){let controller=CAPBridgeViewController()} }\n');
 fs.writeFileSync(path.join(dir,'ios/App/App/capacitor.config.json'),JSON.stringify({appId:'com.ayuhide.koenofurima'}));
 fs.writeFileSync(path.join(dir,'ios/App/App.xcodeproj/project.pbxproj'),'CURRENT_PROJECT_VERSION = 9;\nCURRENT_PROJECT_VERSION = 9;');

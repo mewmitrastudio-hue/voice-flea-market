@@ -8,6 +8,12 @@ const encode=bytes=>btoa(String.fromCharCode(...new Uint8Array(bytes))).replace(
 const json64=x=>encode(new TextEncoder().encode(JSON.stringify(x)));
 
 export function createAppleAdapter({getEnv,fetchImpl=fetch,cryptoImpl=crypto}){
+ function requireAllowedEnvironment(environment){
+  // This isolated recording database must never authorize a Production lookup.
+  // Check both signed input and direct receipt refresh before signing/fetching.
+  let projectHost='';try{projectHost=new URL(getEnv('SUPABASE_URL')||'').hostname;}catch{}
+  if(projectHost==='neotkrfsquysuatdruhg.supabase.co'&&environment!=='Sandbox')throw new Error('SANDBOX_ENVIRONMENT_REQUIRED');
+ }
  async function remote(route,body){
   const url=new URL(getEnv('APPLE_VERIFIER_URL'));
   if(url.protocol!=='https:'||url.username||url.password||url.search||url.hash||url.pathname!=='/')throw new Error('VERIFIER_CONFIG_INVALID');
@@ -20,6 +26,7 @@ export function createAppleAdapter({getEnv,fetchImpl=fetch,cryptoImpl=crypto}){
  function checkTransaction(tx){
   if(!tx||!hosts[tx.environment]||!/^\d{1,40}$/.test(tx.transactionId||'')||!(products.has(tx.productId)||voiceProduct(tx.productId))||tx.type!=='Consumable'||tx.quantity!==1||tx.inAppOwnershipType!=='PURCHASED'||!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/.test(tx.appAccountToken||'')||!Number.isFinite(tx.purchaseDate)||tx.purchaseDate<=0||tx.revocationDate!==undefined&&(!Number.isFinite(tx.revocationDate)||tx.revocationDate<=0))throw new Error('TRANSACTION_MISMATCH');
   if(voiceProduct(tx.productId)&&(tx.currency!=='JPY'||!Number.isSafeInteger(tx.price)||tx.price<=0))throw new Error('TRANSACTION_PRICE_MISSING');
+  requireAllowedEnvironment(tx.environment);
   return tx;
  }
  async function decodeTransaction(signed){return checkTransaction((await remote('/v1/transaction',{signedTransaction:signed})).transaction);}
@@ -41,6 +48,7 @@ export function createAppleAdapter({getEnv,fetchImpl=fetch,cryptoImpl=crypto}){
  }
  async function verifiedTransactionById(transactionId,environment){
   if(!/^\d{1,40}$/.test(transactionId||'')||!hosts[environment])throw new Error('TRANSACTION_MISMATCH');
+  requireAllowedEnvironment(environment);
   const response=await fetchImpl(`${hosts[environment]}/inApps/v1/transactions/${encodeURIComponent(transactionId)}`,{redirect:'error',signal:AbortSignal.timeout(20000),headers:{Authorization:`Bearer ${await jwt()}`}});
   if(!response.ok)throw new Error('APPLE_API_UNAVAILABLE');
   const latest=await response.json();
@@ -52,6 +60,7 @@ export function createAppleAdapter({getEnv,fetchImpl=fetch,cryptoImpl=crypto}){
  async function verifyAndDecodeNotification(signedPayload){
   const n=(await remote('/v1/notification',{signedPayload})).notification;
   if(!n||!hosts[n.environment]||typeof n.notificationType!=='string'||n.data?.signedTransactionInfo!==undefined&&typeof n.data.signedTransactionInfo!=='string')throw new Error('NOTIFICATION_MISMATCH');
+  requireAllowedEnvironment(n.environment);
   return n;
  }
  return {verifiedTransaction,verifiedTransactionById,verifyAndDecodeNotification};

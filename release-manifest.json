@@ -1,11 +1,16 @@
 {
-  "release": "2026.11.04-3",
-  "web_sha256": "9ff5cef62f96e2b30967b24892e443574b398771b441ac27679bcadf9cb90bed",
+  "release": "2026.11.04-4-sandbox",
+  "web_sha256": "bd8f02f570001640ae1c85dc1bf09f4897448222d1070b002947e0fa952d7cec",
   "bundle_id": "com.ayuhide.koenofurima",
-  "minimum_build_number": 37,
+  "minimum_build_number": 38,
   "production_backend_applied": false,
   "production_backend_applied_at": null,
-  "boost_native_sha256": "259971ce55b32bdb49946b86e66f450dc73ce7a59bb1425935165603121eee21",
+  "boost_native_sha256": "b9de296af4d3080adf8b5efb969546b4370fc44dc54714edd878ca9e5720b20c",
   "boost_sales_enabled": false,
-  "voice_sales_enabled": false
+  "voice_sales_enabled": false,
+  "environment": "recording-sandbox",
+  "supabase_project_ref": "neotkrfsquysuatdruhg",
+  "recording_sales_locked": true,
+  "admin_user_id": null,
+  "public_release_allowed": false
 }
