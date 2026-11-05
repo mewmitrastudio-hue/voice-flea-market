@@ -19,7 +19,7 @@ for(const prefix of ['pending_purchase_','checkout_attempt_','voice_attempt_','b
 test('foreign scoped records retain the startup barrier; current namespace is not falsely migrated',async()=>{
  const gate=html.slice(html.indexOf('async function assertRecordingEnvironmentSafe(){'),html.indexOf('async function init(){'));
  for(const [key,blocked] of [['vf_scoped_aaaaaaaaaaaaaaaaaaaa_vf_pending_purchase_owner',true],['vf_scoped_neotkrfsquysuatdruhg_vf_pending_purchase_owner',false]]){
-  const ctx=vm.createContext({cfg:{ENVIRONMENT:'recording-sandbox',SUPABASE_URL:'https://neotkrfsquysuatdruhg.supabase.co',RECORDING_SALES_LOCKED:true},window:{localStorage:{length:1,key:()=>key}}});vm.runInContext(gate,ctx);
+  const ctx=vm.createContext({cfg:{ENVIRONMENT:'recording-sandbox',SUPABASE_URL:'https://neotkrfsquysuatdruhg.supabase.co',RECORDING_APPLE_PURCHASES_ENABLED:false,RECORDING_APPLE_RECOVERY_ENABLED:false,RECORDING_STRIPE_READS_ENABLED:false,RECORDING_STRIPE_WRITES_ENABLED:false},window:{localStorage:{length:1,key:()=>key}}});vm.runInContext(html.slice(html.indexOf('function recordingBackendMatches('),html.indexOf("function esc(s='')"))+gate,ctx);
   if(blocked)await assert.rejects(ctx.assertRecordingEnvironmentSafe(),/以前の環境/);else await ctx.assertRecordingEnvironmentSafe();
  }
 });
@@ -46,7 +46,7 @@ test('finished consumable recovery is opted in; unsupported history remains a bl
  const plist=fs.readFileSync(new URL('../ios/App/App/Info.plist',import.meta.url),'utf8');
  assert.match(plist,/<key>SKIncludeConsumableInAppPurchaseHistory<\/key>\s*<true\s*\/>/);
  assert.match(swift,/guard matchingTransaction else/);
- assert.match(swift,/private let recordingSalesLocked = true/);
+ assert.match(swift,/private let recordingApplePurchasesEnabled = false/);
  assert.match(swift,/guard #available\(iOS 18\.0, \*\) else/);
  assert.match(swift,/if #available\(iOS 18\.0, \*\) \{ return transaction.environment == \.sandbox \}/);
 });

@@ -1,3 +1,4 @@
+import {paymentBehaviorContext} from './fixtures/payment-behavior-context.mjs';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
@@ -9,7 +10,7 @@ function fixture(){
  const c={Set,Error,currentConversation:current,currentUser:{id:'buyer'},currentConversationId:'trade',closeDeliveryConfirm(){},
  info:(id,text)=>notices.push(text),loadDeliveries:async()=>{},loadChatMessages:async()=>{},loadTradeInfoPanel:async()=>{},loadReviewPanel:async()=>{},showReceiptSuccess(){calls.push('success')},loadHome(){},loadNotificationBadge(){},
  sb:{functions:{invoke:async(name,args)=>{calls.push({name,args});return new Promise(r=>resolve=r);}}}};
- vm.createContext(c);vm.runInContext(html.slice(html.indexOf('const acceptingDeliveries='),html.indexOf('async function loadMessageBadge()')),c);
+ paymentBehaviorContext(c);vm.runInContext(html.slice(html.indexOf('const acceptingDeliveries='),html.indexOf('async function loadMessageBadge()')),c);
  return {c,calls,notices,resolve:x=>resolve(x),current};
 }
 test('receipt UI uses the server endpoint once and waits for durable confirmation before showing success',async()=>{

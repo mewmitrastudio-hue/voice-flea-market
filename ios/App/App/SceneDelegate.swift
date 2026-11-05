@@ -111,7 +111,9 @@ public class KoeBoostPlugin: CAPPlugin, CAPBridgedPlugin {
         allowed.contains(id) || id.range(of: "^com\\.ayuhide\\.koenofurima\\.voice\\.jpy[1-9][0-9]{0,7}$", options: .regularExpression) != nil
     }
     // Preparatory recording build: never purchase or finish a transaction.
-    private let recordingSalesLocked = true
+    private let recordingApplePurchasesEnabled = false
+    private let recordingAppleRecoveryEnabled = false
+    private let recordingStripeWritesEnabled = false
     private let recordingBackendProjectRef = "neotkrfsquysuatdruhg"
     private let recordingStoreKitEnvironment = "Sandbox"
     private var purchaseInProgress = false
@@ -161,7 +163,7 @@ public class KoeBoostPlugin: CAPPlugin, CAPBridgedPlugin {
     @objc func purchase(_ call: CAPPluginCall) {
         Task { @MainActor in
             guard #available(iOS 18.0, *) else { call.reject("安全な購入復旧にはiOS 18以降が必要です。購入は開始していません。"); return }
-            guard !recordingSalesLocked else { call.reject("録画用環境の購入・購入確定は停止中です。元の購入記録は保持しています。"); return }
+            guard recordingApplePurchasesEnabled && recordingAppleRecoveryEnabled && !recordingStripeWritesEnabled else { call.reject("録画用環境の購入・購入確定は停止中です。元の購入記録は保持しています。"); return }
             guard !purchaseInProgress else { call.reject("購入の確認中です。"); return }
             guard let id = call.getString("productId"), isAllowed(id),
                   let raw = call.getString("orderId"), let token = UUID(uuidString: raw) else {
@@ -267,7 +269,7 @@ public class KoeBoostPlugin: CAPPlugin, CAPBridgedPlugin {
             let otherKind = requestedKind == "voice" ? "boost" : "voice"
             let blockingKind = attempt.map { $0.productID.contains(".voice.") ? "voice" : "boost" }
                 ?? (pendingKinds.contains(otherKind) ? otherKind : pendingKinds.sorted().first ?? "")
-            call.resolve(["transactions": rows, "purchaseBlocked": attempt != nil || !pendingKinds.isEmpty, "approvalPending": attempt != nil && !matchingTransaction, "blockingKind": blockingKind, "journalPresent": attempt != nil, "journalVersion": 2, "backendProjectRef": recordingBackendProjectRef, "environment": recordingStoreKitEnvironment])
+            call.resolve(["transactions": rows, "purchaseBlocked": attempt != nil || !pendingKinds.isEmpty, "approvalPending": attempt != nil && !matchingTransaction, "blockingKind": blockingKind, "journalPresent": attempt != nil, "journalVersion": 2, "backendProjectRef": recordingBackendProjectRef, "environment": recordingStoreKitEnvironment, "applePurchasesEnabled": recordingApplePurchasesEnabled, "appleRecoveryEnabled": recordingAppleRecoveryEnabled, "stripeWritesEnabled": recordingStripeWritesEnabled])
         }
     }
     private func isRecordingTransaction(_ transaction: Transaction) -> Bool {
@@ -290,7 +292,7 @@ public class KoeBoostPlugin: CAPPlugin, CAPBridgedPlugin {
     }
     @objc func finish(_ call: CAPPluginCall) {
         Task { @MainActor in
-            guard !recordingSalesLocked else { call.reject("録画用環境の購入・購入確定は停止中です。元の購入記録は保持しています。"); return }
+            guard recordingAppleRecoveryEnabled && !recordingStripeWritesEnabled else { call.reject("録画用環境の購入・購入確定は停止中です。元の購入記録は保持しています。"); return }
             guard let raw = call.getString("transactionId"), let id = UInt64(raw) else { call.reject("購入番号を確認できません。"); return }
             do {
                 let attempt = try purchaseJournal().read(backendProjectRef: recordingBackendProjectRef, environment: recordingStoreKitEnvironment)

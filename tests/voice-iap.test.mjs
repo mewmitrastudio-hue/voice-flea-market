@@ -1,3 +1,4 @@
+import {paymentBehaviorContext} from './fixtures/payment-behavior-context.mjs';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
@@ -118,7 +119,7 @@ function uiFixture({verifyFailure=false,accountSwitch=false}={}){
   events.push('verify');if(accountSwitch)c.currentUser={id:other};
   return verifyFailure?{error:{}}:{data:{success:true,paymentId:'payment',conversationId:'conversation'}};
  }}}};
- vm.createContext(c);const html=read('index.html');vm.runInContext(html.slice(html.indexOf('let voicePurchaseBusy='),html.indexOf('</script>',html.indexOf('let voicePurchaseBusy='))),c);
+ paymentBehaviorContext(c);const html=read('index.html');vm.runInContext(html.slice(html.indexOf('let voicePurchaseBusy='),html.indexOf('</script>',html.indexOf('let voicePurchaseBusy='))),c);
  return {c,plugin,events,elements,storage,timers,expire:()=>{const [id,timer]=timers.entries().next().value;timers.delete(id);assert.equal(timer.ms,20000);timer.fn();},complete:result=>resolvePurchase(result)};
 }
 test('voice purchase locks repeated taps and finishes only after durable server verification',async()=>{

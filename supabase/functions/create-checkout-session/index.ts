@@ -1,3 +1,4 @@
+import {paymentDeployment,stripeWritesAllowed,stripeWriteBlocked} from '../_shared/recording-stripe-boundary.mjs';
 import {createClient} from 'npm:@supabase/supabase-js@2.118.0';
 import Stripe from 'npm:stripe@23.0.0';
 import {createReceiptCheckout} from '../_shared/receipt-checkout.mjs';
@@ -17,6 +18,7 @@ Deno.serve(async(req)=>{
    if(size>4096){await reader.cancel();return json({error:'送信内容が大きすぎます。'},413);}chunks.push(value);}
   const bytes=new Uint8Array(size);let offset=0;for(const chunk of chunks){bytes.set(chunk,offset);offset+=chunk.length;}
   const body=JSON.parse(new TextDecoder().decode(bytes)),jobPurchase=uuid(body?.applicationId)&&!body?.listingId;if(!uuid(body?.attemptId)||!(jobPurchase||uuid(body?.listingId)&&!body?.applicationId))return json({error:'購入情報を確認してください。'},400);
+  if(!stripeWritesAllowed(Deno.env.get('SUPABASE_URL')))return json(stripeWriteBlocked,503);
   const url=Deno.env.get('SUPABASE_URL'),key=Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')||JSON.parse(Deno.env.get('SUPABASE_SECRET_KEYS')||'{}').default;
   const stripeKey=Deno.env.get('STRIPE_SECRET_KEY')||'';
   if(!url||!key||!/^(sk|rk)_(test|live)_/.test(stripeKey))return json({error:'決済の設定を確認できません。'},503);

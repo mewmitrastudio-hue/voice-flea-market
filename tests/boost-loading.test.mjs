@@ -1,3 +1,4 @@
+import {paymentBehaviorContext} from './fixtures/payment-behavior-context.mjs';
 import {readFileSync} from 'node:fs';
 import vm from 'node:vm';
 import assert from 'node:assert/strict';
@@ -7,7 +8,7 @@ const source=html.slice(html.indexOf('async function boostRead('),html.indexOf('
 function screen(listings=[]){
  const notices=[],select={value:'',replaceChildren(){},add(){}},history={textContent:''};
  const plugin={pendingTransactions:async()=>({transactions:[]}),products:async()=>({environment:'Sandbox',products:[{id:'silver'}]})};
- const context=vm.createContext({setTimeout,clearTimeout,Option:class{},formatJpDateTime:()=>'',currentUser:{id:'owner'},boostRequest:0,boostOwnHistory:[],boostHistoryReady:false,boostReady:false,boostStoreProducts:[],boostEnvironment:null,boostListingChanged(){},boostNotice:t=>notices.push(t),isNativeBoost:()=>true,boostApi:async()=>({enabled:true,environment:'Sandbox'}),nativeBoost:async()=>({plugin}),document:{getElementById:id=>id==='boostPreviewOverlay'?{classList:{add(){},contains(){return false}}}:id==='boostListingSelect'?select:history},sb:{from:table=>({select(){return this},eq(){return this},order(){return table==='listings'?Promise.resolve({data:listings}):this},limit:async()=>({data:[]})})}});
+ const context=paymentBehaviorContext({setTimeout,clearTimeout,Option:class{},formatJpDateTime:()=>'',currentUser:{id:'owner'},boostRequest:0,boostOwnHistory:[],boostHistoryReady:false,boostReady:false,boostStoreProducts:[],boostEnvironment:null,boostListingChanged(){},boostNotice:t=>notices.push(t),isNativeBoost:()=>true,boostApi:async()=>({enabled:true,environment:'Sandbox'}),nativeBoost:async()=>({plugin}),document:{getElementById:id=>id==='boostPreviewOverlay'?{classList:{add(){},contains(){return false}}}:id==='boostListingSelect'?select:history},sb:{from:table=>({select(){return this},eq(){return this},order(){return table==='listings'?Promise.resolve({data:listings}):this},limit:async()=>({data:[]})})}});
  vm.runInContext(source,context);return {context,notices,plugin};
 }
 test('without listings the screen explains the prerequisite without starting StoreKit',async()=>{
@@ -60,7 +61,7 @@ function purchaseScreen(){
  const reached={pending:deferred(),prepare:deferred(),purchase:deferred(),verify:deferred(),finish:deferred()};
  const calls=[],notices=[],buttons=['silver','gold','platinum'].map(plan=>({dataset:{boostBuy:plan},closest:()=>({querySelector:()=>({textContent:''})})}));
  const plugin={pendingTransactions:()=>{calls.push('pending');reached.pending.resolve();return pending.promise},purchase:()=>{calls.push('purchase');reached.purchase.resolve();return purchase.promise},finish:()=>{calls.push('finish');reached.finish.resolve();return finish.promise}};
- const context=vm.createContext({setTimeout,clearTimeout,isNativeBoost:()=>true,openBoostPreview:async()=>{},boostRequest:0,boostOwnHistory:[],boostHistoryReady:true,boostBusy:false,boostPurchasePlan:null,boostReady:true,currentUser:{id:'owner'},boostEnvironment:'Sandbox',boostStoreProducts:['silver','gold','platinum'].map(p=>({id:'com.ayuhide.koenofurima.boost.'+p,displayPrice:'¥300',currencyCode:'JPY'})),nativeBoost:async()=>({plugin}),boostNotice:t=>notices.push(t),formatJpDateTime:()=>'',boostApi:body=>{calls.push(body.action);reached[body.action].resolve();return body.action==='prepare'?order.promise:verify.promise},document:{getElementById:()=>({value:'listing'}),querySelectorAll:()=>buttons}});
+ const context=paymentBehaviorContext({setTimeout,clearTimeout,isNativeBoost:()=>true,openBoostPreview:async()=>{},boostRequest:0,boostOwnHistory:[],boostHistoryReady:true,boostBusy:false,boostPurchasePlan:null,boostReady:true,currentUser:{id:'owner'},boostEnvironment:'Sandbox',boostStoreProducts:['silver','gold','platinum'].map(p=>({id:'com.ayuhide.koenofurima.boost.'+p,displayPrice:'¥300',currencyCode:'JPY'})),nativeBoost:async()=>({plugin}),boostNotice:t=>notices.push(t),formatJpDateTime:()=>'',boostApi:body=>{calls.push(body.action);reached[body.action].resolve();return body.action==='prepare'?order.promise:verify.promise},document:{getElementById:()=>({value:'listing'}),querySelectorAll:()=>buttons}});
  vm.runInContext(html.slice(html.indexOf('async function boostRead('),html.indexOf('async function openBoostPreview(')),context);
  vm.runInContext(html.slice(html.indexOf('function boostActiveListing('),html.indexOf('// Bound read-only')),context);
  vm.runInContext(html.slice(html.indexOf('async function purchaseBoost('),html.indexOf('async function reconcileBoostPurchases(')),context);
@@ -103,7 +104,7 @@ test('only confirmed yen metadata is displayed as the purchase amount',()=>{
  s.context.boostListingChanged();assert.ok(s.buttons.every(b=>b.textContent==='Appleで価格を確認'&&!b.disabled));
 });
 test('HTTP errors preserve the server rejection reason and tolerate unreadable error bodies',async()=>{
- const context=vm.createContext({sb:{functions:{invoke:async()=>({error:{context:{json:async()=>({error:'有効なブーストがある場合は期間終了後に購入できます。'})}}})}}});
+ const context=paymentBehaviorContext({sb:{functions:{invoke:async()=>({error:{context:{json:async()=>({error:'有効なブーストがある場合は期間終了後に購入できます。'})}}})}}});
  vm.runInContext(html.slice(html.indexOf('async function boostApi('),html.indexOf('function boostNotice(')),context);
  await assert.rejects(context.boostApi({action:'prepare'}),/有効なブースト/);
  context.sb.functions.invoke=async()=>({error:{context:{json:async()=>{throw Error('not JSON')}}}});

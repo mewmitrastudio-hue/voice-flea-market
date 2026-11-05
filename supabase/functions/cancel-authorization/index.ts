@@ -1,3 +1,4 @@
+import {paymentDeployment,stripeWritesAllowed,stripeWriteBlocked} from '../_shared/recording-stripe-boundary.mjs';
 import {createClient} from 'npm:@supabase/supabase-js@2.118.0';
 import Stripe from 'npm:stripe@23.0.0';
 import {cancelReceiptAuthorization} from '../_shared/receipt-capture.mjs';
@@ -16,6 +17,7 @@ Deno.serve(async(req)=>{
   const bytes=new Uint8Array(size);let offset=0;for(const chunk of chunks){bytes.set(chunk,offset);offset+=chunk.length;}
   const body=JSON.parse(new TextDecoder().decode(bytes)),tradeId=body?.conversationId;
   if(typeof tradeId!=='string'||!/^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(tradeId))return reply({error:'取引を確認してください。'},400);
+  if(!stripeWritesAllowed(Deno.env.get('SUPABASE_URL')))return reply(stripeWriteBlocked,503);
   const url=Deno.env.get('SUPABASE_URL'),key=Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')||JSON.parse(Deno.env.get('SUPABASE_SECRET_KEYS')||'{}').default;
   if(!url||!key)return reply({error:'設定を確認できません。'},503);
   const admin=createClient(url,key,{auth:{persistSession:false,autoRefreshToken:false}});

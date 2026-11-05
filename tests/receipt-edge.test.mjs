@@ -1,3 +1,4 @@
+import {paymentDeployment,stripeWritesAllowed,stripeWriteBlocked} from '../supabase/functions/_shared/recording-stripe-boundary.mjs';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
@@ -9,7 +10,7 @@ const buyer='00000000-0000-4000-8000-000000000001',seller='00000000-0000-4000-80
 const payment={id:'payment',buyer_id:buyer,seller_id:seller,listing_id:listing,status:'authorized',payment_channel:'web',stripe_payment_intent_id:'pi_test',stripe_charge_id:'ch_test',stripe_livemode:false,stripe_capture_method:'manual',stripe_destination:'acct_seller',amount_jpy:1000,platform_fee_jpy:150,seller_amount_jpy:850};
 function endpoint(slug,options={}){
  const calls=[];let handler,captured=false;
- const env={SUPABASE_URL:'https://local.invalid',SUPABASE_SERVICE_ROLE_KEY:'test-only',STRIPE_SECRET_KEY:'sk_test_unit',STRIPE_RECEIPT_CAPTURE_ENABLED:options.enabled===false?'false':'true'};
+ const env={SUPABASE_URL:'https://tyulybijubckitybgubc.supabase.co',SUPABASE_SERVICE_ROLE_KEY:'test-only',STRIPE_SECRET_KEY:'sk_test_unit',STRIPE_RECEIPT_CAPTURE_ENABLED:options.enabled===false?'false':'true'};
  const conversation={id:trade,buyer_id:buyer,payment_id:'payment',delivery_status:'accepted'};
  const db={auth:{getUser:async()=>({data:{user:options.authFail?null:{id:buyer,email:'test@example.invalid'}},error:options.authFail?true:null})},
   from(table){return {select(){return this},eq(){return this},async maybeSingle(){return {data:table==='listings'?{id:listing,seller_id:seller,is_active:true,title:'Changed title',price_jpy:1500}:table==='applications'?{id:trade,job_id:listing,applicant_id:seller,status:'accepted',agreed_price_jpy:1000,agreed_at:'2026-10-29T00:00:00Z'}:table==='jobs'?{id:listing,buyer_id:buyer,status:'open',title:'Job'}:{id:seller,stripe_account_id:'acct_seller'}};} }},
@@ -21,7 +22,7 @@ function endpoint(slug,options={}){
   paymentIntents:{retrieve:async()=>{calls.push({name:'pi_get'});return {id:'pi_test',currency:'jpy',livemode:false,amount:1000,application_fee_amount:150,capture_method:'manual',transfer_data:{destination:'acct_seller'},status:captured?'succeeded':'requires_capture',amount_capturable:captured?0:1000,latest_charge:{id:'ch_test',payment_intent:'pi_test',currency:'jpy',livemode:false,amount:1000,amount_refunded:options.refunded?1000:0,paid:true,captured,amount_captured:captured?1000:0,transfer:captured?'tr_test':null,payment_method_details:{card:{capture_before:2000000000}}}};},capture:async(...args)=>{calls.push({name:'capture',args});captured=true;}},
   transfers:{retrieve:async()=>({object:'transfer',id:'tr_test',currency:'jpy',livemode:false,amount:1000,destination:'acct_seller',source_transaction:'ch_test',reversed:false,amount_reversed:0,...options.transfer})}
  };}
- const c={Response,Request,URL,Date,JSON,Number,String,Error,SyntaxError,Set,Uint8Array,TextDecoder,ReceiptError,captureReceipt,Stripe,
+ const c={paymentDeployment,stripeWritesAllowed,stripeWriteBlocked,Response,Request,URL,Date,JSON,Number,String,Error,SyntaxError,Set,Uint8Array,TextDecoder,ReceiptError,captureReceipt,Stripe,
   createClient:()=>db,createReceiptCheckout,appleConfig:()=>({verifier:{verifiedTransactionById:async()=>{calls.push({name:'apple_get'});return {productId:'com.ayuhide.koenofurima.voice.jpy1000',currency:'JPY',price:1000000};}}}),
   applyTransaction:async()=>({paymentId:'payment',revoked:options.revoked}),console:{warn(){}},
   Deno:{env:{get:k=>env[k]},serve:fn=>handler=fn}};

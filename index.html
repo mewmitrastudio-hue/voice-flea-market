@@ -790,7 +790,7 @@ body.checkout-error-open #nav{pointer-events:none}
 </style>
 <script>
 if(window.navigator.standalone===true){document.body.classList.add('standalone')}
-window.VOICE_FLEA_CONFIG=Object.freeze({ENVIRONMENT:"recording-sandbox",SUPABASE_URL:"https://neotkrfsquysuatdruhg.supabase.co",SUPABASE_PUBLISHABLE_KEY:"sb_publishable_4nQx8Tg-e7LFwRIjwgVL3g_uHnVSXK9",ADMIN_USER_ID:null,RECORDING_SALES_LOCKED:true});
+window.VOICE_FLEA_CONFIG=Object.freeze({ENVIRONMENT:"recording-sandbox",SUPABASE_URL:"https://neotkrfsquysuatdruhg.supabase.co",SUPABASE_PUBLISHABLE_KEY:"sb_publishable_4nQx8Tg-e7LFwRIjwgVL3g_uHnVSXK9",ADMIN_USER_ID:null,RECORDING_APPLE_PURCHASES_ENABLED:false,RECORDING_APPLE_RECOVERY_ENABLED:false,RECORDING_STRIPE_READS_ENABLED:false,RECORDING_STRIPE_WRITES_ENABLED:false});
 window.__loadSupabaseSDK=async function(){
   if(window.supabase?.createClient)return true;
   const urls=[
@@ -1559,6 +1559,12 @@ const selectedDeliveryFiles=new Map();
 const cfg=window.VOICE_FLEA_CONFIG||{};
 const VOICE_FLEA_ADMIN_USER_ID=cfg.ADMIN_USER_ID||null;
 const configured=cfg.SUPABASE_URL && cfg.SUPABASE_PUBLISHABLE_KEY && !cfg.SUPABASE_URL.includes('YOUR_PROJECT') && !cfg.SUPABASE_PUBLISHABLE_KEY.includes('YOUR_');
+// Recording permissions are independent. Stripe writes have no enable switch.
+function recordingBackendMatches(config){return config?.ENVIRONMENT==='recording-sandbox'&&config?.SUPABASE_URL==='https://neotkrfsquysuatdruhg.supabase.co'&&config?.RECORDING_STRIPE_WRITES_ENABLED===false&&['RECORDING_APPLE_PURCHASES_ENABLED','RECORDING_APPLE_RECOVERY_ENABLED','RECORDING_STRIPE_READS_ENABLED'].every(key=>typeof config[key]==='boolean')}
+function recordingApplePurchasesAllowed(){const config=globalThis.window?.VOICE_FLEA_CONFIG;return recordingBackendMatches(config)&&config.RECORDING_APPLE_PURCHASES_ENABLED===true&&config.RECORDING_APPLE_RECOVERY_ENABLED===true}
+function recordingAppleRecoveryAllowed(){const config=globalThis.window?.VOICE_FLEA_CONFIG;return recordingBackendMatches(config)&&config.RECORDING_APPLE_RECOVERY_ENABLED===true}
+function recordingStripeReadsAllowed(){const config=globalThis.window?.VOICE_FLEA_CONFIG;return recordingBackendMatches(config)&&config.RECORDING_STRIPE_READS_ENABLED===true}
+function recordingStripeWritesAllowed(){return false}
 function esc(s=''){return String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]))}
 function inlineText(value=''){
  const encoded=JSON.stringify(String(value)).slice(1,-1).replace(/'/g,"\\'");
@@ -1741,7 +1747,7 @@ async function stripeFunctionError(error,data){
  return 'Stripe登録状況を確認できませんでした。時間をおいて再度お試しください。';
 }
 async function getStripeSellerStatus(){
- if(globalThis.window?.VOICE_FLEA_CONFIG?.RECORDING_SALES_LOCKED===true)return {verified:false,error:'録画用環境のStripe連携は準備中です。'};
+ if(!recordingStripeReadsAllowed())return {verified:false,error:'録画用環境のStripe連携は準備中です。'};
  if(!sb||!currentUser)return null;
  const owner=currentUser.id;
  try{
@@ -1763,7 +1769,7 @@ async function getStripeSellerStatus(){
  }
 }
 async function connectStripeSeller(){
- if(globalThis.window?.VOICE_FLEA_CONFIG?.RECORDING_SALES_LOCKED===true){alert('録画用環境の決済は準備中です。購入・購入照合・Stripe連携は開始していません。');return;}
+ if(!recordingStripeWritesAllowed()){alert('録画用環境の決済は準備中です。購入・購入照合・Stripe連携は開始していません。');return;}
  const btn=document.getElementById('stripeConnectBtn');
  const status=document.getElementById('stripeConnectStatus');
  if(!sb||!currentUser||!btn||!status)return;
@@ -2392,7 +2398,7 @@ async function refundPaymentByInput(btn){
   await adminRefundPayment(id,btn);
 }
 async function adminRefundPayment(paymentId,btn,confirmed=false){
- if(globalThis.window?.VOICE_FLEA_CONFIG?.RECORDING_SALES_LOCKED===true){alert('録画用環境の決済は準備中です。購入・購入照合・Stripe連携は開始していません。');return;}
+ if(!recordingStripeWritesAllowed()){alert('録画用環境の決済は準備中です。購入・購入照合・Stripe連携は開始していません。');return;}
   if(!isVoiceFleaAdmin())return alert('この操作は運営アカウント専用です。');
   if(!paymentId)return alert('Payment IDを確認できません。');
 
@@ -2592,7 +2598,7 @@ function handleAuthStateChange(_event,session){
 // Existing build37 journals have no backend provenance. Never migrate, clear,
 // or replay them into the recording database. Block before creating a client.
 async function assertRecordingEnvironmentSafe(){
- if(cfg.ENVIRONMENT!=='recording-sandbox'||cfg.SUPABASE_URL!=='https://neotkrfsquysuatdruhg.supabase.co'||cfg.RECORDING_SALES_LOCKED!==true)throw new Error('録画環境の設定が一致しません。');
+ if(!recordingBackendMatches(cfg)||!['RECORDING_APPLE_PURCHASES_ENABLED','RECORDING_APPLE_RECOVERY_ENABLED','RECORDING_STRIPE_READS_ENABLED'].every(key=>typeof cfg[key]==='boolean')||(cfg.RECORDING_APPLE_PURCHASES_ENABLED&&!cfg.RECORDING_APPLE_RECOVERY_ENABLED))throw new Error('録画環境の設定が一致しません。');
  const storage=window.localStorage;
  for(let i=0;i<storage.length;i++){
   const key=storage.key(i);
@@ -2602,7 +2608,8 @@ async function assertRecordingEnvironmentSafe(){
   if(window.Capacitor?.getPlatform?.()!=='ios')throw new Error('録画用iPhoneアプリで確認してください。');
   const {plugin}=await nativeBoost();
   const pending=await boostRead(()=>plugin.pendingTransactions({}),'Apple購入記録の安全確認');
-  const provenanceValid=pending?.backendProjectRef==='neotkrfsquysuatdruhg'&&pending?.environment==='Sandbox'&&pending?.journalVersion===2&&typeof pending.journalPresent==='boolean';
+  const policyMatches=pending?.applePurchasesEnabled===cfg.RECORDING_APPLE_PURCHASES_ENABLED&&pending?.appleRecoveryEnabled===cfg.RECORDING_APPLE_RECOVERY_ENABLED&&pending?.stripeWritesEnabled===false;
+  const provenanceValid=policyMatches&&pending?.backendProjectRef==='neotkrfsquysuatdruhg'&&pending?.environment==='Sandbox'&&pending?.journalVersion===2&&typeof pending.journalPresent==='boolean';
   const shapeValid=typeof pending?.purchaseBlocked==='boolean'&&typeof pending?.approvalPending==='boolean'&&Array.isArray(pending?.transactions);
   // Same-sandbox v2 records may connect for their owner's server reconciliation.
   // Legacy/foreign/orphan transactions are rejected by the native read, never relabeled here.
@@ -2880,9 +2887,9 @@ function closeCheckoutError(){
 
 const checkoutInFlight=new Set();
 async function startStripeCheckout(listingId,btn,applicationId=null){
- if(globalThis.window?.VOICE_FLEA_CONFIG?.RECORDING_SALES_LOCKED===true){alert('録画用環境の決済は準備中です。購入・購入照合・Stripe連携は開始していません。');return;}
+  if(globalThis.window?.Capacitor?.isNativePlatform?.()===true&&globalThis.window?.Capacitor?.getPlatform?.()==='ios'){return startVoicePurchase(listingId,applicationId);}
+ if(!recordingStripeWritesAllowed()){alert('録画用環境の決済は準備中です。購入・購入照合・Stripe連携は開始していません。');return;}
   if(!sb||!currentUser)return alert('購入するにはログインしてください。');
-  if(window.Capacitor?.isNativePlatform?.()===true&&window.Capacitor?.getPlatform?.()==='ios'){return startVoicePurchase(listingId,applicationId);}
   const callerId=currentUser.id,navigationRequest=pageNavigationRequest;
   const isCurrent=()=>currentUser?.id===callerId&&navigationRequest===pageNavigationRequest;
   const requireCaller=()=>{if(currentUser?.id!==callerId)throw new Error('ログイン中のアカウントが変わりました。決済は開始していません。');};
@@ -3947,7 +3954,7 @@ async function sendChatMessage(){
 
 const authorizationActionStates=new Map(),cancelingAuthorizations=new Set();
 async function requestAuthorizationCancellation(){
- if(globalThis.window?.VOICE_FLEA_CONFIG?.RECORDING_SALES_LOCKED===true){alert('録画用環境の決済は準備中です。購入・購入照合・Stripe連携は開始していません。');return;}
+ if(!recordingStripeWritesAllowed()){alert('録画用環境の決済は準備中です。購入・購入照合・Stripe連携は開始していません。');return;}
  const id=currentConversationId,owner=currentUser?.id,state=authorizationActionStates.get(id);
  if(!id||!owner||cancelingAuthorizations.has(id))return;
  if(state?.state!=='queued'&&!confirm('双方が同意した後、購入代金の与信を解除します。納品前の取引のキャンセルに同意しますか？'))return;
@@ -3964,7 +3971,7 @@ async function requestAuthorizationCancellation(){
 }
 const renewingAuthorizations=new Set();
 async function renewTradeAuthorization(){
- if(globalThis.window?.VOICE_FLEA_CONFIG?.RECORDING_SALES_LOCKED===true){alert('録画用環境の決済は準備中です。購入・購入照合・Stripe連携は開始していません。');return;}
+ if(!recordingStripeWritesAllowed()){alert('録画用環境の決済は準備中です。購入・購入照合・Stripe連携は開始していません。');return;}
  const id=currentConversationId,owner=currentUser?.id,state=authorizationActionStates.get(id);
  if(!id||!owner||!state?.canRenew||renewingAuthorizations.has(id))return;
  if(!confirm(`${financeYen(state.amountJpy)}を元の取引の支払いとして再認証します。古い与信の解除を確認してから新しい与信を行い、納品と会話の履歴を引き継ぎます。決済の確定は受取確認後です。続けますか？`))return;
@@ -4162,6 +4169,7 @@ function showReceiptSuccess(){
 async function closeReceiptSuccessAndReview(){const el=document.getElementById('receiptSuccessOverlay');el?.classList.remove('show');await loadReviewPanel();document.getElementById('reviewArea')?.scrollIntoView({behavior:'smooth',block:'center'});}
 const acceptingDeliveries=new Set();
 async function acceptDeliveryConfirmed(){
+ if(!recordingAppleRecoveryAllowed()){alert('録画用環境の購入照合と受取確認は準備中です。');return;}
  if(!currentConversation||currentConversation.is_inquiry||currentUser?.id!==currentConversation.buyer_id)return;
  const conversationId=currentConversationId,userId=currentUser.id,paymentId=currentConversation.payment_id;
  if(acceptingDeliveries.has(conversationId))return;
@@ -5207,7 +5215,7 @@ async function openBoostPreview(listingId){
  const reconcile=document.getElementById('boostReconcileButton');if(reconcile)reconcile.disabled=!isNativeBoost();
  boostNotice('購入と反映状況を確認しています…');
  const select=document.getElementById('boostListingSelect');select.replaceChildren();boostListingChanged();
- if(globalThis.window?.VOICE_FLEA_CONFIG?.RECORDING_SALES_LOCKED===true){if(reconcile)reconcile.disabled=true;boostNotice('録画用環境のApple課金は準備中です。現在は購入できません。');return;}
+ if(!recordingApplePurchasesAllowed()){if(reconcile)reconcile.disabled=!isNativeBoost()||!recordingAppleRecoveryAllowed();boostNotice('録画用環境のApple課金は準備中です。現在は購入できません。');return;}
  if(!sb||!currentUser){boostNotice('ログインすると自分の出品とブースト履歴を確認できます。');return;}
  try{
   const userId=currentUser.id;
@@ -5241,7 +5249,7 @@ async function openBoostPreview(listingId){
  }catch(error){if(request===boostRequest)boostNotice(error?.message?.includes('に時間がかかっています。')?error.message:'購入状況を取得できません。一度閉じてから開き直してください。');}
 }
 async function purchaseBoost(plan){
- if(globalThis.window?.VOICE_FLEA_CONFIG?.RECORDING_SALES_LOCKED===true){alert('録画用環境の決済は準備中です。購入・購入照合・Stripe連携は開始していません。');return;}
+ if(!recordingApplePurchasesAllowed()){alert('録画用環境の決済は準備中です。購入・購入照合・Stripe連携は開始していません。');return;}
  if(boostBusy||!boostReady||!currentUser)return;
  const listingId=document.getElementById('boostListingSelect').value;
  if(!listingId)return boostNotice('対象の出品を選んでください。');
@@ -5276,7 +5284,7 @@ async function purchaseBoost(plan){
  finally{boostBusy=false;boostPurchasePlan=null;boostListingChanged();}
 }
 async function reconcileBoostPurchases(){
- if(globalThis.window?.VOICE_FLEA_CONFIG?.RECORDING_SALES_LOCKED===true){alert('録画用環境の決済は準備中です。購入・購入照合・Stripe連携は開始していません。');return;}
+ if(!recordingAppleRecoveryAllowed()){alert('録画用環境の決済は準備中です。購入・購入照合・Stripe連携は開始していません。');return;}
  if(!isNativeBoost())return boostNotice('未反映の購入の確認はiPhoneアプリから行ってください。Web版では購入履歴のみ確認できます。');
  if(boostBusy)return;boostBusy=true;boostReady=false;boostListingChanged();boostNotice('購入の反映を確認しています…');
  const request=boostRequest,userId=currentUser?.id,listingId=document.getElementById('boostListingSelect').value;
@@ -5348,7 +5356,7 @@ async function voiceIapApi(body){
  return data;
 }
 async function startVoicePurchase(listingId,applicationId=null){
- if(globalThis.window?.VOICE_FLEA_CONFIG?.RECORDING_SALES_LOCKED===true){alert('録画用環境の決済は準備中です。購入・購入照合・Stripe連携は開始していません。');return;}
+ if(!recordingApplePurchasesAllowed()){alert('録画用環境の決済は準備中です。購入・購入照合・Stripe連携は開始していません。');return;}
  if(voicePurchaseBusy||!currentUser||!isNativeBoost())return;
  const owner=currentUser.id,request=++voicePurchaseRequest;voicePurchaseBusy=true;voicePurchasePhase='preparing';voicePurchaseQuote=null;showVoicePurchase();voicePurchaseNotice('アプリの購入機能を確認しています…');
  try{
@@ -5388,7 +5396,7 @@ async function startVoicePurchase(listingId,applicationId=null){
  finally{if(request===voicePurchaseRequest){voicePurchaseBusy=false;voicePurchasePhase=null;}}
 }
 async function confirmVoicePurchase(){
- if(globalThis.window?.VOICE_FLEA_CONFIG?.RECORDING_SALES_LOCKED===true){alert('録画用環境の決済は準備中です。購入・購入照合・Stripe連携は開始していません。');return;}
+ if(!recordingApplePurchasesAllowed()){alert('録画用環境の決済は準備中です。購入・購入照合・Stripe連携は開始していません。');return;}
  const q=voicePurchaseQuote;if(voicePurchaseBusy||!q||currentUser?.id!==q.owner||q.request!==voicePurchaseRequest)return;
  voicePurchaseQuote=null;voicePurchaseBusy=true;voicePurchasePhase='purchasing';document.getElementById('voicePurchaseConfirm').hidden=true;voicePurchaseNotice('Appleの購入確認を開いています。続けて押さずにお待ちください。');
  try{
@@ -5409,7 +5417,7 @@ async function confirmVoicePurchase(){
  finally{voicePurchaseBusy=false;voicePurchasePhase=null;}
 }
 async function reconcileVoicePurchases(){
- if(globalThis.window?.VOICE_FLEA_CONFIG?.RECORDING_SALES_LOCKED===true){alert('録画用環境の決済は準備中です。購入・購入照合・Stripe連携は開始していません。');return;}
+ if(!recordingAppleRecoveryAllowed()){alert('録画用環境の決済は準備中です。購入・購入照合・Stripe連携は開始していません。');return;}
  if(voicePurchaseBusy)return;
  if(!currentUser||!isNativeBoost())return alert('音声購入の反映確認は、購入したiPhoneアプリでログインして行ってください。');
  const owner=currentUser.id;voicePurchaseBusy=true;voicePurchasePhase='reconciling';voicePurchaseQuote=null;showVoicePurchase();voicePurchaseNotice('Appleの未反映購入を確認しています…');

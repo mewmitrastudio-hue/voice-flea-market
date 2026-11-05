@@ -1,3 +1,4 @@
+import {paymentDeployment,stripeWritesAllowed,stripeWriteBlocked} from '../_shared/recording-stripe-boundary.mjs';
 import {createClient} from 'npm:@supabase/supabase-js@2.118.0';
 import Stripe from 'npm:stripe@23.0.0';
 import {captureReceipt,ReceiptError} from '../_shared/receipt-capture.mjs';
@@ -19,6 +20,7 @@ Deno.serve(async(req)=>{
   const body=JSON.parse(new TextDecoder().decode(bytes)),tradeId=body?.conversationId;
   if(typeof tradeId!=='string'||!/^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(tradeId))return reply({error:'取引を確認してください。'},400);
   const url=Deno.env.get('SUPABASE_URL'),key=Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')||JSON.parse(Deno.env.get('SUPABASE_SECRET_KEYS')||'{}').default;
+  if(!paymentDeployment(url))return reply(stripeWriteBlocked,503);
   if(!url||!key)return reply({error:'受取確認の設定を確認できません。'},503);
   const admin=createClient(url,key,{auth:{persistSession:false,autoRefreshToken:false}});
   const {data:{user},error:authError}=await admin.auth.getUser(token);
@@ -28,6 +30,7 @@ Deno.serve(async(req)=>{
   if(prepared.alreadyAccepted)return reply({success:true,conversation:prepared.conversation,alreadyAccepted:true});
   const payment=prepared.payment;let transfer:string|null=null;
   if(payment.payment_channel==='web'){
+   if(!stripeWritesAllowed(url))return reply(stripeWriteBlocked,503);
    const stripeKey=Deno.env.get('STRIPE_SECRET_KEY')||'';
    if(!/^(sk|rk)_(test|live)_/.test(stripeKey))return reply({error:'決済設定を確認できません。'},503);
    const client=new Stripe(stripeKey,{apiVersion:'2026-09-30.endive',maxNetworkRetries:0,timeout:20000});
