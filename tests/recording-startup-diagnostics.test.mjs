@@ -1,0 +1,11 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import fs from 'node:fs';
+import vm from 'node:vm';
+const html=fs.readFileSync(new URL('../index.html',import.meta.url),'utf8');
+const policy=html.slice(html.indexOf('function recordingBackendMatches('),html.indexOf("function esc(s='')"));
+const gate=html.slice(html.indexOf('async function assertRecordingEnvironmentSafe(){'),html.indexOf('async function init(){'));
+function run(keys){let nativeCalls=0;const before=[...keys];const cfg={ENVIRONMENT:'recording-sandbox',SUPABASE_URL:'https://neotkrfsquysuatdruhg.supabase.co',RECORDING_APPLE_PURCHASES_ENABLED:false,RECORDING_APPLE_RECOVERY_ENABLED:false,RECORDING_STRIPE_READS_ENABLED:false,RECORDING_STRIPE_WRITES_ENABLED:false};const ctx=vm.createContext({cfg,recordingAuthKey:'new-recording-auth',recordingAuthStorage:{getItem:()=>null},window:{VOICE_FLEA_CONFIG:cfg,localStorage:{get length(){return keys.length},key:i=>keys[i],getItem(){throw Error('value must not be read')},removeItem(){throw Error('must not delete')}}},nativeBoost:()=>{nativeCalls++;throw Error('must not replay')}});vm.runInContext(policy+'\n'+gate,ctx);return {go:()=>ctx.assertRecordingEnvironmentSafe(),check:()=>{assert.deepEqual(keys,before);assert.equal(nativeCalls,0)}}}
+for(const [prefix,label] of [['pending_purchase_','購入の戻り確認'],['checkout_attempt_','決済開始'],['voice_attempt_','音声購入の開始'],['boost_attempt_','Boost購入の開始'],['financial_resolution_pending_','精算の照合'],['message_attempt_','メッセージ送信']])test(prefix+' category only, no identifier exposure or clearing',async()=>{const h=run(['vf_'+prefix+'SECRET_OWNER']);await assert.rejects(h.go(),e=>e.message.includes(label+'：1件')&&!e.message.includes('SECRET_OWNER'));h.check()});
+test('counts multiple categories without exposing keys or values',async()=>{const h=run(['vf_message_attempt_private1','vf_message_attempt_private2','vf_pending_purchase_private3','vf_scoped_other_private4']);await assert.rejects(h.go(),e=>/メッセージ送信：2件/.test(e.message)&&/購入の戻り確認：1件/.test(e.message)&&/別環境の処理：1件/.test(e.message)&&!e.message.includes('private'));h.check()});
+test('current sandbox and ordinary keys pass without reading stored values',async()=>{const h=run(['vf_scoped_neotkrfsquysuatdruhg_vf_message_attempt_private','ordinary','sb-auth-token']);await h.go();h.check()});

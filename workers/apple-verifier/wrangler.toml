@@ -13,3 +13,8 @@ workers_dev = true
 
 [vars]
 APPLE_APP_ID = "6817161473"
+
+# Preview uses the same public app identity, without production secrets or data bindings.
+# A separate Preview secret must be configured before authenticated runtime tests.
+[previews.vars]
+APPLE_APP_ID = "6817161473"

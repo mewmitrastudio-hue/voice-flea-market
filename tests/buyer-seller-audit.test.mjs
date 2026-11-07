@@ -1,3 +1,4 @@
+import {paymentBehaviorContext} from './fixtures/payment-behavior-context.mjs';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
@@ -37,7 +38,7 @@ test('seller totals are owner-scoped, complete beyond API row limits, and exclud
 test('listing validation stops unpayable amounts and unsupported delivery dates before uploads or inserts',async()=>{
  const notices=[];let writes=0;
  const c={currentUser:{id:seller},sellTitle:{value:'Voice'},sellDesc:{value:'A voice recording'},sellPrice:{value:'0'},sellDays:{value:'3'},sellAudio:{files:[]},sb:{from:()=>{writes++;throw new Error('unexpected write')},storage:{from:()=>{writes++;throw new Error('unexpected upload')}}},info:(id,text)=>notices.push(text),validWholeNumber:(v,min)=>String(v).trim()!==''&&Number.isSafeInteger(Number(v))&&Number(v)>=min};
- vm.createContext(c);vm.runInContext(html.slice(html.indexOf('async function createListing(){'),html.indexOf('/* 購入時のエラーを')),c);
+ paymentBehaviorContext(c);vm.runInContext(html.slice(html.indexOf('async function createListing(){'),html.indexOf('/* 購入時のエラーを')),c);
  for(const price of ['0','49','50.5','-1','']){c.sellPrice.value=price;await c.createListing();}
  c.sellPrice.value='50';c.sellDays.value='366';await c.createListing();assert.equal(writes,0);assert.match(notices.at(-1),/365/);assert.ok(notices.some(x=>x.includes('50円')));
 });
@@ -47,7 +48,7 @@ test('buyer history retry retains already loaded rows and reuses the offset afte
  const body={innerHTML:'',querySelector:selector=>selector==='[data-payment-more]'?(hasMore?button:null):{remove(){}},insertAdjacentHTML(_,html){this.innerHTML+=html;if(html.includes('data-payment-more'))hasMore=true}};
  const builder={select(){return this},eq(){return this},in(){return this},order(){return this},async range(a,b){ranges.push([a,b]);calls++;if(calls===2)throw Error('offline');return{data:Array.from({length:calls===1?20:1},(_,i)=>({id:String(i),amount_jpy:1000,status:'paid',paid_at:'2026'})),error:null}}};
  const c={currentUser:{id:buyer},activeFinanceMode:'buyer',sb:{from:()=>builder},document:{getElementById:id=>id==='financeBody'?body:null,querySelector:()=>null},console:{warn(){}},info:(_,message)=>notices.push(message),financeYen:n=>`${n}円`,paymentRefundLabel:()=> '未照合',formatJpDateTime:x=>x,esc:String};
- vm.createContext(c);vm.runInContext(html.slice(html.indexOf('let buyerFinanceRequest='),html.indexOf('function setStripeConnectUI(')),c);
+ paymentBehaviorContext(c);vm.runInContext(html.slice(html.indexOf('let buyerFinanceRequest='),html.indexOf('function setStripeConnectUI(')),c);
  await c.loadBuyerFinance();const loaded=body.innerHTML;await c.loadBuyerFinance(true);assert.equal(body.innerHTML,loaded);assert.equal(button.disabled,false);assert.match(notices[0],/履歴を残/);
  await c.loadBuyerFinance(true);assert.deepEqual(ranges,[[0,19],[20,39],[20,39]]);
 });
@@ -58,16 +59,16 @@ test('trade information never borrows a different repeat purchase or lists a rec
    const q={select(){return this},eq(){return this},in(){return this},order(){return this},limit(){return Promise.resolve({data,error:null})},maybeSingle:async()=>({data,error:null})};return q;}},
   formatJpDateTime:x=>x,isTradeInfoSeen:()=>false,esc:String,paymentStatusLabel:()=> '支払い済み',Date,console:{warn(){}},
  };
- vm.createContext(c);vm.runInContext(html.slice(html.indexOf('async function loadTradeInfoPanel('),html.indexOf('let conversationOpenRequest=')),c);
+ paymentBehaviorContext(c);vm.runInContext(html.slice(html.indexOf('async function loadTradeInfoPanel('),html.indexOf('let conversationOpenRequest=')),c);
  const trade={id:'trade',buyer_id:buyer,seller_id:seller,listing_id:listing,created_at:'2026-09-12',delivery_status:'submitted'};
  pays=[{amount_jpy:1000,paid_at:'2026-09-11'},{amount_jpy:2000,paid_at:'2026-09-16'}];await c.loadTradeInfoPanel(trade);
  assert.match(panel.innerHTML,/対応が未照合/);assert.doesNotMatch(panel.innerHTML,/2,000円|9,999円|>購入日<\/div>/);
  pays=[{id:payment,amount_jpy:1000,paid_at:'2026-09-11'}];await c.loadTradeInfoPanel(trade);assert.match(panel.innerHTML,/対応が未照合/);await c.loadTradeInfoPanel({...trade,payment_id:payment});assert.match(panel.innerHTML,/1,000円/);assert.match(panel.innerHTML,/購入日/);
  await c.loadTradeInfoPanel({...trade,listing_id:null,job_id:'job'});assert.match(panel.innerHTML,/募集予算/);assert.match(panel.innerHTML,/支払い完了を示すものではありません/);
 });
-test('unfinished native iOS normal purchases stop before creating an external Checkout session',async()=>{
- const errors=[];let fetched=0;
- const c={sb:{},currentUser:{id:buyer},window:{Capacitor:{isNativePlatform:()=>true,getPlatform:()=> 'ios'}},showCheckoutError:error=>errors.push(error.message),fetch:()=>{fetched++;throw Error('Unexpected network')},Set,Error};
- vm.createContext(c);vm.runInContext(html.slice(html.indexOf('const checkoutInFlight='),html.indexOf('async function reconcilePendingPurchase(')),c);
- await c.startStripeCheckout(listing);assert.equal(fetched,0);assert.match(errors[0],/iPhone.*準備中/);
+test('native iOS purchases route to StoreKit without creating an external Checkout session',async()=>{
+ const routed=[];let fetched=0;
+ const c={sb:{},currentUser:{id:buyer},window:{Capacitor:{isNativePlatform:()=>true,getPlatform:()=> 'ios'}},startVoicePurchase:async id=>routed.push(id),fetch:()=>{fetched++;throw Error('Unexpected network')},Set,Error};
+ paymentBehaviorContext(c);vm.runInContext(html.slice(html.indexOf('const checkoutInFlight='),html.indexOf('async function reconcilePendingPurchase(')),c);
+ await c.startStripeCheckout(listing);assert.equal(fetched,0);assert.deepEqual(routed,[listing]);
 });
