@@ -108,7 +108,7 @@ test('HTTP errors preserve the server rejection reason and tolerate unreadable e
  vm.runInContext(html.slice(html.indexOf('async function boostApi('),html.indexOf('function boostNotice(')),context);
  await assert.rejects(context.boostApi({action:'prepare'}),/有効なブースト/);
  context.sb.functions.invoke=async()=>({error:{context:{json:async()=>{throw Error('not JSON')}}}});
- await assert.rejects(context.boostApi({}),/購入情報を確認できません/);
+ await assert.rejects(context.boostApi({action:'prepare'}),/購入情報を確認できません/);
 });
 test('purchase refreshes history immediately after verified delivery and finish',async()=>{
  const s=purchaseScreen();let refreshed=0;

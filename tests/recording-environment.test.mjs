@@ -11,9 +11,10 @@ const nativeFlags={applePurchasesEnabled:false,appleRecoveryEnabled:false,stripe
 const policySource=html.slice(html.indexOf('function recordingBackendMatches('),html.indexOf("function esc(s='')"));
 function policyContext(values){const ctx=vm.createContext(values);vm.runInContext(policySource,ctx);return ctx;}
 const gate=html.slice(html.indexOf('async function assertRecordingEnvironmentSafe(){'),html.indexOf('async function init(){'));
-function harness({keys=[],native=false,pending={purchaseBlocked:false,approvalPending:false,transactions:[],journalPresent:false,journalVersion:2,backendProjectRef:'neotkrfsquysuatdruhg',environment:'Sandbox',...nativeFlags},storageError=false,pluginError=false,url='https://neotkrfsquysuatdruhg.supabase.co'}={}){
+function harness({keys=[],native=false,pending={purchaseBlocked:false,approvalPending:false,transactions:[],blockingKind:'',journalPresent:false,journalVersion:2,backendProjectRef:'neotkrfsquysuatdruhg',environment:'Sandbox',...nativeFlags},storageError=false,pluginError=false,url='https://neotkrfsquysuatdruhg.supabase.co'}={}){
  let calls=0;const storage={get length(){if(storageError)throw Error('storage unavailable');return keys.length},key:i=>keys[i]};
- const context=policyContext({cfg:{ENVIRONMENT:'recording-sandbox',SUPABASE_URL:url,...disabledFlags},window:{localStorage:storage,Capacitor:{isNativePlatform:()=>native,getPlatform:()=> 'ios'}},boostRead:action=>action(),nativeBoost:async()=>({plugin:{pendingTransactions:async()=>{calls++;if(pluginError)throw Error('native check failed');return pending}}})});
+ const cfg={ENVIRONMENT:'recording-sandbox',SUPABASE_URL:url,...disabledFlags};
+ const context=policyContext({cfg,recordingAuthKey:'new-scope',recordingAuthStorage:{getItem:()=>null},window:{VOICE_FLEA_CONFIG:cfg,localStorage:storage,Capacitor:{isNativePlatform:()=>native,getPlatform:()=> 'ios'}},boostRead:action=>action(),nativeBoost:async()=>({plugin:{pendingTransactions:async()=>{calls++;if(pluginError)throw Error('native check failed');return pending}}})});
  vm.runInContext(gate,context);return {run:()=>context.assertRecordingEnvironmentSafe(),calls:()=>calls,keys};
 }
 test('recording configuration is locked to isolated project and sales off',()=>{
@@ -53,13 +54,13 @@ test('Stripe status never implies readiness or calls an external service',async(
  assert.equal((await context.getStripeSellerStatus()).verified,false);
 });
 test('proven same-sandbox v2 pending records may connect for recovery without enabling sales',async()=>{
- for(const approvalPending of [true,false])await harness({native:true,pending:{purchaseBlocked:true,approvalPending,transactions:approvalPending?[]:[{transactionId:'123'}],journalPresent:true,journalVersion:2,backendProjectRef:'neotkrfsquysuatdruhg',environment:'Sandbox',...nativeFlags}}).run();
+ for(const approvalPending of [true,false])await harness({native:true,pending:{purchaseBlocked:true,approvalPending,transactions:approvalPending?[]:[{transactionId:'123'}],blockingKind:'voice',journalPresent:true,journalVersion:2,backendProjectRef:'neotkrfsquysuatdruhg',environment:'Sandbox',...nativeFlags}}).run();
 });
 test('foreign, legacy, missing and inconsistent provenance cannot bypass preflight',async()=>{
- const base={purchaseBlocked:false,approvalPending:false,transactions:[],journalPresent:false,journalVersion:2,backendProjectRef:'neotkrfsquysuatdruhg',environment:'Sandbox',...nativeFlags};
+ const base={purchaseBlocked:false,approvalPending:false,transactions:[],blockingKind:'',journalPresent:false,journalVersion:2,backendProjectRef:'neotkrfsquysuatdruhg',environment:'Sandbox',...nativeFlags};
  for(const delta of [{backendProjectRef:'other'},{environment:'Production'},{journalVersion:1},{journalPresent:undefined},{purchaseBlocked:true},{journalPresent:true},{approvalPending:true},{transactions:[{transactionId:'orphan'}]}])await assert.rejects(harness({native:true,pending:{...base,...delta}}).run(),/購入記録/);
 });
 test('native/web permission mismatch blocks connection even with correct project and journal',async()=>{
- const base={purchaseBlocked:false,approvalPending:false,transactions:[],journalPresent:false,journalVersion:2,backendProjectRef:'neotkrfsquysuatdruhg',environment:'Sandbox',...nativeFlags};
+ const base={purchaseBlocked:false,approvalPending:false,transactions:[],blockingKind:'',journalPresent:false,journalVersion:2,backendProjectRef:'neotkrfsquysuatdruhg',environment:'Sandbox',...nativeFlags};
  for(const delta of [{applePurchasesEnabled:true},{appleRecoveryEnabled:true},{stripeWritesEnabled:true},{applePurchasesEnabled:undefined},{appleRecoveryEnabled:undefined},{stripeWritesEnabled:undefined}])await assert.rejects(harness({native:true,pending:{...base,...delta}}).run(),/購入記録/);
 });

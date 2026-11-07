@@ -794,8 +794,8 @@ window.VOICE_FLEA_CONFIG=Object.freeze({ENVIRONMENT:"recording-sandbox",SUPABASE
 window.__loadSupabaseSDK=async function(){
   if(window.supabase?.createClient)return true;
   const urls=[
-    "https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js",
-    "https://unpkg.com/@supabase/supabase-js@2/dist/umd/supabase.min.js"
+    "https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.119.0/dist/umd/supabase.min.js",
+    "https://unpkg.com/@supabase/supabase-js@2.119.0/dist/umd/supabase.min.js"
   ];
   for(const src of urls){
     try{
@@ -1561,10 +1561,37 @@ const VOICE_FLEA_ADMIN_USER_ID=cfg.ADMIN_USER_ID||null;
 const configured=cfg.SUPABASE_URL && cfg.SUPABASE_PUBLISHABLE_KEY && !cfg.SUPABASE_URL.includes('YOUR_PROJECT') && !cfg.SUPABASE_PUBLISHABLE_KEY.includes('YOUR_');
 // Recording permissions are independent. Stripe writes have no enable switch.
 function recordingBackendMatches(config){return config?.ENVIRONMENT==='recording-sandbox'&&config?.SUPABASE_URL==='https://neotkrfsquysuatdruhg.supabase.co'&&config?.RECORDING_STRIPE_WRITES_ENABLED===false&&['RECORDING_APPLE_PURCHASES_ENABLED','RECORDING_APPLE_RECOVERY_ENABLED','RECORDING_STRIPE_READS_ENABLED'].every(key=>typeof config[key]==='boolean')}
-function recordingApplePurchasesAllowed(){const config=globalThis.window?.VOICE_FLEA_CONFIG;return recordingBackendMatches(config)&&config.RECORDING_APPLE_PURCHASES_ENABLED===true&&config.RECORDING_APPLE_RECOVERY_ENABLED===true}
-function recordingAppleRecoveryAllowed(){const config=globalThis.window?.VOICE_FLEA_CONFIG;return recordingBackendMatches(config)&&config.RECORDING_APPLE_RECOVERY_ENABLED===true}
-function recordingStripeReadsAllowed(){const config=globalThis.window?.VOICE_FLEA_CONFIG;return recordingBackendMatches(config)&&config.RECORDING_STRIPE_READS_ENABLED===true}
+// Once seen, old obligations remain unresolved for this document, even if another
+// tab removes the key. This latch is never persisted and never modifies a journal.
+let recordingLegacyIsolationRequired=false,recordingSessionConfig=null,recordingSessionConfigSignature=null;
+function recordingLegacyKeyCounts(){
+ const storage=window.localStorage,length=storage.length;
+ if(!Number.isSafeInteger(length)||length<0||length>10000)throw Error('端末の保存記録を安全に確認できません。記録は削除しないでください。');
+ const kinds=[['pending_purchase_','購入の戻り確認'],['checkout_attempt_','決済開始'],['voice_attempt_','音声購入の開始'],['boost_attempt_','Boost購入の開始'],['financial_resolution_pending_','精算の照合'],['message_attempt_','メッセージ送信']];
+ const counts=new Map();let voiceOnly=true;
+ const uuid='[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}';
+ const voiceKey=new RegExp('^vf_voice_attempt_'+uuid+':(?:job:)?'+uuid+'$','i');
+ for(let i=0;i<length;i++){
+  const key=storage.key(i);if(typeof key!=='string')throw Error('端末の保存記録が変わりました。記録を削除せず再試行してください。');
+  const kind=kinds.find(([prefix])=>key.startsWith('vf_'+prefix));
+  const label=kind?.[1]||(key.startsWith('vf_scoped_')&&!key.startsWith('vf_scoped_neotkrfsquysuatdruhg_')?'別環境の処理':null);
+  if(label){counts.set(label,(counts.get(label)||0)+1);if(kind?.[0]!=='voice_attempt_'||!voiceKey.test(key))voiceOnly=false;}
+ }
+ if(storage.length!==length)throw Error('端末の保存記録が変わりました。記録を削除せず再試行してください。');
+ return {counts,voiceOnly};
+}
+function recordingFinancialStorageSafe(){
+ try{
+  if(recordingLegacyKeyCounts().counts.size)recordingLegacyIsolationRequired=true;
+  return !recordingLegacyIsolationRequired&&(!recordingSessionConfig||(window.VOICE_FLEA_CONFIG===recordingSessionConfig&&JSON.stringify(recordingSessionConfig)===recordingSessionConfigSignature));
+ }catch(_){recordingLegacyIsolationRequired=true;return false;}
+}
+function recordingApplePurchasesAllowed(){const config=globalThis.window?.VOICE_FLEA_CONFIG;return recordingBackendMatches(config)&&config.RECORDING_APPLE_PURCHASES_ENABLED===true&&config.RECORDING_APPLE_RECOVERY_ENABLED===true&&recordingFinancialStorageSafe()}
+function recordingAppleRecoveryAllowed(){const config=globalThis.window?.VOICE_FLEA_CONFIG;return recordingBackendMatches(config)&&config.RECORDING_APPLE_RECOVERY_ENABLED===true&&recordingFinancialStorageSafe()}
+function recordingStripeReadsAllowed(){const config=globalThis.window?.VOICE_FLEA_CONFIG;return recordingBackendMatches(config)&&config.RECORDING_STRIPE_READS_ENABLED===true&&recordingFinancialStorageSafe()}
 function recordingStripeWritesAllowed(){return false}
+// This preparatory client cannot establish or settle obligations in an old backend.
+function recordingAccountDeletionAllowed(){return false}
 function esc(s=''){return String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]))}
 function inlineText(value=''){
  const encoded=JSON.stringify(String(value)).slice(1,-1).replace(/'/g,"\\'");
@@ -1591,14 +1618,19 @@ function uiKey(name){return `voice_flea_ui_${currentUser?.id||'guest'}_${name}`}
 // UI navigation is best-effort storage; unavailable/quota-full storage must
 // never interrupt page loading. Server payment validation remains authoritative.
 // Keep UI flags and checkout return hints usable when Safari denies storage.
-// Supabase Auth keeps its own storage implementation and is not redirected here.
+// Authentication uses a separate, strict recording-only adapter below.
 const localStateCache=new Map();
+// Capture the namespace once. Replacing config must never switch storage backends.
+const recordingStoragePrefix=globalThis.window?.VOICE_FLEA_CONFIG?.ENVIRONMENT==='recording-sandbox'?'vf_scoped_neotkrfsquysuatdruhg_':'';
 const safeLocalStorage={
  storageKey(key){
   key=String(key);
-  if(globalThis.window?.VOICE_FLEA_CONFIG?.ENVIRONMENT==='recording-sandbox'&&/^vf_(pending_purchase_|checkout_attempt_|voice_attempt_|boost_attempt_|financial_resolution_pending_|message_attempt_)/.test(key))return 'vf_scoped_neotkrfsquysuatdruhg_'+key;
-  return key;
+  if(!recordingStoragePrefix)return key;
+  if(key.startsWith(recordingStoragePrefix))return key;
+  if(key.startsWith('vf_scoped_'))throw Error('別環境の保存記録は使用できません。');
+  return recordingStoragePrefix+key;
  },
+ logicalKey(key){return recordingStoragePrefix?(key.startsWith(recordingStoragePrefix)?key.slice(recordingStoragePrefix.length):null):key},
  // Durable action journals must never fall back to memory-only storage.
  durableGetItem(key){key=this.storageKey(key);const value=window.localStorage.getItem(key);localStateCache.set(key,value);return value},
  durableSetItem(key,value){key=this.storageKey(key);value=String(value);window.localStorage.setItem(key,value);if(window.localStorage.getItem(key)!==value)throw new Error('Durable storage verification failed');localStateCache.set(key,value)},
@@ -1606,10 +1638,31 @@ const safeLocalStorage={
  getItem(key){key=this.storageKey(key);if(localStateCache.has(key))return localStateCache.get(key);try{return window.localStorage.getItem(key)}catch(_){return null}},
  setItem(key,value){key=this.storageKey(key);value=String(value);localStateCache.set(key,value);try{window.localStorage.setItem(key,value)}catch(_){}},
  removeItem(key){key=this.storageKey(key);localStateCache.set(key,null);try{window.localStorage.removeItem(key)}catch(_){}},
- keys(){const keys=new Set();try{for(let i=0;i<window.localStorage.length;i++){const key=window.localStorage.key(i);if(key!==null)keys.add(key)}}catch(_){}for(const [key,value] of localStateCache){if(value===null)keys.delete(key);else keys.add(key)}return [...keys]},
+ keys(){const keys=new Set();try{for(let i=0;i<window.localStorage.length;i++){const key=window.localStorage.key(i);if(typeof key==='string'){const logical=this.logicalKey(key);if(logical!==null)keys.add(logical)}}}catch(_){}for(const [key,value] of localStateCache){const logical=this.logicalKey(key);if(logical===null)continue;if(value===null)keys.delete(logical);else keys.add(logical)}return [...keys]},
  get length(){return this.keys().length},
  key(index){return this.keys()[index]??null}
 };
+// New auth namespace: never adopt, copy or remove any prior project's session.
+const recordingAuthKey='vf_recording_neotkrfsquysuatdruhg_auth_v1';
+function validateRecordingAuthValue(key,value){
+ // Exact auth-js suffixes, including logout's PKCE flow cleanup. No prefix-wide access.
+ const suffix=typeof key==='string'&&key.startsWith(recordingAuthKey)?key.slice(recordingAuthKey.length):null;
+ if(suffix===null||!(['','-user','-code-verifier','-flows-code-verifier'].includes(suffix)||/^-flow-[a-zA-Z0-9_-]{8,64}-code-verifier$/.test(suffix)))throw Error('認証の保存先が一致しません。');
+ if(value===null||key!==recordingAuthKey)return;
+ try{
+  const session=JSON.parse(value),parts=session.access_token.split('.');
+  if(parts.length!==3)throw Error('token');
+  const body=parts[1].replace(/-/g,'+').replace(/_/g,'/');
+  const claims=JSON.parse(atob(body.padEnd(Math.ceil(body.length/4)*4,'=')));
+  if(claims.iss!=='https://neotkrfsquysuatdruhg.supabase.co/auth/v1'||claims.aud!=='authenticated'||typeof claims.sub!=='string'||!claims.sub||claims.sub!==session.user?.id||typeof session.refresh_token!=='string'||!session.refresh_token)throw Error('scope');
+ }catch(_){throw Error('録画環境のログイン情報を確認できません。保存記録は削除せず確認してください。');}
+}
+const recordingAuthStorage={
+ getItem(key){validateRecordingAuthValue(key,null);const value=window.localStorage.getItem(key);validateRecordingAuthValue(key,value);return value},
+ setItem(key,value){validateRecordingAuthValue(key,value);window.localStorage.setItem(key,value);if(window.localStorage.getItem(key)!==value)throw Error('ログイン情報を保存できません。');},
+ removeItem(key){validateRecordingAuthValue(key,null);window.localStorage.removeItem(key);if(window.localStorage.getItem(key)!==null)throw Error('ログイン情報の更新を確認できません。');}
+};
+function recordingAuthOptions(){return {auth:{storageKey:recordingAuthKey,storage:recordingAuthStorage,detectSessionInUrl:false,persistSession:true,autoRefreshToken:true}}}
 const volatileUIState=new Map();
 function readUIState(name){const key=uiKey(name);if(volatileUIState.has(key))return volatileUIState.get(key);try{const value=safeLocalStorage.getItem(key);if(value!==null){volatileUIState.set(key,value);return value}}catch(_){}return volatileUIState.get(key)||null}
 function writeUIState(name,value){const key=uiKey(name);volatileUIState.set(key,String(value));try{safeLocalStorage.setItem(key,String(value))}catch(_){}}
@@ -2245,6 +2298,7 @@ async function hashAppleBankStatement(file){
  finally{if(currentUser?.id===owner&&s.revision===revision){s.busy=false;appleEvidenceControls();}}
 }
 async function appleManualEvidenceApi(body,owner){
+ if(!recordingStripeWritesAllowed())throw Error('録画用環境の精算処理は停止中です。');
  const {data:{session},error:sessionError}=await sb.auth.getSession();
  if(sessionError||session?.user?.id!==owner||!session.access_token||currentUser?.id!==owner)throw Error('session');
  const {data,error}=await sb.functions.invoke('apple-financial-resolution',{body,headers:{Authorization:`Bearer ${session.access_token}`}});
@@ -2652,36 +2706,38 @@ async function showRecordingPurchaseDiagnostic(){
  recordingDiagnosticBusy=false;button.disabled=false;
  output.textContent='診断 UUID-SHA256-v1（端末内のみ）\n'+results.join('\n\n')+'\n\nこの表示は支払済み・未払いを判定しません。attempt は注文IDと異なる場合があります。削除・再購入せず、この欄全体をサポートへ共有してください。';
 }
-// Existing build37 journals have no backend provenance. Never migrate, clear,
-// or replay them into the recording database. Block before creating a client.
+// Existing build37 journals: web attempts have no provenance. Isolate only inert voice
+// attempt keys with every financial permission OFF, never infer they are settled.
+// Other/unknown web journals and every uncertain native read still block startup.
 async function assertRecordingEnvironmentSafe(){
- if(!recordingBackendMatches(cfg)||!['RECORDING_APPLE_PURCHASES_ENABLED','RECORDING_APPLE_RECOVERY_ENABLED','RECORDING_STRIPE_READS_ENABLED'].every(key=>typeof cfg[key]==='boolean')||(cfg.RECORDING_APPLE_PURCHASES_ENABLED&&!cfg.RECORDING_APPLE_RECOVERY_ENABLED))throw new Error('録画環境の設定が一致しません。');
- const storage=window.localStorage;
- // Read key categories only. Never read, transmit, remove or relabel legacy values.
- const legacyKinds=[['pending_purchase_','購入の戻り確認'],['checkout_attempt_','決済開始'],['voice_attempt_','音声購入の開始'],['boost_attempt_','Boost購入の開始'],['financial_resolution_pending_','精算の照合'],['message_attempt_','メッセージ送信']];
- const legacyCounts=new Map();
- for(let i=0;i<storage.length;i++){
-  const key=storage.key(i);
-  if(typeof key!=='string')continue;
-  const kind=legacyKinds.find(([prefix])=>key.startsWith('vf_'+prefix));
-  const label=kind?.[1]||(key.startsWith('vf_scoped_')&&!key.startsWith('vf_scoped_neotkrfsquysuatdruhg_')?'別環境の処理':null);
-  if(label)legacyCounts.set(label,(legacyCounts.get(label)||0)+1);
- }
- if(legacyCounts.size){
+ const configurationSignature=JSON.stringify(cfg);let nativePending=null;
+ if(!recordingBackendMatches(cfg)||window.VOICE_FLEA_CONFIG!==cfg||(recordingSessionConfig&&(recordingSessionConfig!==cfg||recordingSessionConfigSignature!==configurationSignature))||(cfg.RECORDING_APPLE_PURCHASES_ENABLED&&!cfg.RECORDING_APPLE_RECOVERY_ENABLED))throw new Error('録画環境の設定が一致しません。');
+ const {counts:legacyCounts,voiceOnly}=recordingLegacyKeyCounts();
+ if(legacyCounts.size)recordingLegacyIsolationRequired=true;
+ const financialOff=['RECORDING_APPLE_PURCHASES_ENABLED','RECORDING_APPLE_RECOVERY_ENABLED','RECORDING_STRIPE_READS_ENABLED','RECORDING_STRIPE_WRITES_ENABLED'].every(key=>cfg[key]===false);
+ if((legacyCounts.size&&!voiceOnly)||(recordingLegacyIsolationRequired&&!financialOff)){
   const summary=[...legacyCounts].map(([label,count])=>label+'：'+count+'件').join('／');
   throw new Error('以前の環境の処理記録が残っています。再インストール・履歴削除・再購入はせず、元の環境で照合してください。録画環境への接続を停止しました。診断 WEB-LEGACY：'+summary+'。種類と件数だけでは、未完了か処理済みかは判断できません。この画面をサポートに見せてください。');
  }
  if(window.Capacitor?.isNativePlatform?.()===true){
   if(window.Capacitor?.getPlatform?.()!=='ios')throw new Error('録画用iPhoneアプリで確認してください。');
   const {plugin}=await nativeBoost();
-  const pending=await boostRead(()=>plugin.pendingTransactions({}),'Apple購入記録の安全確認');
+  const pending=await boostRead(()=>plugin.pendingTransactions({}),'Apple購入記録の安全確認');nativePending=pending;
   const policyMatches=pending?.applePurchasesEnabled===cfg.RECORDING_APPLE_PURCHASES_ENABLED&&pending?.appleRecoveryEnabled===cfg.RECORDING_APPLE_RECOVERY_ENABLED&&pending?.stripeWritesEnabled===false;
   const provenanceValid=policyMatches&&pending?.backendProjectRef==='neotkrfsquysuatdruhg'&&pending?.environment==='Sandbox'&&pending?.journalVersion===2&&typeof pending.journalPresent==='boolean';
-  const shapeValid=typeof pending?.purchaseBlocked==='boolean'&&typeof pending?.approvalPending==='boolean'&&Array.isArray(pending?.transactions);
-  // Same-sandbox v2 records may connect for their owner's server reconciliation.
-  // Legacy/foreign/orphan transactions are rejected by the native read, never relabeled here.
-  if(!provenanceValid||!shapeValid||(pending.purchaseBlocked?!pending.journalPresent:(pending.journalPresent||pending.approvalPending||pending.transactions.length!==0)))throw new Error('Appleの購入記録の接続先を確認できません。再インストール・履歴削除・再購入はせず、元の環境で照合してください。');
+  const shapeValid=typeof pending?.purchaseBlocked==='boolean'&&typeof pending?.approvalPending==='boolean'&&Array.isArray(pending?.transactions)&&['','voice','boost'].includes(pending?.blockingKind);
+  if(!provenanceValid||!shapeValid||(pending.purchaseBlocked?(!pending.journalPresent||!['voice','boost'].includes(pending.blockingKind)||(pending.approvalPending?pending.transactions.length!==0:pending.transactions.length===0)):(pending.journalPresent||pending.approvalPending||pending.transactions.length!==0||pending.blockingKind!==''))||(recordingLegacyIsolationRequired&&pending.purchaseBlocked))throw new Error('Appleの購入記録の接続先を確認できません。再インストール・履歴削除・再購入はせず、元の環境で照合してください。');
  }
+ // Recheck after native await: another tab/config change must not race the gate.
+ const latest=recordingLegacyKeyCounts();
+ if(latest.counts.size)recordingLegacyIsolationRequired=true;
+ if(window.VOICE_FLEA_CONFIG!==cfg||JSON.stringify(cfg)!==configurationSignature||!recordingBackendMatches(cfg)||(recordingLegacyIsolationRequired&&nativePending?.purchaseBlocked)||(latest.counts.size&&!latest.voiceOnly)||(recordingLegacyIsolationRequired&&!['RECORDING_APPLE_PURCHASES_ENABLED','RECORDING_APPLE_RECOVERY_ENABLED','RECORDING_STRIPE_READS_ENABLED','RECORDING_STRIPE_WRITES_ENABLED'].every(key=>cfg[key]===false)))throw Error('録画環境の保存記録・設定が変わりました。記録を削除せず再試行してください。');
+ recordingAuthStorage.getItem(recordingAuthKey); // Validate only this new recording namespace.
+ recordingSessionConfig=cfg;recordingSessionConfigSignature=configurationSignature;
+}
+function updateRecordingIsolationNotice(){
+ const notice=document.getElementById('recordingEnvironmentNotice');
+ if(notice&&recordingLegacyIsolationRequired)notice.textContent='録画用Sandbox｜以前の購入開始記録は未解決のまま保持しています。支払済み・未払いは判定していません。購入・復元・Stripe連携・退会は停止中。再インストールや履歴削除はしないでください。';
 }
 async function init(){
   if(authInitRunning)return;
@@ -2694,12 +2750,14 @@ async function init(){
     const sdkReady=await window.__loadSupabaseSDK();
     if(!sdkReady||!window.supabase?.createClient)throw new Error('Supabase SDKを読み込めませんでした');
     await assertRecordingEnvironmentSafe();
-    sb=sb||window.supabase.createClient(cfg.SUPABASE_URL,cfg.SUPABASE_PUBLISHABLE_KEY);
+    sb=sb||window.supabase.createClient(cfg.SUPABASE_URL,cfg.SUPABASE_PUBLISHABLE_KEY,recordingAuthOptions());
+    updateRecordingIsolationNotice();
     authSubscription?.unsubscribe();
     const revision=authEventRevision;
     authSubscription=sb.auth.onAuthStateChange(handleAuthStateChange)?.data?.subscription||null;
     const {data,error}=await sb.auth.getSession();
     if(error)throw error;
+    if(window.VOICE_FLEA_CONFIG!==cfg||JSON.stringify(cfg)!==recordingSessionConfigSignature)throw Error('録画環境の設定が変わりました。記録を削除せず再試行してください。');
     if(revision===authEventRevision)currentUser=data.session?.user||null;
     authBootstrapping=false;
     if(authReloadPending)return;
@@ -2709,6 +2767,9 @@ async function init(){
     await renderAuth();
 
   }catch(e){
+    // Failed retries must not leave an authenticated client or private UI usable.
+    // Stopping refresh/unsubscribing never signs out, clears storage or resolves a purchase.
+    if(sb){sb.auth.stopAutoRefresh?.();authSubscription?.unsubscribe();authSubscription=null;sb=null;currentUser=null;authUIRevision++;resetPrivateUI();}
     console.error('Supabase init failed',e);
     cloudStatus.textContent='接続エラー';
     cloudStatus.classList.remove('live');
@@ -2762,6 +2823,7 @@ async function signIn(){
 // Fail closed if the backend has not yet been deployed; never delete only local profile data.
 let accountDeletionInProgress=false;
 async function requestAccountDeletion(){
+  if(!recordingAccountDeletionAllowed()){alert('録画用環境では退会を停止しています。以前の環境の購入・取引記録の状態は判定していません。記録を削除せず運営へお問い合わせください。');return;}
   if(accountDeletionInProgress)return;
   if(!sb||!currentUser){alert('ログイン後に操作してください。');return;}
   const first=confirm('アカウントを削除すると、ログインできなくなります。未完了の取引・返金・売上金がある場合は先に対応が必要です。削除すると出品とブーストの表示は終了します。Apple購入の返金はAppleへの申請が必要です。削除手続きを進めますか？');
@@ -3060,6 +3122,7 @@ async function startStripeCheckout(listingId,btn,applicationId=null){
 
 
 async function reconcilePendingPurchase(navigationRequest=pageNavigationRequest){
+  if(!recordingStripeWritesAllowed())return null;
   if(!sb||!currentUser)return null;
   const key=`vf_pending_purchase_${currentUser.id}`;
   let pending=null;
@@ -5259,6 +5322,7 @@ async function nativeBoost(){
  return {plugin:boostNative};
 }
 async function boostApi(body){
+ if(!(['status','verify'].includes(body?.action)?recordingAppleRecoveryAllowed():['prepare','prepareJob'].includes(body?.action)&&recordingApplePurchasesAllowed()))throw Error('録画用環境の購入・購入照合は停止中です。');
  const {data,error}=await sb.functions.invoke('boost-iap',{body});
  if(error||data?.error){
   let detail=data?.error;
@@ -5428,6 +5492,7 @@ async function voicePreparationWait(run,message,timeoutMs=20000){
  finally{clearTimeout(timer);}
 }
 async function voiceIapApi(body){
+ if(!(['status','verify'].includes(body?.action)?recordingAppleRecoveryAllowed():['prepare','prepareJob'].includes(body?.action)&&recordingApplePurchasesAllowed()))throw Error('録画用環境の購入・購入照合は停止中です。');
  const {data,error}=await sb.functions.invoke('voice-iap',{body});
  let message=data?.error;
  if(!message&&error?.context?.json){try{message=(await error.context.json())?.error;}catch{}}

@@ -205,6 +205,9 @@ public class KoeBoostPlugin: CAPPlugin, CAPBridgedPlugin {
                 guard case .verified(let transaction) = result else {
                     call.reject("未処理の購入を検証できません。再購入せず、時間をおいて反映を確認してください。"); return
                 }
+                guard isAllowed(transaction.productID) else {
+                    call.reject("未処理の商品の接続先を確認できません。記録を削除せず元の環境で照合してください。"); return
+                }
                 if isAllowed(transaction.productID) {
                     guard isRecordingTransaction(transaction), let ownedAttempt = attempt,
                           ownedAttempt.productID == transaction.productID, ownedAttempt.token == transaction.appAccountToken,

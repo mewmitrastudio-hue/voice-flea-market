@@ -1,11 +1,11 @@
 {
   "release": "2026.11.04-4-sandbox",
-  "web_sha256": "d97b357d50844adba8237436deaa2fc92a21bcc5ac19e6906d6c6a21b4abf978",
+  "web_sha256": "80acde0d02165ced30d360b5ea01296c09e1d64c57ab198f275ef38150f453ff",
   "bundle_id": "com.ayuhide.koenofurima",
   "minimum_build_number": 38,
   "production_backend_applied": false,
   "production_backend_applied_at": null,
-  "boost_native_sha256": "8863da0d36cd0ff34227dc01761ad2c13c22065f3f018acba3dadff193a6203a",
+  "boost_native_sha256": "f321297aae668408b8a02d027d0b5f613f3ccc2e7b1f48ef482b7f721f3bb4c4",
   "boost_sales_enabled": false,
   "voice_sales_enabled": false,
   "environment": "recording-sandbox",

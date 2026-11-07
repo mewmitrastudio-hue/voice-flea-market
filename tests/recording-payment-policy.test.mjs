@@ -6,7 +6,7 @@ const html=fs.readFileSync(new URL('../index.html',import.meta.url),'utf8');
 const policy=html.slice(html.indexOf('function recordingBackendMatches('),html.indexOf("function esc(s='')"));
 const base={ENVIRONMENT:'recording-sandbox',SUPABASE_URL:'https://neotkrfsquysuatdruhg.supabase.co',RECORDING_APPLE_PURCHASES_ENABLED:false,RECORDING_APPLE_RECOVERY_ENABLED:false,RECORDING_STRIPE_READS_ENABLED:false,RECORDING_STRIPE_WRITES_ENABLED:false};
 const functionSource=name=>{const start=html.indexOf('async function '+name+'(');return html.slice(start,html.indexOf('\n}',start)+2)};
-function context(config,extra={}){const ctx=vm.createContext({window:{VOICE_FLEA_CONFIG:config},...extra});vm.runInContext(policy,ctx);return ctx;}
+function context(config,extra={}){const ctx=vm.createContext({window:{VOICE_FLEA_CONFIG:config,localStorage:{length:0,key:()=>null}},...extra});vm.runInContext(policy,ctx);return ctx;}
 for(const purchases of [false,true])for(const recovery of [false,true])for(const reads of [false,true])test(`permission matrix purchase=${purchases}, recovery=${recovery}, reads=${reads}`,()=>{
  const c=context({...base,RECORDING_APPLE_PURCHASES_ENABLED:purchases,RECORDING_APPLE_RECOVERY_ENABLED:recovery,RECORDING_STRIPE_READS_ENABLED:reads});
  assert.equal(c.recordingApplePurchasesAllowed(),purchases&&recovery);
