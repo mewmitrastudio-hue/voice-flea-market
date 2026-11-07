@@ -1,6 +1,6 @@
 {
   "release": "2026.11.04-4-sandbox",
-  "web_sha256": "855d470275b2142faa761b6873b85c617d6dabfc9412768d762541c24980f9cb",
+  "web_sha256": "b2ec9c1d4b54703ebbfd4da264a3c38b18aecf412ca8c231517bde02f01541a8",
   "bundle_id": "com.ayuhide.koenofurima",
   "minimum_build_number": 38,
   "production_backend_applied": false,

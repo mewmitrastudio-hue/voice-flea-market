@@ -2600,9 +2600,19 @@ function handleAuthStateChange(_event,session){
 async function assertRecordingEnvironmentSafe(){
  if(!recordingBackendMatches(cfg)||!['RECORDING_APPLE_PURCHASES_ENABLED','RECORDING_APPLE_RECOVERY_ENABLED','RECORDING_STRIPE_READS_ENABLED'].every(key=>typeof cfg[key]==='boolean')||(cfg.RECORDING_APPLE_PURCHASES_ENABLED&&!cfg.RECORDING_APPLE_RECOVERY_ENABLED))throw new Error('録画環境の設定が一致しません。');
  const storage=window.localStorage;
+ // Read key categories only. Never read, transmit, remove or relabel legacy values.
+ const legacyKinds=[['pending_purchase_','購入の戻り確認'],['checkout_attempt_','決済開始'],['voice_attempt_','音声購入の開始'],['boost_attempt_','Boost購入の開始'],['financial_resolution_pending_','精算の照合'],['message_attempt_','メッセージ送信']];
+ const legacyCounts=new Map();
  for(let i=0;i<storage.length;i++){
   const key=storage.key(i);
-  if(key&&(/^vf_(pending_purchase_|checkout_attempt_|voice_attempt_|boost_attempt_|financial_resolution_pending_|message_attempt_)/.test(key)||(key.startsWith('vf_scoped_')&&!key.startsWith('vf_scoped_neotkrfsquysuatdruhg_'))))throw new Error('以前の環境の処理記録が残っています。再インストール・履歴削除・再購入はせず、元の環境で照合してください。録画環境への接続を停止しました。');
+  if(typeof key!=='string')continue;
+  const kind=legacyKinds.find(([prefix])=>key.startsWith('vf_'+prefix));
+  const label=kind?.[1]||(key.startsWith('vf_scoped_')&&!key.startsWith('vf_scoped_neotkrfsquysuatdruhg_')?'別環境の処理':null);
+  if(label)legacyCounts.set(label,(legacyCounts.get(label)||0)+1);
+ }
+ if(legacyCounts.size){
+  const summary=[...legacyCounts].map(([label,count])=>label+'：'+count+'件').join('／');
+  throw new Error('以前の環境の処理記録が残っています。再インストール・履歴削除・再購入はせず、元の環境で照合してください。録画環境への接続を停止しました。診断 WEB-LEGACY：'+summary+'。種類と件数だけでは、未完了か処理済みかは判断できません。この画面をサポートに見せてください。');
  }
  if(window.Capacitor?.isNativePlatform?.()===true){
   if(window.Capacitor?.getPlatform?.()!=='ios')throw new Error('録画用iPhoneアプリで確認してください。');
