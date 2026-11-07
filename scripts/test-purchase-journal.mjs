@@ -13,33 +13,55 @@ let root = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().
 defer { try? FileManager.default.removeItem(at: root) }
 let url = root.appendingPathComponent("journal.json")
 let journal = KoePurchaseJournal(url: url)
+let project = "tyulybijubckitybgubc", otherProject = "neotkrfsquysuatdruhg", environment = "Sandbox"
 let token = UUID()
-func assertNoThrow(_ value: Bool) { assert(value) }
-func expectFailure(_ action: () throws -> Void) {
+func check(_ value: Bool) { assert(value) }
+func failsPreserving(_ action: () throws -> Void) throws {
+    let before = try? Data(contentsOf: url)
     do { try action(); fatalError("Expected failure") } catch { }
+    check((try? Data(contentsOf: url)) == before)
 }
-assertNoThrow(try journal.read() == nil)
-try journal.begin(productID: "voice", token: token)
+check(try journal.read() == nil)
+try journal.begin(productID: "voice", token: token, backendProjectRef: project, environment: environment)
 let restarted = KoePurchaseJournal(url: url)
-assertNoThrow(try restarted.read() == KoePurchaseAttempt(productID: "voice", token: token))
-expectFailure { try restarted.begin(productID: "boost", token: UUID()) }
-try restarted.clear(productID: "voice", token: UUID())
-assertNoThrow(try restarted.read() != nil)
-try restarted.clear(productID: "boost", token: token)
-assertNoThrow(try restarted.read() != nil)
-try restarted.clear(productID: "voice", token: nil)
-assertNoThrow(try restarted.read() != nil)
-try restarted.clear(productID: "voice", token: token)
-assertNoThrow(try restarted.read() == nil)
-try restarted.clear(productID: "voice", token: token)
-try restarted.begin(productID: "boost", token: token)
+let saved = try restarted.read(backendProjectRef: project, environment: environment)
+check(saved?.schemaVersion == 2 && saved?.backendProjectRef == project && saved?.storeKitEnvironment == environment)
+check(saved?.token == token && saved?.transactionID == nil)
+try failsPreserving { try restarted.begin(productID: "boost", token: UUID(), backendProjectRef: project, environment: environment) }
+try failsPreserving { _ = try restarted.read(backendProjectRef: otherProject, environment: environment) }
+try failsPreserving { _ = try restarted.read(backendProjectRef: project, environment: "Production") }
+try failsPreserving { try restarted.clearCancelled(productID: "voice", token: UUID(), backendProjectRef: project, environment: environment) }
+try failsPreserving { try restarted.clearCancelled(productID: "boost", token: token, backendProjectRef: project, environment: environment) }
+try failsPreserving { try restarted.recordVerifiedGrant(productID: "voice", token: nil, transactionID: "123", backendProjectRef: project, environment: environment) }
+try failsPreserving { try restarted.recordVerifiedGrant(productID: "voice", token: token, transactionID: "123", backendProjectRef: otherProject, environment: environment) }
+try failsPreserving { try restarted.clearFinished(productID: "voice", token: token, transactionID: "123", backendProjectRef: project, environment: environment) }
+try restarted.recordVerifiedGrant(productID: "voice", token: token, transactionID: "123", backendProjectRef: project, environment: environment)
+let afterGrantRestart = KoePurchaseJournal(url: url)
+check(try afterGrantRestart.read()?.transactionID == "123")
+try failsPreserving { try afterGrantRestart.recordVerifiedGrant(productID: "voice", token: token, transactionID: "456", backendProjectRef: project, environment: environment) }
+try failsPreserving { try afterGrantRestart.clearCancelled(productID: "voice", token: token, backendProjectRef: project, environment: environment) }
+try failsPreserving { try afterGrantRestart.clearFinished(productID: "voice", token: token, transactionID: "456", backendProjectRef: project, environment: environment) }
+try afterGrantRestart.recordVerifiedGrant(productID: "voice", token: token, transactionID: "123", backendProjectRef: project, environment: environment)
+try afterGrantRestart.clearFinished(productID: "voice", token: token, transactionID: "123", backendProjectRef: project, environment: environment)
+check(try journal.read() == nil)
+try failsPreserving { try journal.clearFinished(productID: "voice", token: token, transactionID: "123", backendProjectRef: project, environment: environment) }
+try journal.begin(productID: "voice", token: token, backendProjectRef: project, environment: environment)
+try journal.clearCancelled(productID: "voice", token: token, backendProjectRef: project, environment: environment)
+check(try journal.read() == nil)
+let legacy = "{\"productID\":\"voice\",\"token\":\"\(token.uuidString)\"}"
+try Data(legacy.utf8).write(to: url)
+check(try journal.read()?.schemaVersion == nil)
+try failsPreserving { _ = try journal.read(backendProjectRef: project, environment: environment) }
+try failsPreserving { try journal.begin(productID: "voice", token: token, backendProjectRef: project, environment: environment) }
+try failsPreserving { try journal.clearCancelled(productID: "voice", token: token, backendProjectRef: project, environment: environment) }
+try failsPreserving { try journal.recordVerifiedGrant(productID: "voice", token: token, transactionID: "123", backendProjectRef: project, environment: environment) }
+try failsPreserving { try journal.clearFinished(productID: "voice", token: token, transactionID: "123", backendProjectRef: project, environment: environment) }
 try Data("corrupt".utf8).write(to: url)
-expectFailure { _ = try restarted.read() }
-expectFailure { try restarted.begin(productID: "voice", token: token) }
-expectFailure { try restarted.clear(productID: "voice", token: token) }
+try failsPreserving { _ = try journal.read() }
+try failsPreserving { try journal.begin(productID: "voice", token: token, backendProjectRef: project, environment: environment) }
 let blocked = KoePurchaseJournal(url: url.appendingPathComponent("child"))
-expectFailure { try blocked.begin(productID: "voice", token: token) }
-print("Purchase journal: restart, duplicate prevention, exact ownership, cancellation, corruption and write failure passed")
+do { try blocked.begin(productID: "voice", token: token, backendProjectRef: project, environment: environment); fatalError("Expected write failure") } catch { }
+print("Versioned purchase journal: exact provenance, legacy barrier, restart, exact grant, cancellation, corruption and write failure passed")
 `);
  execFileSync('swift',[path],{stdio:'inherit'});
 }finally{rmSync(dir,{recursive:true,force:true});}

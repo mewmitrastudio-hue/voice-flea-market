@@ -126,7 +126,7 @@ test('voice purchase locks repeated taps and finishes only after durable server 
  f.complete({status:'purchased',signedTransaction:'signed',transactionId:'123'});await first;assert.deepEqual(f.events,['purchase','verify','finish','go','open']);
  const failed=uiFixture({verifyFailure:true});await failed.c.startVoicePurchase(listing);const p=failed.c.confirmVoicePurchase();failed.complete({status:'purchased',signedTransaction:'signed',transactionId:'123'});await p;assert.ok(!failed.events.includes('finish'));assert.match(failed.elements.get('voicePurchaseStatus').textContent,/再購入せず/);
  const cancelled=uiFixture();await cancelled.c.startVoicePurchase(listing);const q=cancelled.c.confirmVoicePurchase();cancelled.complete({status:'cancelled'});await q;assert.deepEqual(cancelled.events,['purchase']);
- const switched=uiFixture({accountSwitch:true});await switched.c.startVoicePurchase(listing);const t=switched.c.confirmVoicePurchase();switched.complete({status:'purchased',signedTransaction:'signed',transactionId:'123'});await t;assert.ok(!switched.events.includes('open'));
+ const switched=uiFixture({accountSwitch:true});await switched.c.startVoicePurchase(listing);const t=switched.c.confirmVoicePurchase();switched.complete({status:'purchased',signedTransaction:'signed',transactionId:'123'});await t;assert.ok(!switched.events.includes('open'));assert.ok(!switched.events.includes('finish'),'changed account must preserve original journal');
 });
 test('voice preview distinguishes missing products, environment, currency and price errors; the matching quote reaches Apple purchase',async()=>{
  const cases=[
