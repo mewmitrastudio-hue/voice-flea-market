@@ -4726,7 +4726,13 @@ async function loadMe(){
  loadPendingTradeNotice();
  try{await syncTradeVisibility()}catch(error){console.warn(error);alert(error.message);return;}
  setTimeout(()=>renderVisibilityBlockManager().catch(e=>console.warn('manager',e)),0);
-  const {data:profile}=await sb.from('profiles').select('*').eq('id',currentUser.id).maybeSingle();
+  const profileOwner=currentUser.id;
+  const {data:profile,error:profileError}=await sb.rpc('get_my_recording_profile');
+  if(currentUser?.id!==profileOwner)return;
+  if(profileError || (profile && profile.id!==profileOwner)){
+    setStripeConnectUI('', 'プロフィールを確認できません。再読み込みしてください。', false, true);
+    return;
+  }
   let p=profile||{};
   const {data:receivedReviews}=await sb.from('reviews').select('rating').eq('target_user_id',currentUser.id);
   const ratings=(receivedReviews||[]).map(r=>Number(r.rating)).filter(n=>n>=1&&n<=5);
