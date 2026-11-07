@@ -2595,6 +2595,63 @@ function handleAuthStateChange(_event,session){
   renderAuth().catch(error=>{console.warn('Auth UI load failed',error);info('authMsg','画面を読み込めませんでした。通信状況を確認して再試行してください。','err')});
  },0);
 }
+// Read-only, opt-in diagnostics. Never feed these results into the startup gate.
+const recordingDiagnosticUUID=/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+let recordingDiagnosticRevision=0,recordingDiagnosticBusy=false;
+async function recordingDiagnosticFingerprint(value){
+ if(typeof value!=='string'||!recordingDiagnosticUUID.test(value))return 'invalid';
+ const bytes=new TextEncoder().encode('vf-diagnostic-uuid-v1:'+value.toLowerCase());
+ const hash=await crypto.subtle.digest('SHA-256',bytes);
+ return Array.from(new Uint8Array(hash),x=>x.toString(16).padStart(2,'0')).join('');
+}
+async function recordingDiagnosticBounded(read,ms=8000){
+ let timer;
+ try{return await Promise.race([Promise.resolve().then(read),new Promise((_,reject)=>{timer=setTimeout(()=>reject(new Error('diagnostic-timeout')),ms)})])}
+ finally{clearTimeout(timer)}
+}
+async function collectRecordingWebDiagnostic(){
+ const rows=[];const storage=window.localStorage;const length=storage.length;
+ // Bounded synchronous enumeration, followed by bounded asynchronous hashes.
+ const limit=Math.min(length,1000);let total=0;
+ for(let i=0;i<limit;i++){
+  const key=storage.key(i);if(typeof key!=='string'||!key.startsWith('vf_voice_attempt_'))continue;
+  total++;if(rows.length>=20)continue;
+  const parts=key.slice('vf_voice_attempt_'.length).split(':');
+  const kind=parts.length===2?'listing':parts.length===3&&parts[1]==='job'?'job':'invalid';
+  const valid=kind!=='invalid'&&recordingDiagnosticUUID.test(parts[0])&&recordingDiagnosticUUID.test(parts.at(-1));
+  // Never read malformed keys or unrelated storage (including authentication).
+  const attempt=valid?storage.getItem(key):null;
+  rows.push({kind:valid?kind:'invalid',owner:valid?parts[0]:null,target:valid?parts.at(-1):null,attempt});
+ }
+ const lines=['WEB scanned='+limit+'/'+length+' voice_found='+total+' shown='+rows.length+(length>limit||total>rows.length?' TRUNCATED':'')];
+ for(let i=0;i<rows.length;i++){
+  const row=rows[i];const hashes=await Promise.all([row.owner,row.target,row.attempt].map(recordingDiagnosticFingerprint));
+  lines.push('record '+(i+1)+' kind='+row.kind,'owner_sha256='+hashes[0],'target_sha256='+hashes[1],'attempt_sha256='+hashes[2]);
+ }
+ return lines.join('\n');
+}
+async function collectRecordingNativeDiagnostic(){
+ if(window.Capacitor?.isNativePlatform?.()!==true||window.Capacitor?.getPlatform?.()!=='ios')return 'NATIVE unavailable (not iOS)';
+ const {plugin}=await nativeBoost();
+ const p=await plugin.pendingTransactions({}); // read only; may reject legacy/foreign journals
+ const flags=['journalPresent','purchaseBlocked','approvalPending','applePurchasesEnabled','appleRecoveryEnabled','stripeWritesEnabled'];
+ if(!p||flags.some(k=>typeof p[k]!=='boolean')||!Array.isArray(p.transactions)||p.journalVersion!==2||p.backendProjectRef!=='neotkrfsquysuatdruhg'||p.environment!=='Sandbox'||!['','voice','boost'].includes(p.blockingKind))return 'NATIVE unavailable (invalid response)';
+ // Never inspect or output transaction IDs, signed transactions, or arbitrary native strings.
+ return ['NATIVE read_success (not proof of payment or absence of charge)','environment=Sandbox journalVersion=2',...flags.map(k=>k+'='+p[k]),'blockingKind='+(p.blockingKind||'none'),'returned_transactions='+p.transactions.length].join('\n');
+}
+async function showRecordingPurchaseDiagnostic(){
+ const output=document.getElementById('recordingPurchaseDiagnostic');
+ const button=document.getElementById('recordingPurchaseDiagnosticButton');
+ if(!output||!button||recordingDiagnosticBusy||authInitRunning)return;
+ const revision=++recordingDiagnosticRevision;recordingDiagnosticBusy=true;button.disabled=true;
+ output.textContent='購入記録を読み取り専用で確認中…（最大約8秒）';
+ const safeRead=async(read,label)=>{try{return await recordingDiagnosticBounded(read)}catch(e){return label+' unavailable ('+(e?.message==='diagnostic-timeout'?'timeout':'read failed')+')'}};
+ const results=await Promise.all([safeRead(collectRecordingWebDiagnostic,'WEB'),safeRead(collectRecordingNativeDiagnostic,'NATIVE')]);
+ // A retry/new document must not receive a late result. Timed-out reads never touch UI.
+ if(revision!==recordingDiagnosticRevision||!output.isConnected||document.getElementById('recordingPurchaseDiagnostic')!==output)return;
+ recordingDiagnosticBusy=false;button.disabled=false;
+ output.textContent='診断 UUID-SHA256-v1（端末内のみ）\n'+results.join('\n\n')+'\n\nこの表示は支払済み・未払いを判定しません。attempt は注文IDと異なる場合があります。削除・再購入せず、この欄全体をサポートへ共有してください。';
+}
 // Existing build37 journals have no backend provenance. Never migrate, clear,
 // or replay them into the recording database. Block before creating a client.
 async function assertRecordingEnvironmentSafe(){
@@ -2629,6 +2686,7 @@ async function assertRecordingEnvironmentSafe(){
 async function init(){
   if(authInitRunning)return;
   authInitRunning=true;authBootstrapping=true;
+  recordingDiagnosticRevision++;recordingDiagnosticBusy=false;
   cloudStatus.textContent='接続中';
   cloudStatus.classList.remove('live');
   try{
@@ -2656,6 +2714,11 @@ async function init(){
     cloudStatus.classList.remove('live');
     configNotice.classList.remove('hide');
     configNotice.innerHTML=esc(e?.message||'録画環境を安全に確認できません。記録を消さずに確認してください。')+'<button type="button" class="btn secondary full" onclick="init()">接続を再試行</button>';
+    if(String(e?.message||'').includes('診断 WEB-LEGACY：')){
+      const button=document.createElement('button');button.id='recordingPurchaseDiagnosticButton';button.type='button';button.className='btn secondary full';button.textContent='購入記録の詳細を表示（変更しません）';button.onclick=showRecordingPurchaseDiagnostic;
+      const output=document.createElement('pre');output.id='recordingPurchaseDiagnostic';output.style.cssText='white-space:pre-wrap;overflow-wrap:anywhere;text-align:left;user-select:text;font-size:12px';output.setAttribute('aria-live','polite');
+      configNotice.append(button,output);
+    }
   }finally{authBootstrapping=false;authInitRunning=false}
 }
 async function renderAuth(){
