@@ -7,3 +7,7 @@ verify_jwt = true
 # Stripe signatures authenticate this endpoint; ordinary requests still fail.
 [functions.apple-payout-notifications]
 verify_jwt = false
+
+# Auth is also checked with /auth/v1/user inside this GET-only endpoint.
+[functions.iap-readiness]
+verify_jwt = true

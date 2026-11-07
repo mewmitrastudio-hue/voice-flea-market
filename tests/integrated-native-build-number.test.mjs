@@ -1,0 +1,20 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import fs from 'node:fs';
+const read=p=>fs.readFileSync(new URL('../'+p,import.meta.url),'utf8');
+test('local integrated build44 agrees across manifest, Xcode configurations and plist indirection',()=>{
+ const manifest=JSON.parse(read('release-manifest.json'));
+ assert.equal(manifest.minimum_build_number,44);
+ assert.equal(manifest.local_preparation_only,true);
+ assert.equal(manifest.public_release_allowed,false);
+ assert.equal(manifest.legacy_build43_retirement_required,true);
+ const project=read('ios/App/App.xcodeproj/project.pbxproj');
+ assert.deepEqual([...project.matchAll(/CURRENT_PROJECT_VERSION = (\d+);/g)].map(m=>Number(m[1])),[44,44]);
+ const plist=read('ios/App/App/Info.plist');
+ assert.match(plist,/<key>CFBundleVersion<\/key>\s*<string>\$\(CURRENT_PROJECT_VERSION\)<\/string>/);
+ assert.match(plist,/<key>ITSAppUsesNonExemptEncryption<\/key>\s*<false\/>/);
+ assert.match(plist,/<key>SKIncludeConsumableInAppPurchaseHistory<\/key>\s*<true\/>/);
+ const config=JSON.parse(read('capacitor.config.json'));
+ assert.equal(config.appId,'com.ayuhide.koenofurima');
+ assert.ok(!config.server?.url);
+});

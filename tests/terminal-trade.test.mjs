@@ -76,3 +76,17 @@ test('an unallocated verified full Apple refund does not invent a seller liabili
   assert.equal((await db.query('select public.prepare_account_deletion($1) r',[seller])).rows[0].r.allowed,true);
  }finally{await db.close();}
 });
+
+test('prepared stopped account regenerates remaining public Storage plan after anonymization and partial removal',async()=>{
+ const db=await setup();try{
+ await db.query("insert into storage.objects values('voice-samples','owner/sample.m4a',$1),('profile-avatars','owner/avatar.png',$1),('deliveries','paid/private.m4a',$1)",[buyer]);
+ const first=await deletion(db);assert.equal(first.allowed,true);assert.equal(first.files.length,2);
+ // finish clears public paths, but Storage owns the cleanup inventory independently.
+ await db.exec('alter table listings add column if not exists sample_path text');
+ await db.query('update listings set sample_path=null,is_active=false where seller_id=$1',[buyer]);
+ await db.query("delete from storage.objects where bucket_id='voice-samples' and owner_id=$1",[buyer]);
+ const retry=await deletion(db);assert.equal(retry.allowed,true);
+ assert.deepEqual(retry.files,[{bucket:'profile-avatars',name:'owner/avatar.png'}]);
+ assert.equal((await db.query('select count(*)::int n from voice_flea_private.account_deletions')).rows[0].n,1);
+ }finally{await db.close();}
+});
