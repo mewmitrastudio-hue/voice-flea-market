@@ -7,6 +7,10 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
     var window: UIWindow?
 
     func application(_ application: UIApplication, didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]?) -> Bool {
+        // Disabled compile hook. No flag is supplied by the normal release build.
+        #if KOEFURIMA_NATIVE_V3_HOST
+        NativeRecoveryHost.shared.startAtApplicationLaunch()
+        #endif
         // Override point for customization after application launch.
         return true
     }

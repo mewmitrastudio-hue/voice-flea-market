@@ -1,4 +1,7 @@
+import {reconcileStripeRefundEvent,stripeRefundTransport} from '../_shared/stripe-refund-dispatch.mjs';
 import { createClient } from "npm:@supabase/supabase-js@2.118.0";
+import {reconcileStripeDispute} from '../_shared/stripe-disputes.mjs';
+import {reconcileAppleSettlementEvent} from '../_shared/apple-settlement.mjs';
 
 function json(data: unknown, status = 200) {
   return new Response(JSON.stringify(data), {
@@ -128,8 +131,66 @@ Deno.serve(async (req) => {
       return json({error:"Webhook mode mismatch"},400);
     const db = createClient(url,key,{auth:{persistSession:false,autoRefreshToken:false}});
     const object = event.data.object;
+    if (typeof event.type === 'string' && event.type.startsWith('charge.dispute.')) {
+      const get=async(path:string)=>{
+        const response=await fetch(`https://api.stripe.com/v1/${path}`,{headers:{Authorization:`Bearer ${stripeKey}`,'Stripe-Version':'2026-09-30.endive'}});
+        if(!response.ok)throw Error('Dispute evidence unavailable');
+        return response.json();
+      };
+      await reconcileStripeDispute({event,get,db,live,platformId:Deno.env.get('STRIPE_DISPUTE_PLATFORM_ACCOUNT_ID')});
+      return json({received:true,reviewRequired:true});
+    }
     const completed = ["checkout.session.completed","checkout.session.async_payment_succeeded"].includes(event.type);
     const refundEvent = ["charge.refunded","refund.created","refund.updated","refund.failed"].includes(event.type);
+    if (['refund.created','refund.updated','refund.failed'].includes(event.type)) {
+      const handled=await reconcileStripeRefundEvent({event,db,stripe:stripeRefundTransport(stripeKey),live,platformId:Deno.env.get('STRIPE_DISPUTE_PLATFORM_ACCOUNT_ID')});
+      if(handled)return json({received:true});
+    }
+
+    if (['transfer.created','transfer.updated','transfer.reversed'].includes(event.type) && object.metadata?.apple_settlement_id) {
+      const get=async(path:string)=>{
+        const response=await fetch(`https://api.stripe.com/v1/${path}`,{headers:{Authorization:`Bearer ${stripeKey}`,'Stripe-Version':'2026-09-30.endive'}});
+        if(!response.ok)throw Error('Settlement evidence unavailable');
+        return response.json();
+      };
+      await reconcileAppleSettlementEvent({event,db,platformId:Deno.env.get('APPLE_SETTLEMENT_STRIPE_ACCOUNT_ID'),
+        stripe:{accounts:{retrieve:()=>get('account')},transfers:{retrieve:(id:string)=>get('transfers/'+encodeURIComponent(id))}}});
+      return json({received:true});
+    }
+
+    // Checkout reports manual authorizations as unpaid. Store them as authorized,
+    // never as captured revenue. Only the receipt endpoint may capture them.
+    if (completed && object.metadata?.capture_flow === 'receipt-v1') {
+      const piId=typeof object.payment_intent==='string'?object.payment_intent:object.payment_intent?.id;
+      if(!/^pi_[A-Za-z0-9]+$/.test(piId||''))return json({error:'Payment intent missing'},400);
+      const observed=new Date().toISOString();
+      const response=await fetch(`https://api.stripe.com/v1/payment_intents/${encodeURIComponent(piId)}?expand%5B%5D=latest_charge`,
+        {headers:{Authorization:`Bearer ${stripeKey}`,'Stripe-Version':'2026-08-26.dahlia'}});
+      const pi=await response.json(),charge=pi.latest_charge;
+      const expires=charge?.payment_method_details?.card?.capture_before;
+      if(!response.ok||pi.id!==piId||pi.capture_method!=='manual'||pi.livemode!==live||pi.currency!=='jpy'
+        ||!Number.isSafeInteger(pi.amount)||pi.amount<50||object.amount_total!==pi.amount||object.currency!=='jpy'||object.livemode!==live
+        ||pi.application_fee_amount!==Math.round(pi.amount*0.15)||!/^acct_[A-Za-z0-9]+$/.test(pi.transfer_data?.destination||'')
+        ||!charge||charge.payment_intent!==piId||charge.livemode!==live||charge.currency!=='jpy'||charge.amount!==pi.amount
+        ||pi.status!=='canceled'&&charge.paid!==true||charge.amount_refunded!==0||!Number.isSafeInteger(expires)
+        ||!['requires_capture','succeeded','canceled'].includes(pi.status)
+        ||pi.status==='requires_capture'&&(charge.captured!==false||charge.amount_captured!==0||pi.amount_capturable!==pi.amount)
+        ||pi.status==='succeeded'&&(charge.captured!==true||charge.amount_captured!==pi.amount)
+        ||['capture_flow','listing_id','job_id','job_application_id','buyer_id','seller_id','reservation_id'].some(k=>pi.metadata?.[k]!==object.metadata?.[k]))
+        return json({error:'Manual authorization could not be reconciled'},503);
+      const snapshot={canceled:pi.status==='canceled',reservation_id:object.metadata.reservation_id,stripe_payment_intent_id:piId,stripe_charge_id:charge.id,stripe_checkout_session_id:object.id,
+        stripe_livemode:live,stripe_reconciled_at:observed,amount_jpy:pi.amount,stripe_destination:pi.transfer_data.destination,
+        authorization_expires_at:new Date(expires*1000).toISOString(),listing_id:object.metadata.listing_id,job_id:object.metadata.job_id,job_application_id:object.metadata.job_application_id,
+        buyer_id:object.metadata.buyer_id,seller_id:object.metadata.seller_id};
+      const {error}=await db.rpc('record_stripe_authorization',{snapshot});
+      if(error)return json({error:'Authorization persistence pending'},503);
+      if(pi.status==='succeeded'){
+        const {error}=await db.rpc('record_stripe_payment_snapshot',{snapshot:{stripe_payment_intent_id:piId,stripe_charge_id:charge.id,stripe_livemode:live,stripe_reconciled_at:observed,amount_jpy:pi.amount,refunded_amount_jpy:0}});
+        if(error)return json({error:'Captured payment persistence pending'},503);
+      }
+      const {error:finished}=await db.rpc('finish_checkout_reservation',{reservation:object.metadata.reservation_id,session:object.id});
+      return finished?json({error:'Checkout reservation update failed'},503):json({received:true});
+    }
 
     if ((completed && object.payment_status === "paid") || refundEvent) {
       const piId = typeof object.payment_intent === "string" ? object.payment_intent : object.payment_intent?.id;
@@ -175,6 +236,17 @@ Deno.serve(async (req) => {
       const {error} = await db.rpc("finish_checkout_reservation",{
         reservation:object.metadata?.reservation_id || null,session:object.id});
       if (error) return json({error:"Checkout reservation update failed"},503);
+    }
+    if(event.type==='payment_intent.canceled'&&object.metadata?.capture_flow==='receipt-v1'){
+      if(!/^pi_[A-Za-z0-9]+$/.test(object.id||''))return json({error:'Payment intent missing'},400);
+      const observed=new Date().toISOString();
+      const response=await fetch(`https://api.stripe.com/v1/payment_intents/${encodeURIComponent(object.id)}`,{headers:{Authorization:`Bearer ${stripeKey}`,'Stripe-Version':'2026-08-26.dahlia'}});
+      const pi=await response.json();
+      if(!response.ok||pi.id!==object.id||pi.livemode!==live||pi.capture_method!=='manual')return json({error:'Authorization cancellation unverified'},503);
+      if(pi.status==='canceled'){
+        const {error}=await db.rpc('record_voice_authorization_canceled',{intent_id:pi.id,live,observed});
+        if(error)return json({error:'Authorization cancellation persistence pending'},503);
+      }
     }
     if (event.type === "payment_intent.payment_failed") {
       const {error} = await db.from("payments").update({

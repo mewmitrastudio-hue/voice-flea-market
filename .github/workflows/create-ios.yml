@@ -1,6 +1,17 @@
 name: Verify and build iOS app
 on:
   workflow_dispatch:
+  pull_request:
+    branches: [main]
+    paths:
+      - 'index.html'
+      - 'BoostPlugin.swift'
+      - 'native/v3/**'
+      - 'ios/**'
+      - 'scripts/**'
+      - 'tests/**'
+      - 'release-manifest.json'
+      - '.github/workflows/create-ios.yml'
   push:
     branches: [main]
     paths:
@@ -10,6 +21,7 @@ on:
       - 'ios/**'
       - 'scripts/**'
       - 'BoostPlugin.swift'
+      - 'native/v3/**'
       - 'release-manifest.json'
       - 'tests/**'
       - '.github/workflows/create-ios.yml'
@@ -19,6 +31,27 @@ concurrency:
   group: ios-verify-${{ github.ref }}
   cancel-in-progress: true
 jobs:
+  # Independent: stale legacy checks or the app build must not prevent this
+  # native sources from receiving standalone compiler/behavioral verification.
+  verify-native-v3:
+    runs-on: macos-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - name: Compile and execute v3 journal; typecheck iOS15 StoreKit foundation
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p native-v3-verification
+          bash scripts/test-native-v3.sh 2>&1 | tee native-v3-verification/compiler.log
+      - name: Retain native v3 compiler evidence, including failures
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: KoeFurima-native-v3-compiler-evidence
+          path: native-v3-verification/compiler.log
+          if-no-files-found: error
+          retention-days: 7
   build-ios:
     runs-on: macos-latest
     timeout-minutes: 20
@@ -42,6 +75,8 @@ jobs:
           cache: npm
       - run: npm ci
       - run: npm test
+      - name: Test durable purchase journal with Swift
+        run: node scripts/test-purchase-journal.mjs
       - name: Use reviewed minimum build number for unsigned verification
         run: node -e "const fs=require('fs');const m=JSON.parse(fs.readFileSync('release-manifest.json','utf8'));if(!Number.isSafeInteger(m.minimum_build_number)||m.minimum_build_number<1)throw Error('Invalid minimum build number');fs.appendFileSync(process.env.GITHUB_ENV,'CI_BUILD_NUMBER='+m.minimum_build_number+'\n')"
       - name: Prepare reviewed WEB and native sources in existing iOS project
@@ -63,12 +98,39 @@ jobs:
           }
           console.log('WEB source, iOS bundle and inline JavaScript verified');
           NODE
+      - name: Verify real App target includes all disabled native sources
+        run: |
+          mkdir -p native-target-verification
+          NATIVE_TARGET_BUILD_MODE='${{ matrix.target }}' node scripts/verify-native-v3-target.mjs > native-target-verification/source-inventory-${{ matrix.target }}.json
+          xcodebuild -version > native-target-verification/toolchain-${{ matrix.target }}.txt
+          xcrun swiftc --version >> native-target-verification/toolchain-${{ matrix.target }}.txt
+          xcrun --sdk '${{ matrix.sdk }}' --show-sdk-version >> native-target-verification/toolchain-${{ matrix.target }}.txt
       - name: Build ${{ matrix.target }} app without signing credentials
-        run: >-
-          xcodebuild -project ios/App/App.xcodeproj -scheme App
-          -configuration '${{ matrix.configuration }}' -sdk '${{ matrix.sdk }}'
-          -destination '${{ matrix.destination }}'
-          -derivedDataPath build CODE_SIGNING_ALLOWED=NO build
+        run: |
+          set -euo pipefail
+          xcodebuild -project ios/App/App.xcodeproj -scheme App \
+            -configuration '${{ matrix.configuration }}' -sdk '${{ matrix.sdk }}' \
+            -destination '${{ matrix.destination }}' \
+            -derivedDataPath build CODE_SIGNING_ALLOWED=NO build 2>&1 | tee native-target-verification/build-${{ matrix.target }}.log
+          node scripts/capture-native-build-inputs.mjs build native-target-verification/compiler-inputs-${{ matrix.target }}.json
+      - name: Compile real-target host hooks with flag enabled and runtime gates still off (simulator only)
+        if: matrix.target == 'simulator'
+        run: |
+          set -euo pipefail
+          NATIVE_TARGET_BUILD_MODE=simulator-flag-on node scripts/verify-native-v3-target.mjs > native-target-verification/source-inventory-flag-on.json
+          xcodebuild -project ios/App/App.xcodeproj -scheme App -configuration Debug \
+            -sdk iphonesimulator -destination 'generic/platform=iOS Simulator' \
+            -derivedDataPath build-native-v3-probe CODE_SIGNING_ALLOWED=NO \
+            SWIFT_ACTIVE_COMPILATION_CONDITIONS='$(inherited) KOEFURIMA_NATIVE_V3_HOST' build 2>&1 | tee native-target-verification/build-flag-on.log
+          node scripts/capture-native-build-inputs.mjs build-native-v3-probe native-target-verification/compiler-inputs-flag-on.json
+      - name: Retain real-target source, compiler-input and toolchain evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: KoeFurima-native-target-evidence-${{ matrix.target }}
+          path: native-target-verification/
+          if-no-files-found: warn
+          retention-days: 7
       - uses: actions/upload-artifact@v4
         with:
           name: KoeFurima-iOS-${{ matrix.target }}

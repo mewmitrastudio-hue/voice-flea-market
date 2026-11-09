@@ -16,6 +16,13 @@
 		504EC3121FED79650016851F /* LaunchScreen.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = 504EC3101FED79650016851F /* LaunchScreen.storyboard */; };
 		50B271D11FEDC1A000F3C39B /* public in Resources */ = {isa = PBXBuildFile; fileRef = 50B271D01FEDC1A000F3C39B /* public */; };
 		9582B6832FE993A70072D4E8 /* SceneDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9582B6822FE993A50072D4E8 /* SceneDelegate.swift */; };
+		5199ED1584D2EEAB8CD6CF22 /* RecoveryJournal.swift in Sources */ = {isa = PBXBuildFile; fileRef = E59B2BDD90573363BBC226B9 /* RecoveryJournal.swift */; };
+		F209C938A82631CA01660E40 /* NativeHTTPTransport.swift in Sources */ = {isa = PBXBuildFile; fileRef = B575CB8B6A088FC81F186E05 /* NativeHTTPTransport.swift */; };
+		05ABD64E23C3C3BF866DB08C /* NativePurchaseCoordinator.swift in Sources */ = {isa = PBXBuildFile; fileRef = CBB12A0956274F5249252021 /* NativePurchaseCoordinator.swift */; };
+		8E709C36271DEA9C98A9A6AF /* StoreKitRecovery.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6FE05A880B969A143898B3D6 /* StoreKitRecovery.swift */; };
+		184E35D79DA8A334AD466D95 /* StoreKitProductCatalog.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4339B62776B796B4BA1EBD32 /* StoreKitProductCatalog.swift */; };
+		4C9F1C58529D8CF892D6F186 /* NativeRecoveryHost.swift in Sources */ = {isa = PBXBuildFile; fileRef = 668DFB631800058EB2D8211D /* NativeRecoveryHost.swift */; };
+		6CBD2CCDDE884B9BB9334431 /* NativeRecoveryPlugin.swift in Sources */ = {isa = PBXBuildFile; fileRef = 94493F09476EBA34CD59AEB2 /* NativeRecoveryPlugin.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -30,6 +37,13 @@
 		50B271D01FEDC1A000F3C39B /* public */ = {isa = PBXFileReference; lastKnownFileType = folder; path = public; sourceTree = "<group>"; };
 		9582B6822FE993A50072D4E8 /* SceneDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SceneDelegate.swift; sourceTree = "<group>"; };
 		958DCC722DB07C7200EA8C5F /* debug.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; name = debug.xcconfig; path = ../debug.xcconfig; sourceTree = SOURCE_ROOT; };
+		E59B2BDD90573363BBC226B9 /* RecoveryJournal.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RecoveryJournal.swift; sourceTree = "<group>"; };
+		B575CB8B6A088FC81F186E05 /* NativeHTTPTransport.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NativeHTTPTransport.swift; sourceTree = "<group>"; };
+		CBB12A0956274F5249252021 /* NativePurchaseCoordinator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NativePurchaseCoordinator.swift; sourceTree = "<group>"; };
+		6FE05A880B969A143898B3D6 /* StoreKitRecovery.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StoreKitRecovery.swift; sourceTree = "<group>"; };
+		4339B62776B796B4BA1EBD32 /* StoreKitProductCatalog.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StoreKitProductCatalog.swift; sourceTree = "<group>"; };
+		668DFB631800058EB2D8211D /* NativeRecoveryHost.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NativeRecoveryHost.swift; sourceTree = "<group>"; };
+		94493F09476EBA34CD59AEB2 /* NativeRecoveryPlugin.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NativeRecoveryPlugin.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -47,6 +61,7 @@
 		504EC2FB1FED79650016851F = {
 			isa = PBXGroup;
 			children = (
+				4A24993C544DC34BA0E42989 /* NativeV3 */,
 				958DCC722DB07C7200EA8C5F /* debug.xcconfig */,
 				504EC3061FED79650016851F /* App */,
 				504EC3051FED79650016851F /* Products */,
@@ -76,6 +91,21 @@
 			);
 			path = App;
 			sourceTree = "<group>";
+		};
+		4A24993C544DC34BA0E42989 /* NativeV3 */ = {
+			isa = PBXGroup;
+			children = (
+				E59B2BDD90573363BBC226B9 /* RecoveryJournal.swift */,
+				B575CB8B6A088FC81F186E05 /* NativeHTTPTransport.swift */,
+				CBB12A0956274F5249252021 /* NativePurchaseCoordinator.swift */,
+				6FE05A880B969A143898B3D6 /* StoreKitRecovery.swift */,
+				4339B62776B796B4BA1EBD32 /* StoreKitProductCatalog.swift */,
+				668DFB631800058EB2D8211D /* NativeRecoveryHost.swift */,
+				94493F09476EBA34CD59AEB2 /* NativeRecoveryPlugin.swift */,
+			);
+			name = NativeV3;
+			path = ../../native/v3;
+			sourceTree = SOURCE_ROOT;
 		};
 /* End PBXGroup section */
 
@@ -160,6 +190,13 @@
 			files = (
 				504EC3081FED79650016851F /* AppDelegate.swift in Sources */,
 				9582B6832FE993A70072D4E8 /* SceneDelegate.swift in Sources */,
+				5199ED1584D2EEAB8CD6CF22 /* RecoveryJournal.swift in Sources */,
+				F209C938A82631CA01660E40 /* NativeHTTPTransport.swift in Sources */,
+				05ABD64E23C3C3BF866DB08C /* NativePurchaseCoordinator.swift in Sources */,
+				8E709C36271DEA9C98A9A6AF /* StoreKitRecovery.swift in Sources */,
+				184E35D79DA8A334AD466D95 /* StoreKitProductCatalog.swift in Sources */,
+				4C9F1C58529D8CF892D6F186 /* NativeRecoveryHost.swift in Sources */,
+				6CBD2CCDDE884B9BB9334431 /* NativeRecoveryPlugin.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -300,7 +337,7 @@
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 4;
+				CURRENT_PROJECT_VERSION = 45;
 				INFOPLIST_FILE = App/Info.plist;
 				IPHONEOS_DEPLOYMENT_TARGET = 15.0;
 				LD_RUNPATH_SEARCH_PATHS = (
@@ -322,7 +359,7 @@
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 4;
+				CURRENT_PROJECT_VERSION = 45;
 				INFOPLIST_FILE = App/Info.plist;
 				IPHONEOS_DEPLOYMENT_TARGET = 15.0;
 				LD_RUNPATH_SEARCH_PATHS = (
