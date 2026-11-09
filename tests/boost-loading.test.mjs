@@ -7,7 +7,7 @@ const source=html.slice(html.indexOf('async function boostRead('),html.indexOf('
 function screen(listings=[]){
  const notices=[],select={value:'',replaceChildren(){},add(){}},history={textContent:''};
  const plugin={pendingTransactions:async()=>({transactions:[]}),products:async()=>({environment:'Sandbox',products:[{id:'silver'}]})};
- const context=vm.createContext({setTimeout,clearTimeout,Option:class{},formatJpDateTime:()=>'',currentUser:{id:'owner'},boostRequest:0,boostOwnHistory:[],boostHistoryReady:false,boostReady:false,boostStoreProducts:[],boostEnvironment:null,boostListingChanged(){},boostNotice:t=>notices.push(t),isNativeBoost:()=>true,boostApi:async()=>({enabled:true,environment:'Sandbox'}),nativeBoost:async()=>({plugin}),document:{getElementById:id=>id==='boostPreviewOverlay'?{classList:{add(){}}}:id==='boostListingSelect'?select:history},sb:{from:table=>({select(){return this},eq(){return this},order(){return table==='listings'?Promise.resolve({data:listings}):this},limit:async()=>({data:[]})})}});
+ const context=vm.createContext({setTimeout,clearTimeout,Option:class{},formatJpDateTime:()=>'',currentUser:{id:'owner'},boostRequest:0,boostOwnHistory:[],boostHistoryReady:false,boostReady:false,boostStoreProducts:[],boostEnvironment:null,boostListingChanged(){},boostNotice:t=>notices.push(t),isNativeBoost:()=>true,boostApi:async()=>({enabled:true,environment:'Sandbox'}),nativeBoost:async()=>({plugin}),document:{getElementById:id=>id==='boostPreviewOverlay'?{classList:{add(){},contains(){return false}}}:id==='boostListingSelect'?select:history},sb:{from:table=>({select(){return this},eq(){return this},order(){return table==='listings'?Promise.resolve({data:listings}):this},limit:async()=>({data:[]})})}});
  vm.runInContext(source,context);return {context,notices,plugin};
 }
 test('without listings the screen explains the prerequisite without starting StoreKit',async()=>{
@@ -47,12 +47,21 @@ test('the actual Capacitor proxy loads through async initialization and reaches 
  assert.equal(calls.length,2,'initialization must not dispatch a fictitious then method');
 });
 function deferred(){let resolve;const promise=new Promise(r=>{resolve=r});return {promise,resolve};}
+test('product loading from a previous login cannot enable purchases after the account changes',async()=>{
+ const s=screen([{id:'listing',title:'test'}]),products=deferred(),reached=deferred();
+ s.plugin.products=()=>{reached.resolve();return products.promise;};
+ const run=s.context.openBoostPreview('listing');await reached.promise;
+ s.context.currentUser={id:'other'};
+ products.resolve({environment:'Sandbox',products:[{id:'silver'}]});await run;
+ assert.equal(s.context.boostReady,false);assert.equal(s.context.boostStoreProducts.length,0);
+});
 function purchaseScreen(){
  const pending=deferred(),order=deferred(),purchase=deferred(),verify=deferred(),finish=deferred();
  const reached={pending:deferred(),prepare:deferred(),purchase:deferred(),verify:deferred(),finish:deferred()};
  const calls=[],notices=[],buttons=['silver','gold','platinum'].map(plan=>({dataset:{boostBuy:plan},closest:()=>({querySelector:()=>({textContent:''})})}));
  const plugin={pendingTransactions:()=>{calls.push('pending');reached.pending.resolve();return pending.promise},purchase:()=>{calls.push('purchase');reached.purchase.resolve();return purchase.promise},finish:()=>{calls.push('finish');reached.finish.resolve();return finish.promise}};
- const context=vm.createContext({openBoostPreview:async()=>{},boostRequest:0,boostOwnHistory:[],boostHistoryReady:true,boostBusy:false,boostPurchasePlan:null,boostReady:true,currentUser:{id:'owner'},boostEnvironment:'Sandbox',boostStoreProducts:['silver','gold','platinum'].map(p=>({id:'com.ayuhide.koenofurima.boost.'+p,displayPrice:'¥300',currencyCode:'JPY'})),nativeBoost:async()=>({plugin}),boostNotice:t=>notices.push(t),formatJpDateTime:()=>'',boostApi:body=>{calls.push(body.action);reached[body.action].resolve();return body.action==='prepare'?order.promise:verify.promise},document:{getElementById:()=>({value:'listing'}),querySelectorAll:()=>buttons}});
+ const context=vm.createContext({setTimeout,clearTimeout,isNativeBoost:()=>true,openBoostPreview:async()=>{},boostRequest:0,boostOwnHistory:[],boostHistoryReady:true,boostBusy:false,boostPurchasePlan:null,boostReady:true,currentUser:{id:'owner'},boostEnvironment:'Sandbox',boostStoreProducts:['silver','gold','platinum'].map(p=>({id:'com.ayuhide.koenofurima.boost.'+p,displayPrice:'¥300',currencyCode:'JPY'})),nativeBoost:async()=>({plugin}),boostNotice:t=>notices.push(t),formatJpDateTime:()=>'',boostApi:body=>{calls.push(body.action);reached[body.action].resolve();return body.action==='prepare'?order.promise:verify.promise},document:{getElementById:()=>({value:'listing'}),querySelectorAll:()=>buttons}});
+ vm.runInContext(html.slice(html.indexOf('async function boostRead('),html.indexOf('async function openBoostPreview(')),context);
  vm.runInContext(html.slice(html.indexOf('function boostActiveListing('),html.indexOf('// Bound read-only')),context);
  vm.runInContext(html.slice(html.indexOf('async function purchaseBoost('),html.indexOf('async function reconcileBoostPurchases(')),context);
  return {context,pending,order,purchase,verify,finish,reached,calls,notices,buttons};
@@ -118,4 +127,72 @@ test('verification failure never finishes a receipt or labels the screen as prep
  const s=purchaseScreen();vm.runInContext(html.slice(html.indexOf('async function reconcileBoostPurchases('),html.indexOf('function closeBoostPreview(')),s.context);
  const run=s.context.reconcileBoostPurchases();s.pending.resolve({transactions:[{signedTransaction:'signed',transactionId:'tx'}]});s.verify.resolve({success:false});await run;
  assert.deepEqual(s.calls,['pending','verify']);assert.ok(s.buttons.every(b=>b.disabled&&b.textContent==='購入状況を確認してください'));assert.equal(s.context.boostBusy,false);
+});
+
+test('web reconciliation does not call native purchase APIs or alter purchase state',async()=>{
+ const s=purchaseScreen();s.context.isNativeBoost=()=>false;
+ vm.runInContext(html.slice(html.indexOf('async function reconcileBoostPurchases('),html.indexOf('function closeBoostPreview(')),s.context);
+ await s.context.reconcileBoostPurchases();
+ assert.deepEqual(s.calls,[]);assert.equal(s.context.boostBusy,false);assert.equal(s.context.boostReady,true);
+ assert.match(s.notices.at(-1),/iPhoneアプリ/);
+});
+
+test('switching accounts while checking unfinished purchases never prepares a boost for the new account',async()=>{
+ const s=purchaseScreen(),run=s.context.purchaseBoost('silver');
+ await s.reached.pending.promise;s.context.currentUser={id:'other'};s.pending.resolve({transactions:[]});
+ // Resolve every deferred response so the previous implementation cannot hang.
+ s.order.resolve({orderId:'order',productId:'silver'});await run;
+ assert.deepEqual(s.calls,['pending']);assert.equal(s.context.boostBusy,false);
+});
+test('switching accounts in the Apple sheet preserves the receipt for the original purchaser',async()=>{
+ const s=purchaseScreen(),run=s.context.purchaseBoost('silver');
+ s.pending.resolve({transactions:[]});s.order.resolve({orderId:'order',productId:'silver'});
+ await s.reached.purchase.promise;s.context.currentUser={id:'other'};
+ s.purchase.resolve({status:'purchased',signedTransaction:'signed',transactionId:'tx'});
+ s.verify.resolve({success:true});s.finish.resolve();await run;
+ assert.deepEqual(s.calls,['pending','prepare','purchase']);
+ assert.match(s.notices.at(-1),/ログイン状態/);assert.equal(s.context.boostReady,false);
+});
+test('reconciliation does not submit another account receipt after login changes during the native read',async()=>{
+ const s=purchaseScreen();
+ vm.runInContext(html.slice(html.indexOf('async function reconcileBoostPurchases('),html.indexOf('function closeBoostPreview(')),s.context);
+ const run=s.context.reconcileBoostPurchases();await s.reached.pending.promise;
+ s.context.currentUser={id:'other'};s.pending.resolve({transactions:[{signedTransaction:'signed',transactionId:'tx'}]});
+ s.verify.resolve({success:true});s.finish.resolve();await run;
+ assert.deepEqual(s.calls,['pending']);assert.equal(s.context.boostBusy,false);
+});
+test('closing the boost preview during order preparation never opens a late Apple sheet',async()=>{
+ const s=purchaseScreen(),run=s.context.purchaseBoost('silver');s.pending.resolve({transactions:[]});
+ await s.reached.prepare.promise;s.context.boostRequest++;
+ s.order.resolve({orderId:'order',productId:'silver'});
+ s.purchase.resolve({status:'cancelled'});await run;
+ assert.deepEqual(s.calls,['pending','prepare']);assert.equal(s.context.boostBusy,false);
+});
+test('a lost boost preparation response releases the lock and its late response cannot start Apple purchase',async()=>{
+ const s=purchaseScreen(),read=s.context.boostRead;
+ s.context.boostRead=(task,stage)=>read(task,stage,10);
+ const run=s.context.purchaseBoost('silver');s.pending.resolve({transactions:[]});
+ await s.reached.prepare.promise;await run;
+ assert.equal(s.context.boostBusy,false);assert.equal(s.context.boostReady,false);
+ assert.match(s.notices.at(-1),/購入条件の確認に時間がかかっています/);
+ s.order.resolve({orderId:'same-pending-order',productId:'silver'});
+ await new Promise(resolve=>setImmediate(resolve));
+ assert.deepEqual(s.calls,['pending','prepare']);
+});
+test('a login change during receipt verification leaves the transaction unfinished for recovery',async()=>{
+ const s=purchaseScreen();
+ vm.runInContext(html.slice(html.indexOf('async function reconcileBoostPurchases('),html.indexOf('function closeBoostPreview(')),s.context);
+ const run=s.context.reconcileBoostPurchases();s.pending.resolve({transactions:[{signedTransaction:'signed',transactionId:'tx'}]});
+ await s.reached.verify.promise;s.context.currentUser={id:'other'};
+ s.verify.resolve({success:true});s.finish.resolve();await run;
+ assert.deepEqual(s.calls,['pending','verify']);assert.equal(s.context.boostBusy,false);
+});
+for(const plan of ['silver','gold','platinum'])test(`verified ${plan} purchase completes in order and uses the server product`,async()=>{
+ const s=purchaseScreen();let purchaseArgs;
+ s.context.nativeBoost=async()=>({plugin:{pendingTransactions:async()=>({transactions:[]}),purchase:async args=>{purchaseArgs=args;return {status:'purchased',signedTransaction:'signed',transactionId:'tx'};},finish:async()=>{s.calls.push('finish');}}});
+ const run=s.context.purchaseBoost(plan);
+ s.order.resolve({orderId:'order',productId:'com.ayuhide.koenofurima.boost.'+plan});
+ s.verify.resolve({success:true,environment:'Sandbox'});await run;
+ assert.equal(purchaseArgs.productId,'com.ayuhide.koenofurima.boost.'+plan);assert.equal(purchaseArgs.orderId,'order');assert.equal(purchaseArgs.environment,'Sandbox');
+ assert.deepEqual(s.calls,['prepare','verify','finish']);assert.equal(s.context.boostBusy,false);assert.match(s.notices.at(-1),/反映が完了/);
 });

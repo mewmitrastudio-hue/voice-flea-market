@@ -1,2 +1,9 @@
 [functions.send-support-notification]
 verify_jwt = false
+
+[functions.apple-financial-resolution]
+verify_jwt = true
+
+# Stripe signatures authenticate this endpoint; ordinary requests still fail.
+[functions.apple-payout-notifications]
+verify_jwt = false
