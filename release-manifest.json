@@ -1,10 +1,18 @@
 {
-  "release": "2026.10.24-8",
-  "web_sha256": "5222bb57f6ce7a379b471c452f59900a904e86cbdabea8e395c647f641a5ac9c",
+  "release": "2026.11.07-profile-iap-diagnostic-local44",
+  "web_sha256": "12d5240f4f465ff0746760a5cc9d7e70ff82906a85c867d5f8740b3734fe0a85",
   "bundle_id": "com.ayuhide.koenofurima",
-  "minimum_build_number": 25,
-  "production_backend_applied": true,
-  "production_backend_applied_at": "2026-10-16T22:09:17.179653+00:00",
-  "boost_native_sha256": "38876812b17a6bc6aa30578bc583ca40c602055251a860da2b70bc89301f1fa0",
-  "boost_sales_enabled": false
+  "minimum_build_number": 44,
+  "production_backend_applied": false,
+  "production_backend_applied_at": null,
+  "boost_native_sha256": "335e5aef03376655666f8e482d50b33cf816fd4a4131c96d0bc1e719114e94c4",
+  "boost_sales_enabled": false,
+  "voice_sales_enabled": false,
+  "source_base_commit": "e326891518cf63aa69d414a394f144b173cbf3b6",
+  "supabase_project_ref": "tyulybijubckitybgubc",
+  "public_release_allowed": false,
+  "local_preparation_only": true,
+  "legacy_build43_retirement_required": true,
+  "diagnostic_backend_applied": false,
+  "diagnostic_backend_requires_separate_approval": true
 }
