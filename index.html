@@ -3582,22 +3582,26 @@ function showReceiptSuccess(){
 }
 async function closeReceiptSuccessAndReview(){const el=document.getElementById('receiptSuccessOverlay');el?.classList.remove('show');await loadReviewPanel();document.getElementById('reviewArea')?.scrollIntoView({behavior:'smooth',block:'center'});}
 async function acceptDeliveryConfirmed(){
- if(!currentConversation||currentConversation.is_inquiry||currentUser.id!==currentConversation.buyer_id)return;
+ if(!sb||!currentUser||!currentConversation||currentConversation.is_inquiry||currentUser.id!==currentConversation.buyer_id)return;
  const conversationId=currentConversationId,userId=currentUser.id;
  closeDeliveryConfirm();
- const now=new Date().toISOString();
- const {data:updated,error}=await sb.from('conversations')
-   .update({delivery_status:'accepted',accepted_at:now})
-   .eq('id',conversationId)
-   .select('id,buyer_id,seller_id,job_id,listing_id,delivery_path,delivery_status,delivered_at,accepted_at,payment_id')
-   .single();
- if(error)return alert(error.message);
- if(currentConversationId===conversationId)currentConversation=updated;
- const [buyerName,sellerName]=await Promise.all([tradeDisplayName(updated.buyer_id),tradeDisplayName(updated.seller_id)]);
- await addTradeSystemMessage(conversationId,userId,`✅ ${buyerName}さんが ${sellerName}さんの納品を受け取りました。`);
- if(updated.job_id)await sb.from('jobs').update({status:'closed'}).eq('id',updated.job_id);
- if(currentConversationId!==conversationId)return;
+ info('deliveryMsg','受取と支払いを確認しています…');
+ const {data,error}=await sb.functions.invoke('accept-delivery',{body:{conversationId}});
+ if(currentUser?.id!==userId||currentConversationId!==conversationId)return;
+ const updated=data?.conversation;
+ if(error||data?.success!==true||updated?.id!==conversationId||updated.delivery_status!=='accepted'){
+   let message='受取の完了を確認できませんでした。再購入せず、この取引から受取確認をもう一度お試しください。';
+   if(error?.context instanceof Response){
+     const failure=await error.context.json().catch(()=>null);
+     if(typeof failure?.error==='string'&&failure.error)message=failure.error;
+   }
+   if(currentUser?.id===userId&&currentConversationId===conversationId)info('deliveryMsg',message,'err');
+   return;
+ }
+ currentConversation=updated;
+ info('deliveryMsg','');
  await Promise.all([loadDeliveries(),loadChatMessages(),loadTradeInfoPanel(currentConversation),loadReviewPanel()]);
+ if(currentUser?.id!==userId||currentConversationId!==conversationId)return;
  showReceiptSuccess();
  loadHome();
  loadNotificationBadge();
