@@ -33,3 +33,38 @@ test('support desk keeps loaded history on failed next page and discards respons
  await c.loadAdminSupportDesk();await c.loadAdminSupportDesk(true);assert.equal(c.rows().length,1);await c.loadAdminSupportDesk(true);assert.equal(c.rows().length,2);assert.deepEqual(cursors[1],cursors[2]);assert.match(nodes.get('adminSupportItems').innerHTML,/&lt;private>/);
  c.sb.rpc=()=>new Promise(r=>resolve=r);const pending=c.loadAdminSupportDesk();c.currentUser={id:member};c.resetAdminSupportDesk();resolve({data:{rows:[row],summary:{},has_more:false}});await pending;assert.equal(c.rows().length,0);assert.equal(nodes.get('adminSupportItems').innerHTML,'');
 });
+
+test('support replies open a draft for a single mailbox and do not include inquiry text',()=>{
+ const html=fs.readFileSync(new URL('../index.html',import.meta.url),'utf8');
+ const context=vm.createContext({});
+ vm.runInContext(html.slice(html.indexOf('function supportReplyLink('),html.indexOf('function renderAdminSupportRows(')),context);
+ const link=context.supportReplyLink('reader+test@example.invalid',member);
+ assert.match(link,/^mailto:reader%2Btest@example\.invalid\?subject=/);
+ assert.match(decodeURIComponent(link),/受付番号/);
+ assert.doesNotMatch(link,/[?&](body|cc|bcc)=/);
+ for(const invalid of ['a@example.invalid,b@example.invalid','a@example.invalid\r\nBcc: x@example.invalid','a@example.invalid?bcc=x@example.invalid','']){
+  assert.equal(context.supportReplyLink(invalid,member),'');
+ }
+});
+
+test('competing status changes on one inquiry submit once and closing the desk discards feedback',async()=>{
+ const html=fs.readFileSync(new URL('../index.html',import.meta.url),'utf8');
+ const response=Promise.withResolvers(),calls=[],notices=[];
+ const context=vm.createContext({currentUser:{id:op},isVoiceFleaAdmin:()=>true,
+  sb:{rpc:(_,payload)=>{calls.push(payload);return response.promise;}},
+  document:{getElementById:()=>({classList:{remove(){}}})},window:{addEventListener(){}},
+  location:{hash:''},clearTimeout(){},info:(...args)=>notices.push(args),
+ });
+ vm.runInContext(html.slice(html.indexOf('let adminSupportRevision='),html.indexOf('let adminMailRevision=')),context);
+ const buttons=[{disabled:true},{disabled:false}];
+ const control={closest:()=>({querySelectorAll:()=>buttons})};
+ const write=context.updateSupportInquiryStatus(member,'closed',control);
+ await context.updateSupportInquiryStatus(member,'reviewing',control);
+ assert.equal(calls.length,1);
+ assert.deepEqual(buttons.map(x=>x.disabled),[true,true]);
+ context.closeAdminSupportDesk();
+ response.reject(new Error('Network disconnected'));
+ await write;
+ assert.deepEqual(buttons.map(x=>x.disabled),[true,false]);
+ assert.equal(notices.length,1);
+});
