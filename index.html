@@ -4420,6 +4420,14 @@ async function loadPublicReviewListings(web=false){
         ${web?`<button type="button" class="btn secondary full public-listing-open" data-public-listing-id="${esc(v.id)}" data-title="${esc(v.title||'音声サービス')}">ログインして購入・相談へ</button>`:''}
       </div>`;
     }).join('');
+    for(const audio of box.querySelectorAll('.public-listing-sample')){
+      audio.addEventListener('error',()=>{
+        const message=document.createElement('p');
+        message.setAttribute('role','status');
+        message.textContent='現在、このサンプルは再生できません。';
+        audio.replaceWith(message);
+      },{once:true});
+    }
     for(const button of box.querySelectorAll('[data-public-listing-id]')){
       button.addEventListener('click',()=>selectPublicListing(button.dataset.publicListingId,button.dataset.title));
     }
