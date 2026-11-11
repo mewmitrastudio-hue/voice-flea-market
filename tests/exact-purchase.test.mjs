@@ -54,10 +54,10 @@ function reconcileFixture({changeAccount=false,session='cs_test_current',recordS
  const map=new Map(),queries=[],calls=[],overlay={classList:{add(){calls.push('overlay')}}},heading={},detail={};
  const pending={listingId:listing,checkoutSessionId:session,startedAt:new Date().toISOString()};if(legacy)delete pending.checkoutSessionId;
  map.set(`vf_pending_purchase_${buyer}`,JSON.stringify(pending));
- const c={currentUser:{id:buyer},safeLocalStorage:{getItem:k=>map.get(k)||null,removeItem:k=>map.delete(k)},Date,JSON,Number,document:{getElementById:id=>({paymentSuccessOverlay:overlay,paymentSuccessTitle:heading,paymentSuccessDetail:detail}[id]||{})},setTimeout:fn=>fn(),listingDisplayTitle:async()=> 'Voice',go(){},openConversation(){},sb:{
+ const c={currentUser:{id:buyer},pageNavigationRequest:0,safeLocalStorage:{getItem:k=>map.get(k)||null,removeItem:k=>map.delete(k)},Date,JSON,Number,document:{getElementById:id=>({paymentSuccessOverlay:overlay,paymentSuccessTitle:heading,paymentSuccessDetail:detail}[id]||{})},setTimeout:fn=>fn(),listingDisplayTitle:async()=> 'Voice',go(){},openConversation(){},sb:{
   from:()=>{const q={select(){return this},eq(k,v){queries.push([k,v]);return this},async limit(){if(changeAccount)c.currentUser={id:stranger};return {data:[{id:purchase,listing_id:listing,buyer_id:buyer,seller_id:seller,stripe_checkout_session_id:recordSession,status:paymentStatus,stripe_reconciled_at:'2026-10-24',stripe_livemode:false,refunded_amount_jpy:0,stripe_capture_method:captureMethod,authorization_expires_at:expiresAt}]}}};return q;},
   rpc:async(name,args)=>{calls.push({name,args});if(newPending)map.set(`vf_pending_purchase_${buyer}`,JSON.stringify({...pending,checkoutSessionId:'cs_test_newer'}));return{data:{id:'conversation',payment_id:purchase},error:null};}
- }};vm.createContext(c);vm.runInContext(html.slice(html.indexOf('async function reconcilePendingPurchase(){'),html.indexOf('async function getFavoriteListingIds(){')),c);return{c,map,queries,calls,heading,detail};
+ }};vm.createContext(c);vm.runInContext(html.slice(html.indexOf('async function reconcilePendingPurchase('),html.indexOf('async function getFavoriteListingIds(){')),c);return{c,map,queries,calls,heading,detail};
 }
 test('purchase return matches only its exact Checkout and never touches another account or newer pending purchase',async()=>{
  const f=reconcileFixture();await f.c.reconcilePendingPurchase();assert.ok(f.queries.some(x=>x[0]==='stripe_checkout_session_id'&&x[1]==='cs_test_current'));assert.equal(f.calls[0].args.purchase_id,purchase);assert.equal(f.map.size,0);
@@ -69,7 +69,7 @@ test('a verified manual authorization opens the exact existing trade and explain
  const current=reconcileFixture({paymentStatus:'authorized'});
  assert.equal((await current.c.reconcilePendingPurchase()).payment_id,purchase);
  assert.equal(current.calls[0].args.purchase_id,purchase);
- assert.match(current.heading.textContent,/支払い枠/);
+ assert.match(current.heading.textContent,/与信/);
  assert.match(current.detail.textContent,/受取確認後/);
  assert.equal(current.map.size,0);
  for(const options of [{expiresAt:new Date(Date.now()-60000).toISOString()},{captureMethod:'automatic'}]){
@@ -78,6 +78,24 @@ test('a verified manual authorization opens the exact existing trade and explain
   assert.equal(invalid.calls.length,0);
   assert.equal(invalid.map.size,1);
  }
+});
+
+test('a paid job checkout opens only the linked non-inquiry trade',async()=>{
+ const app='00000000-0000-4000-8000-000000000008',job='00000000-0000-4000-8000-000000000009';
+ const f=reconcileFixture();
+ const key=`vf_pending_purchase_${buyer}`;
+ f.map.set(key,JSON.stringify({applicationId:app,checkoutSessionId:'cs_test_current',startedAt:new Date().toISOString()}));
+ f.c.sb.from=table=>{
+  const query={select(){return this},eq(k,v){f.queries.push([table,k,v]);return this}};
+  if(table==='conversations')return {...query,async maybeSingle(){return {data:{id:'linked-trade',payment_id:purchase}}}};
+  return {...query,async limit(){return {data:[{id:purchase,job_id:job,job_application_id:app,buyer_id:buyer,seller_id:seller,stripe_checkout_session_id:'cs_test_current',status:'paid',stripe_reconciled_at:'2026-10-24',stripe_livemode:false,refunded_amount_jpy:0}]}}};
+ };
+ f.c.sb.rpc=async()=>assert.fail('Job purchases use the existing participant-visible trade');
+ assert.equal((await f.c.reconcilePendingPurchase()).id,'linked-trade');
+ for(const [column,value] of Object.entries({payment_id:purchase,job_id:job,buyer_id:buyer,seller_id:seller,is_inquiry:false})){
+  assert.ok(f.queries.some(([table,key,actual])=>table==='conversations'&&key===column&&actual===value));
+ }
+ assert.equal(f.map.size,0);
 });
 
 test('refunded linked trades reject authenticated delivery and acceptance updates while history stays readable',async()=>{
