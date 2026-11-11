@@ -10,7 +10,7 @@ function receiptContext(invoke) {
  const notices=[];
  let completed=0;
  const context={
-   currentUser:{id:'buyer'},
+   deliveryConfirmationTarget:{conversationId:'trade',userId:'buyer',paymentId:'payment',deliveryStatus:'submitted'},currentUser:{id:'buyer'},
    currentConversationId:'trade',
    currentConversation:{id:'trade',buyer_id:'buyer',payment_id:'payment',delivery_status:'submitted'},
    sb:{functions:{invoke}},
