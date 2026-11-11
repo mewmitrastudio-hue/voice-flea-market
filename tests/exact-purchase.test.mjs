@@ -54,10 +54,10 @@ function reconcileFixture({changeAccount=false,session='cs_test_current',recordS
  const map=new Map(),queries=[],calls=[],overlay={classList:{add(){calls.push('overlay')}}},heading={},detail={};
  const pending={listingId:listing,checkoutSessionId:session,startedAt:new Date().toISOString()};if(legacy)delete pending.checkoutSessionId;
  map.set(`vf_pending_purchase_${buyer}`,JSON.stringify(pending));
- const c={currentUser:{id:buyer},pageNavigationRequest:0,safeLocalStorage:{getItem:k=>map.get(k)||null,removeItem:k=>map.delete(k)},Date,JSON,Number,document:{getElementById:id=>({paymentSuccessOverlay:overlay,paymentSuccessTitle:heading,paymentSuccessDetail:detail}[id]||{})},setTimeout:fn=>fn(),listingDisplayTitle:async()=> 'Voice',go(){},openConversation(){},sb:{
+ const c={currentUser:{id:buyer},pageNavigationRequest:0,safeLocalStorage:{getItem:k=>map.get(k)||null,removeItem:k=>map.delete(k),keys:()=>[...map.keys()]},Date,JSON,Number,document:{getElementById:id=>({paymentSuccessOverlay:overlay,paymentSuccessTitle:heading,paymentSuccessDetail:detail}[id]||{})},setTimeout:fn=>fn(),listingDisplayTitle:async()=> 'Voice',go(){},openConversation(){},sb:{
   from:()=>{const q={select(){return this},eq(k,v){queries.push([k,v]);return this},async limit(){if(changeAccount)c.currentUser={id:stranger};return {data:[{id:purchase,listing_id:listing,buyer_id:buyer,seller_id:seller,stripe_checkout_session_id:recordSession,status:paymentStatus,stripe_reconciled_at:'2026-10-24',stripe_livemode:false,refunded_amount_jpy:0,stripe_capture_method:captureMethod,authorization_expires_at:expiresAt}]}}};return q;},
   rpc:async(name,args)=>{calls.push({name,args});if(newPending)map.set(`vf_pending_purchase_${buyer}`,JSON.stringify({...pending,checkoutSessionId:'cs_test_newer'}));return{data:{id:'conversation',payment_id:purchase},error:null};}
- }};vm.createContext(c);vm.runInContext(html.slice(html.indexOf('async function reconcilePendingPurchase('),html.indexOf('async function getFavoriteListingIds(){')),c);return{c,map,queries,calls,heading,detail};
+ }};vm.createContext(c);vm.runInContext(html.slice(html.indexOf('function checkoutReturnPrefix('),html.indexOf('async function getFavoriteListingIds(){')),c);return{c,map,queries,calls,heading,detail};
 }
 test('purchase return matches only its exact Checkout and never touches another account or newer pending purchase',async()=>{
  const f=reconcileFixture();await f.c.reconcilePendingPurchase();assert.ok(f.queries.some(x=>x[0]==='stripe_checkout_session_id'&&x[1]==='cs_test_current'));assert.equal(f.calls[0].args.purchase_id,purchase);assert.equal(f.map.size,0);
@@ -129,4 +129,27 @@ test('refunded linked trades reject authenticated delivery and acceptance update
   await assert.rejects(db.query("update conversations set delivery_status='accepted',accepted_at=now() where id=$1",[c.id]),/Paid purchase required/);
   assert.equal((await db.query('select payment_id from conversations where id=$1',[c.id])).rows[0].payment_id,purchase);
  }finally{await db.close()}
+});
+
+test('two tabs retain separate checkout returns and recovery removes only the matched session',async()=>{
+ const first=reconcileFixture();
+ const second=reconcileFixture({recordSession:'cs_test_second'});
+ const shared=first.map;
+ shared.clear();
+ for(const f of [first,second]){
+  const tab=new Map();
+  f.c.window={sessionStorage:{getItem:key=>tab.get(key),setItem:(key,value)=>tab.set(key,value)}};
+  f.c.safeLocalStorage={getItem:key=>shared.get(key),setItem:(key,value)=>shared.set(key,value),removeItem:key=>shared.delete(key),keys:()=>[...shared.keys()]};
+ }
+ first.c.rememberCheckoutReturn(buyer,'cs_test_current',{listingId:listing});
+ second.c.rememberCheckoutReturn(buyer,'cs_test_second',{listingId:listing});
+ assert.equal(shared.size,2);
+ const unbound=reconcileFixture();
+ unbound.c.safeLocalStorage=first.c.safeLocalStorage;
+ assert.equal(await unbound.c.reconcilePendingPurchase(),null);
+ assert.equal(unbound.queries.length,0);
+ assert.equal((await first.c.reconcilePendingPurchase()).id,'conversation');
+ assert.equal(shared.size,1);
+ assert.equal((await second.c.reconcilePendingPurchase()).id,'conversation');
+ assert.equal(shared.size,0);
 });
