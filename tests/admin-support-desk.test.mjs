@@ -68,3 +68,30 @@ test('competing status changes on one inquiry submit once and closing the desk d
  assert.deepEqual(buttons.map(x=>x.disabled),[true,false]);
  assert.equal(notices.length,1);
 });
+
+test('operator menu requires a server grant bound to the current session',async()=>{
+ const html=fs.readFileSync(new URL('../index.html',import.meta.url),'utf8');
+ assert.doesNotMatch(html,/VOICE_FLEA_ADMIN_USER_ID/);
+ const calls=[];
+ let response=Promise.withResolvers();
+ const context=vm.createContext({currentUser:{id:'original'},authUIRevision:1,authReloadPending:false,
+  sb:{rpc:()=>response.promise},document:{getElementById:()=>({classList:{toggle:(_name,hidden)=>calls.push(hidden)}})},
+ });
+ vm.runInContext(html.slice(html.indexOf('let operatorAccessOwner='),html.indexOf('async function openModerationQueue(')),context);
+ assert.equal(context.isVoiceFleaAdmin(),false);
+ const old=context.refreshOperatorAccess('original',1);
+ context.currentUser={id:'current'};
+ context.authUIRevision=2;
+ response.resolve({data:true});
+ await old;
+ assert.equal(context.isVoiceFleaAdmin(),false);
+ assert.equal(calls.length,0);
+ response=Promise.withResolvers();
+ const check=context.refreshOperatorAccess('current',2);
+ response.resolve({data:true});
+ await check;
+ assert.equal(context.isVoiceFleaAdmin(),true);
+ assert.ok(calls.every(hidden=>hidden===false));
+ context.authReloadPending=true;
+ assert.equal(context.isVoiceFleaAdmin(),false);
+});
