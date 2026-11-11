@@ -3042,6 +3042,13 @@ async function reconcilePendingPurchase(navigationRequest=pageNavigationRequest)
   // 購入者がボタンを押したら今回の取引メッセージへ直接移動する。
   const overlay=document.getElementById('paymentSuccessOverlay');
   const messageBtn=document.getElementById('paymentSuccessMessageBtn');
+  const openExactTrade=async()=>{
+    if(currentUser?.id!==callerId)return;
+    const messagesRequest=pageNavigationRequest+1;
+    await go('messages');
+    if(currentUser?.id!==callerId||pageNavigationRequest!==messagesRequest)return;
+    await openConversation(conversation.id,title||'購入した音声');
+  };
   if(overlay&&messageBtn){
     const titleNode=document.getElementById('paymentSuccessTitle'),detailNode=document.getElementById('paymentSuccessDetail');
     if(titleNode)titleNode.textContent=payment.status==='authorized'?'✅ 与信が完了しました':'✅ お支払いが完了しました';
@@ -3049,13 +3056,10 @@ async function reconcilePendingPurchase(navigationRequest=pageNavigationRequest)
     overlay.classList.add('show');
     messageBtn.onclick=async()=>{
       overlay.classList.remove('show');
-      if(currentUser?.id!==callerId)return;
-      await go('messages');
-      await openConversation(conversation.id,title||'購入した音声');
+      await openExactTrade();
     };
   }else{
-    await go('messages');
-    await openConversation(conversation.id,title||'購入した音声');
+    await openExactTrade();
   }
   return conversation;
 }
@@ -5421,10 +5425,11 @@ async function reconcileBoostPurchases(){
   }
   if(currentUser?.id!==userId)throw new Error('ログイン状態が変わりました。');
   if(request===boostRequest){
+   const refreshRequest=boostRequest+1;
    await openBoostPreview(listingId);
-   if(boostHistoryReady)boostNotice(pending.blockingKind==='voice'?'音声購入の確認が必要です。この画面を閉じ、「声を探す・購入」の「音声購入の反映を確認（iPhone）」を押してください。再購入はしないでください。':pending.approvalPending?'前回の購入は承認待ち、または結果の確認待ちです。再購入せず、後ほど購入の反映を確認してください。':(pending.transactions||[]).length?'購入の反映を確認しました。履歴を更新しました。':'購入履歴を更新しました。反映待ちの購入はありません。');
+   if(refreshRequest===boostRequest&&currentUser?.id===userId&&boostHistoryReady)boostNotice(pending.blockingKind==='voice'?'音声購入の確認が必要です。この画面を閉じ、「声を探す・購入」の「音声購入の反映を確認（iPhone）」を押してください。再購入はしないでください。':pending.approvalPending?'前回の購入は承認待ち、または結果の確認待ちです。再購入せず、後ほど購入の反映を確認してください。':(pending.transactions||[]).length?'購入の反映を確認しました。履歴を更新しました。':'購入履歴を更新しました。反映待ちの購入はありません。');
   }
- }catch(e){boostNotice(e.message||'購入情報を確認できません。時間をおいて再試行してください。');}
+ }catch(e){if(request===boostRequest&&currentUser?.id===userId)boostNotice(e.message||'購入情報を確認できません。時間をおいて再試行してください。');}
  finally{boostBusy=false;boostPurchasePlan=null;boostListingChanged();}
 }
 function closeBoostPreview(){

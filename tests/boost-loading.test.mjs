@@ -118,7 +118,7 @@ test('purchase refreshes history immediately after verified delivery and finish'
 test('reconciliation refreshes available plans without asking to close and reopen',async()=>{
  const s=purchaseScreen();let refreshed=0;
  vm.runInContext(html.slice(html.indexOf('async function reconcileBoostPurchases('),html.indexOf('function closeBoostPreview(')),s.context);
- s.context.openBoostPreview=async()=>{refreshed++;s.context.boostReady=true;s.context.boostHistoryReady=true;};
+ s.context.openBoostPreview=async()=>{refreshed++;s.context.boostRequest++;s.context.boostReady=true;s.context.boostHistoryReady=true;};
  const run=s.context.reconcileBoostPurchases();assert.ok(s.buttons.every(b=>b.disabled));
  s.pending.resolve({transactions:[{signedTransaction:'signed',transactionId:'tx'}]});s.verify.resolve({success:true});s.finish.resolve();await run;
  assert.equal(refreshed,1);assert.deepEqual(s.calls,['pending','verify','finish']);assert.ok(s.buttons.every(b=>!b.disabled));assert.match(s.notices.at(-1),/履歴を更新/);

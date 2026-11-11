@@ -65,6 +65,27 @@ test('purchase return matches only its exact Checkout and never touches another 
  const newer=reconcileFixture({newPending:true});assert.equal(await newer.c.reconcilePendingPurchase(),null);assert.ok([...newer.map.values()][0].includes('cs_test_newer'));assert.ok(!newer.calls.includes('overlay'));
 });
 
+test('the confirmed Checkout opens its trade only in the current account and message view',async()=>{
+ for(const change of ['none','account','page']){
+  const f=reconcileFixture();
+  const button={};
+  const element=f.c.document.getElementById;
+  f.c.document.getElementById=id=>id==='paymentSuccessMessageBtn'?button:element(id);
+  const overlay=element('paymentSuccessOverlay');
+  overlay.classList.remove=()=>{};
+  f.c.go=async()=>{
+   f.c.pageNavigationRequest++;
+   if(change==='account')f.c.currentUser={id:stranger};
+   if(change==='page')f.c.pageNavigationRequest++;
+  };
+  const opened=[];
+  f.c.openConversation=(id)=>opened.push(id);
+  await f.c.reconcilePendingPurchase();
+  await button.onclick();
+  assert.deepEqual(opened,change==='none'?['conversation']:[]);
+ }
+});
+
 test('a verified manual authorization opens the exact existing trade and explains when capture occurs',async()=>{
  const current=reconcileFixture({paymentStatus:'authorized'});
  assert.equal((await current.c.reconcilePendingPurchase()).payment_id,purchase);
