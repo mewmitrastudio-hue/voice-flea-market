@@ -45,3 +45,27 @@ test('unconfirmed recheck leaves retry available and account changes invalidate 
  await f.c.recheckCheckoutStatus();
  assert.equal(f.calls.length,1);
 });
+
+test('Web buyer history opens a recheck for the current account’s exact pending payment',()=>{
+ const opened=[],lookups=[];
+ const button={hidden:false};
+ const c={activeFinanceMode:'buyer',currentUser:{id:'buyer'},authReloadPending:false,window:{},
+  document:{getElementById:id=>id==='financeOverlay'?{classList:{contains:()=>true}}:button},
+  findCheckoutReturn:owner=>{lookups.push(owner);return {pending:{checkoutSessionId:'cs_test_original'}};},
+  closeFinanceCenter:()=>opened.push('close history'),
+  showPendingCheckout:session=>opened.push(session),
+ };
+ vm.createContext(c);
+ vm.runInContext(html.slice(html.indexOf('function pendingCheckoutFromBuyerHistory('),html.indexOf('async function openFinanceCenter(')),c);
+ c.openPendingCheckoutFromHistory();
+ assert.deepEqual(lookups,['buyer']);
+ assert.deepEqual(opened,['close history','cs_test_original']);
+ for(const state of [{activeFinanceMode:'seller'},{activeFinanceMode:'buyer',authReloadPending:true},
+  {authReloadPending:false,window:{Capacitor:{isNativePlatform:()=>true}}}]){
+  Object.assign(c,state);
+  c.openPendingCheckoutFromHistory();
+  assert.equal(button.hidden,true);
+ }
+ assert.equal(lookups.length,1);
+ assert.equal(opened.length,2);
+});
