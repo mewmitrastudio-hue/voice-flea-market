@@ -4,7 +4,7 @@ import {readFileSync} from 'node:fs';
 import {runInNewContext} from 'node:vm';
 
 const html=readFileSync(new URL('../index.html',import.meta.url),'utf8');
-const handler=html.slice(html.indexOf('async function acceptDeliveryConfirmed(){'),html.indexOf('async function loadMessageBadge(){'));
+const handler=html.slice(html.indexOf('const acceptingDeliveries='),html.indexOf('async function loadMessageBadge(){'));
 
 function receiptContext(invoke) {
  const notices=[];
@@ -12,7 +12,7 @@ function receiptContext(invoke) {
  const context={
    currentUser:{id:'buyer'},
    currentConversationId:'trade',
-   currentConversation:{id:'trade',buyer_id:'buyer',delivery_status:'submitted'},
+   currentConversation:{id:'trade',buyer_id:'buyer',payment_id:'payment',delivery_status:'submitted'},
    sb:{functions:{invoke}},
    Response,
    closeDeliveryConfirm(){},
@@ -39,7 +39,7 @@ test('receipt waits for the server to confirm the matching trade',async()=>{
  const result=context.acceptDeliveryConfirmed();
  assert.equal(context.currentConversation.delivery_status,'submitted');
  assert.equal(completed(),0);
- finish({data:{success:true,conversation:{id:'trade',delivery_status:'accepted'}}});
+ finish({data:{success:true,conversation:{id:'trade',buyer_id:'buyer',payment_id:'payment',delivery_status:'accepted'}}});
  await result;
  assert.equal(context.currentConversation.delivery_status,'accepted');
  assert.equal(completed(),1);
@@ -52,7 +52,7 @@ test('receipt failure keeps the delivery pending and displays the server message
  await context.acceptDeliveryConfirmed();
  assert.equal(context.currentConversation.delivery_status,'submitted');
  assert.equal(completed(),0);
- assert.deepEqual(notices.at(-1),['deliveryMsg','再購入せず運営へお問い合わせください。','err']);
+ assert.deepEqual(notices.at(-1),['chatMsg','再購入せず運営へお問い合わせください。','err']);
 });
 
 test('receipt results from a previous account do not change the current screen',async()=>{
@@ -60,7 +60,7 @@ test('receipt results from a previous account do not change the current screen',
  const {context,completed}=receiptContext(()=>new Promise(resolve=>{finish=resolve;}));
  const result=context.acceptDeliveryConfirmed();
  context.currentUser={id:'another-buyer'};
- finish({data:{success:true,conversation:{id:'trade',delivery_status:'accepted'}}});
+ finish({data:{success:true,conversation:{id:'trade',buyer_id:'buyer',payment_id:'payment',delivery_status:'accepted'}}});
  await result;
  assert.equal(context.currentConversation.delivery_status,'submitted');
  assert.equal(completed(),0);
