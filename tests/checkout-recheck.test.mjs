@@ -6,17 +6,19 @@ const html=fs.readFileSync(new URL('../index.html',import.meta.url),'utf8');
 
 function fixture(){
  const button={},message={},calls=[];
- const overlay={classList:{add(){},remove(){}},setAttribute(k,v){this[k]=v;}};
- const nodes={checkoutRecheckButton:button,checkoutErrorMessage:message,checkoutErrorOverlay:overlay};
+ const overlay={classList:{add(){},remove(){},contains:()=>false},setAttribute(k,v){this[k]=v;}};
+ const close={},source={isConnected:true};
+ const nodes={checkoutRecheckButton:button,checkoutErrorClose:close,checkoutErrorMessage:message,checkoutErrorOverlay:overlay};
  const result=Promise.withResolvers();
  const c={currentUser:{id:'buyer'},pageNavigationRequest:1,
-  document:{getElementById:id=>nodes[id],body:{classList:{add(){},remove(){}}}},
+  document:{activeElement:source,getElementById:id=>nodes[id],body:{classList:{add(){},remove(){}}}},
   validCheckoutSessionId:id=>/^cs_test_/.test(id),
   reconcilePendingPurchase:(...args)=>{calls.push(args);return result.promise;},
  };
+ for(const element of [button,close,source])element.focus=()=>{c.document.activeElement=element;};
  vm.createContext(c);
  vm.runInContext(html.slice(html.indexOf('let checkoutRecheckTarget='),html.indexOf('// Checkout and reauthorization share')),c);
- return {c,result,button,message,overlay,calls};
+ return {c,result,button,close,source,message,overlay,calls};
 }
 
 test('a pending checkout rechecks only its original session and ignores duplicate taps',async()=>{
@@ -68,4 +70,18 @@ test('Web buyer history opens a recheck for the current account’s exact pendin
  }
  assert.equal(lookups.length,1);
  assert.equal(opened.length,2);
+});
+
+test('checkout dialog keeps keyboard navigation inside and Escape restores the opener',()=>{
+ const f=fixture();
+ f.c.showPendingCheckout('cs_test_original');
+ assert.equal(f.c.document.activeElement,f.button);
+ const press=key=>f.c.handleCheckoutDialogKey({key,preventDefault(){},stopPropagation(){}});
+ press('Tab');
+ assert.equal(f.c.document.activeElement,f.close);
+ press('Tab');
+ assert.equal(f.c.document.activeElement,f.button);
+ press('Escape');
+ assert.equal(f.c.document.activeElement,f.source);
+ assert.equal(f.overlay['aria-hidden'],'true');
 });
