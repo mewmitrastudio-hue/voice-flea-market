@@ -50,19 +50,34 @@ test('approved Web and iOS split conserves every yen, keeps Apple fees unknown, 
  }finally{await db.close()}
 });
 const html=fs.readFileSync(new URL('../index.html',import.meta.url),'utf8');
-function reconcileFixture({changeAccount=false,session='cs_test_current',recordSession=session,paymentStatus='paid',legacy=false,newPending=false}={}){
- const map=new Map(),queries=[],calls=[],overlay={classList:{add(){calls.push('overlay')}}};
+function reconcileFixture({changeAccount=false,session='cs_test_current',recordSession=session,paymentStatus='paid',captureMethod='manual',expiresAt=new Date(Date.now()+60000).toISOString(),legacy=false,newPending=false}={}){
+ const map=new Map(),queries=[],calls=[],overlay={classList:{add(){calls.push('overlay')}}},heading={},detail={};
  const pending={listingId:listing,checkoutSessionId:session,startedAt:new Date().toISOString()};if(legacy)delete pending.checkoutSessionId;
  map.set(`vf_pending_purchase_${buyer}`,JSON.stringify(pending));
- const c={currentUser:{id:buyer},safeLocalStorage:{getItem:k=>map.get(k)||null,removeItem:k=>map.delete(k)},Date,JSON,Number,document:{getElementById:id=>id==='paymentSuccessOverlay'?overlay:{}},setTimeout:fn=>fn(),listingDisplayTitle:async()=> 'Voice',go(){},openConversation(){},sb:{
-  from:()=>{const q={select(){return this},eq(k,v){queries.push([k,v]);return this},async limit(){if(changeAccount)c.currentUser={id:stranger};return {data:[{id:purchase,listing_id:listing,buyer_id:buyer,seller_id:seller,stripe_checkout_session_id:recordSession,status:paymentStatus,stripe_reconciled_at:'2026-10-24',stripe_livemode:false,refunded_amount_jpy:0}]}}};return q;},
+ const c={currentUser:{id:buyer},safeLocalStorage:{getItem:k=>map.get(k)||null,removeItem:k=>map.delete(k)},Date,JSON,Number,document:{getElementById:id=>({paymentSuccessOverlay:overlay,paymentSuccessTitle:heading,paymentSuccessDetail:detail}[id]||{})},setTimeout:fn=>fn(),listingDisplayTitle:async()=> 'Voice',go(){},openConversation(){},sb:{
+  from:()=>{const q={select(){return this},eq(k,v){queries.push([k,v]);return this},async limit(){if(changeAccount)c.currentUser={id:stranger};return {data:[{id:purchase,listing_id:listing,buyer_id:buyer,seller_id:seller,stripe_checkout_session_id:recordSession,status:paymentStatus,stripe_reconciled_at:'2026-10-24',stripe_livemode:false,refunded_amount_jpy:0,stripe_capture_method:captureMethod,authorization_expires_at:expiresAt}]}}};return q;},
   rpc:async(name,args)=>{calls.push({name,args});if(newPending)map.set(`vf_pending_purchase_${buyer}`,JSON.stringify({...pending,checkoutSessionId:'cs_test_newer'}));return{data:{id:'conversation',payment_id:purchase},error:null};}
- }};vm.createContext(c);vm.runInContext(html.slice(html.indexOf('async function reconcilePendingPurchase(){'),html.indexOf('async function getFavoriteListingIds(){')),c);return{c,map,queries,calls};
+ }};vm.createContext(c);vm.runInContext(html.slice(html.indexOf('async function reconcilePendingPurchase(){'),html.indexOf('async function getFavoriteListingIds(){')),c);return{c,map,queries,calls,heading,detail};
 }
 test('purchase return matches only its exact Checkout and never touches another account or newer pending purchase',async()=>{
  const f=reconcileFixture();await f.c.reconcilePendingPurchase();assert.ok(f.queries.some(x=>x[0]==='stripe_checkout_session_id'&&x[1]==='cs_test_current'));assert.equal(f.calls[0].args.purchase_id,purchase);assert.equal(f.map.size,0);
  for(const options of [{changeAccount:true},{recordSession:'cs_test_other'},{paymentStatus:'refunded'},{legacy:true}]){const x=reconcileFixture(options);assert.equal(await x.c.reconcilePendingPurchase(),null);assert.equal(x.calls.length,0);assert.equal(x.map.size,1);}
  const newer=reconcileFixture({newPending:true});assert.equal(await newer.c.reconcilePendingPurchase(),null);assert.ok([...newer.map.values()][0].includes('cs_test_newer'));assert.ok(!newer.calls.includes('overlay'));
+});
+
+test('a verified manual authorization opens the exact existing trade and explains when capture occurs',async()=>{
+ const current=reconcileFixture({paymentStatus:'authorized'});
+ assert.equal((await current.c.reconcilePendingPurchase()).payment_id,purchase);
+ assert.equal(current.calls[0].args.purchase_id,purchase);
+ assert.match(current.heading.textContent,/支払い枠/);
+ assert.match(current.detail.textContent,/受取確認後/);
+ assert.equal(current.map.size,0);
+ for(const options of [{expiresAt:new Date(Date.now()-60000).toISOString()},{captureMethod:'automatic'}]){
+  const invalid=reconcileFixture({paymentStatus:'authorized',...options});
+  assert.equal(await invalid.c.reconcilePendingPurchase(),null);
+  assert.equal(invalid.calls.length,0);
+  assert.equal(invalid.map.size,1);
+ }
 });
 
 test('refunded linked trades reject authenticated delivery and acceptance updates while history stays readable',async()=>{
