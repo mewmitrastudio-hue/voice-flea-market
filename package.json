@@ -15,6 +15,6 @@
   },
   "devDependencies": {
     "@capacitor/cli": "8.5.2",
-    "@electric-sql/pglite": "0.5.10"
+    "@electric-sql/pglite": "0.5.11"
   }
 }
