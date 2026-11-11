@@ -10,11 +10,11 @@
     "capawesome:build": "npm run build && cap sync ios && node scripts/prepare-native-release.mjs"
   },
   "dependencies": {
-    "@capacitor/core": "8.5.2",
-    "@capacitor/ios": "8.5.2"
+    "@capacitor/core": "8.5.3",
+    "@capacitor/ios": "8.5.3"
   },
   "devDependencies": {
-    "@capacitor/cli": "8.5.2",
+    "@capacitor/cli": "8.5.3",
     "@electric-sql/pglite": "0.5.10"
   }
 }
