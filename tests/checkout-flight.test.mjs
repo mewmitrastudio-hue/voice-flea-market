@@ -48,6 +48,6 @@ test('renewal keeps the exact session after navigation without opening old Check
  f.c.currentConversationId='another-trade';
  f.renewal.resolve({data:{success:true,listingId:'listing-a',sessionId:'cs_test_renew',url:'https://checkout.stripe.com/c/pay/test'}});
  await first;
- assert.equal(JSON.parse(f.saved.get('vf_pending_purchase_buyer')).checkoutSessionId,'cs_test_renew');
+ assert.equal(JSON.parse(f.saved.get('vf_checkout_return_buyer:cs_test_renew')).checkoutSessionId,'cs_test_renew');
  assert.deepEqual(f.redirects,[]);
 });
