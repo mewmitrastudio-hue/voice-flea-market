@@ -1,6 +1,6 @@
 {
-  "release": "2026.11.11-web46-privacy1",
-  "web_sha256": "572fff151218b8365e1d00946a59abd1caa33414f69e10f32c3d58df4074e32d",
+  "release": "2026.11.12-web46-profile-count1",
+  "web_sha256": "6b9002cdc2231ae41ddf4b35c06b1374bdfe567a74a42f0831b879b14159d1dd",
   "bundle_id": "com.ayuhide.koenofurima",
   "minimum_build_number": 46,
   "production_backend_applied": true,
