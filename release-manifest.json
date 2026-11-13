@@ -1,6 +1,6 @@
 {
-  "release": "2026.11.13-web46-purchase-poll2",
-  "web_sha256": "228d71b83dd798192e9d03bd52ddde8b7068ff48adadb4acad0966141ae1cef9",
+  "release": "2026.11.13-web46-purchase-recovery3",
+  "web_sha256": "5f0a7cd8b25aa1796f1a4586cf6b40381b2f4c43efadf1f6d9b3a667748af5f7",
   "bundle_id": "com.ayuhide.koenofurima",
   "minimum_build_number": 46,
   "production_backend_applied": true,
