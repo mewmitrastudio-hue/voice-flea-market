@@ -68,5 +68,7 @@
 	<true/>
 <key>ITSAppUsesNonExemptEncryption</key>
 <false/>
+<key>SKIncludeConsumableInAppPurchaseHistory</key>
+<true/>
 </dict>
 </plist>
