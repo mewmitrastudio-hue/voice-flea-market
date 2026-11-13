@@ -2,9 +2,12 @@
   "release": "2026.11.13-web46-purchase-recovery3",
   "web_sha256": "5f0a7cd8b25aa1796f1a4586cf6b40381b2f4c43efadf1f6d9b3a667748af5f7",
   "bundle_id": "com.ayuhide.koenofurima",
-  "minimum_build_number": 46,
+  "minimum_build_number": 49,
   "production_backend_applied": true,
   "production_backend_applied_at": "2026-10-16T22:09:17.179653+00:00",
   "boost_native_sha256": "335e5aef03376655666f8e482d50b33cf816fd4a4131c96d0bc1e719114e94c4",
-  "boost_sales_enabled": false
+  "boost_sales_enabled": false,
+  "public_release_allowed": false,
+  "source_base_commit": "1360839a27d7c1673212dfd958764f1f72d6e44b",
+  "candidate_note": "Purchase history paging, exact-session pending reconciliation, and post-purchase recovery wait corrections. Signing and device verification pending. Not diagnostic build48."
 }
