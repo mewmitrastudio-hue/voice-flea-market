@@ -50,7 +50,7 @@ export function createSignatureHandler(configure=configurations){
     const {data:tx,environment}=await decode(configs,'verifyAndDecodeTransaction',signed);
     if(tx.environment!==environment||!/^\d{1,40}$/.test(tx.transactionId||'')||!(products.has(tx.productId)||voiceProduct(tx.productId))||tx.type!=='Consumable'||tx.quantity!==1||tx.inAppOwnershipType!=='PURCHASED'||!tx.appAccountToken||!Number.isFinite(tx.purchaseDate))throw new Error('TRANSACTION_MISMATCH');
     if(voiceProduct(tx.productId)&&(tx.currency!=='JPY'||!Number.isSafeInteger(tx.price)||tx.price<=0))throw new Error('TRANSACTION_PRICE_MISSING');
-    return reply({transaction:{transactionId:tx.transactionId,environment,productId:tx.productId,type:tx.type,quantity:tx.quantity,inAppOwnershipType:tx.inAppOwnershipType,appAccountToken:tx.appAccountToken,purchaseDate:tx.purchaseDate,revocationDate:tx.revocationDate,price:tx.price,currency:tx.currency}});
+    return reply({transaction:{transactionId:tx.transactionId,environment,productId:tx.productId,type:tx.type,quantity:tx.quantity,inAppOwnershipType:tx.inAppOwnershipType,appAccountToken:tx.appAccountToken,purchaseDate:tx.purchaseDate,revocationDate:tx.revocationDate,...(tx.revocationDate!==undefined?{refundEvidenceVersion:1}:{}),revocationType:tx.revocationType,revocationPercentage:tx.revocationPercentage,price:tx.price,currency:tx.currency}});
    }
    const {data:n,environment}=await decode(configs,'verifyAndDecodeNotification',signed);
    return reply({notification:{notificationType:n.notificationType,environment,data:n.data?.signedTransactionInfo?{signedTransactionInfo:n.data.signedTransactionInfo}:undefined}});
