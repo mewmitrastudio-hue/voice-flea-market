@@ -7,7 +7,7 @@ const html=fs.readFileSync(new URL('../index.html',import.meta.url),'utf8');
 function fixture(){
  const reads=[], redirects=[], messages=[], saved=new Map();
  const checkout=Promise.withResolvers(),renewal=Promise.withResolvers();
- const c={
+ const c={setTimeout,clearTimeout,
   currentUser:{id:'buyer'},currentConversationId:'trade',pageNavigationRequest:0,
   authorizationActionStates:new Map([['trade',{canRenew:true,amountJpy:1000}]]),
   sb:{auth:{getSession:async()=>{reads.push('checkout');return checkout.promise;}},
