@@ -15,6 +15,8 @@ assert.equal(crypto.createHash('sha256').update(appIcon).digest('hex'),expected.
 const plist='ios/App/App/Info.plist';let xml=fs.readFileSync(plist,'utf8');
 assert.match(xml, /<key>NSCameraUsageDescription<\/key>\s*<string>\s*[^<\s][^<]*<\/string>/,
   'The iOS app must describe camera access for profile photo uploads');
+assert.match(xml, /<key>SKIncludeConsumableInAppPurchaseHistory<\/key>\s*<true\s*\/>/,
+  'StoreKit purchase recovery requires completed consumables in transaction history');
 const p='ios/App/App.xcodeproj/project.pbxproj',text=fs.readFileSync(p,'utf8');
 assert.equal((text.match(/CURRENT_PROJECT_VERSION = [0-9]+;/g)||[]).length,2);
 fs.writeFileSync(p,text.replace(/CURRENT_PROJECT_VERSION = [0-9]+;/g,'CURRENT_PROJECT_VERSION = '+number+';'));

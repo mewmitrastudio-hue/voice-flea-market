@@ -26,6 +26,8 @@
 	<true/>
 	<key>NSCameraUsageDescription</key>
 	<string>プロフィール画像を撮影してアップロードするためにカメラを使用します。</string>
+	<key>SKIncludeConsumableInAppPurchaseHistory</key>
+	<true/>
 	<key>UIApplicationSceneManifest</key>
 	<dict>
 		<key>UIApplicationSupportsMultipleScenes</key>
