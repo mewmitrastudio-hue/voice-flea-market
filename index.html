@@ -1231,7 +1231,7 @@ html body.normal-mode #home.page.on.home-has-pending{grid-template-rows:auto min
     <div class="field"><label for="profileBio">自己紹介</label><textarea id="profileBio" maxlength="500" placeholder="経験、得意な声、対応できる内容など"></textarea></div>
     <div class="field"><label for="profileSpecialties">得意ジャンル</label><input id="profileSpecialties" maxlength="120" placeholder="例：ナレーション、朗読、キャラクターボイス"></div>
     <div class="field"><label for="profileLanguages">対応言語・方言</label><input id="profileLanguages" maxlength="120" placeholder="例：日本語、英語、関西弁"></div>
-    <button class="btn full" type="button" onclick="saveBasicProfile()">保存</button>
+    <button id="profileSaveBtn" class="btn full" type="button" onclick="saveBasicProfile()">保存</button>
     <div id="profileEditMsg"></div>
   </div>
 </div>
@@ -4775,8 +4775,12 @@ async function openProfileEdit(name=''){
   if(!currentUser)return;
   const userId=currentUser.id,revision=++profileEditRevision;
   const ov=document.getElementById('profileEditOverlay');
-  const {data:p}=await sb.from('profiles').select('display_name,avatar_path,profile_tagline,profile_bio,profile_specialties,profile_languages').eq('id',userId).maybeSingle();
+  const {data:p,error}=await sb.from('profiles').select('display_name,avatar_path,profile_tagline,profile_bio,profile_specialties,profile_languages').eq('id',userId).maybeSingle();
   if(currentUser?.id!==userId||authReloadPending||profileEditRevision!==revision)return;
+  if(error||!p){
+    alert('プロフィールを読み込めませんでした。時間をおいて、もう一度「編集」を開いてください。');
+    return;
+  }
   document.getElementById('profileDisplayName').value=(p?.display_name&&p.display_name!=='ユーザー'?p.display_name:currentUser?.user_metadata?.display_name&&currentUser.user_metadata.display_name!=='ユーザー'?currentUser.user_metadata.display_name:p?.display_name)||name||'';
   document.getElementById('profileTagline').value=p?.profile_tagline||'';
   document.getElementById('profileBio').value=p?.profile_bio||'';
@@ -4839,7 +4843,8 @@ function closeProfileEdit(){
   const m=document.getElementById('profileEditMsg'); if(m)m.innerHTML='';
 }
 async function saveBasicProfile(){
-  if(!sb||!currentUser)return;
+  const button=document.getElementById('profileSaveBtn');
+  if(!sb||!currentUser||authReloadPending||button.disabled)return;
   const ownerId=currentUser.id,revision=profileEditRevision;
   const draftIds=['profileDisplayName','profileTagline','profileBio','profileSpecialties','profileLanguages'];
   const draftValues=draftIds.map(id=>document.getElementById(id)?.value||'');
@@ -4852,30 +4857,44 @@ async function saveBasicProfile(){
   let avatarPath=null;
   const file=document.getElementById('profileAvatarFile')?.files?.[0];
   const isCurrentDraft=()=>currentUser?.id===ownerId&&!authReloadPending&&profileEditRevision===revision&&draftIds.every((id,i)=>(document.getElementById(id)?.value||'')===draftValues[i])&&document.getElementById('profileAvatarFile')?.files?.[0]===file;
-  if(file){
-    if(!file.type.startsWith('image/'))return info('profileEditMsg','画像ファイルを選んでください。','err');
-    if(file.size>5*1024*1024)return info('profileEditMsg','アイコン画像は5MB以下にしてください。','err');
-    const ext=(file.name.split('.').pop()||'jpg').toLowerCase().replace(/[^a-z0-9]/g,'')||'jpg';
-    avatarPath=`${ownerId}/${crypto.randomUUID()}.${ext}`;
-    const {error:upErr}=await sb.storage.from('profile-avatars').upload(avatarPath,file,{upsert:false,contentType:file.type||'image/jpeg'});
-    if(upErr){if(!isCurrentDraft())return;return info('profileEditMsg','アイコン保存：'+upErr.message,'err');}
-  }
+  if(file&&!file.type.startsWith('image/'))return info('profileEditMsg','画像ファイルを選んでください。','err');
+  if(file&&file.size>5*1024*1024)return info('profileEditMsg','アイコン画像は5MB以下にしてください。','err');
 
-  const update={
-    display_name:name,
-    profile_tagline:tagline || null,
-    profile_bio:bio || null,
-    profile_specialties:specialties || null,
-    profile_languages:languages || null
-  };
-  if(avatarPath)update.avatar_path=avatarPath;
-  if(currentUser?.id!==ownerId)return;
-  const {error}=await sb.from('profiles').update(update).eq('id',ownerId);
-  if(currentUser?.id!==ownerId)return;
-  if(!isCurrentDraft())return;
-  if(error)return info('profileEditMsg',error.message,'err');
-  info('profileEditMsg','保存しました。');
-  setTimeout(async()=>{if(!isCurrentDraft())return;closeProfileEdit();await loadMe();if(currentUser?.id===ownerId)await loadListings(true);},500);
+  button.disabled=true;
+  button.textContent='保存中…';
+  try{
+    if(file){
+      const ext=(file.name.split('.').pop()||'jpg').toLowerCase().replace(/[^a-z0-9]/g,'')||'jpg';
+      avatarPath=`${ownerId}/${crypto.randomUUID()}.${ext}`;
+      const {error:upErr}=await sb.storage.from('profile-avatars').upload(avatarPath,file,{upsert:false,contentType:file.type||'image/jpeg'});
+      if(upErr){if(!isCurrentDraft())return;return info('profileEditMsg','アイコン保存：'+upErr.message,'err');}
+    }
+
+    const update={
+      display_name:name,
+      profile_tagline:tagline || null,
+      profile_bio:bio || null,
+      profile_specialties:specialties || null,
+      profile_languages:languages || null
+    };
+    if(avatarPath)update.avatar_path=avatarPath;
+    if(!isCurrentDraft())return;
+    const {error}=await sb.from('profiles').update(update).eq('id',ownerId);
+    if(!isCurrentDraft())return;
+    if(error)return info('profileEditMsg',error.message,'err');
+    info('profileEditMsg','保存しました。');
+    await new Promise(resolve=>setTimeout(resolve,500));
+    if(!isCurrentDraft())return;
+    closeProfileEdit();
+  }catch(e){
+    if(isCurrentDraft())info('profileEditMsg','プロフィールを保存できませんでした。もう一度お試しください。','err');
+    return;
+  }finally{
+    button.disabled=false;
+    button.textContent='保存';
+  }
+  await loadMe();
+  if(currentUser?.id===ownerId&&!authReloadPending)await loadListings(true);
 }
 function openProfileSafety(userId){
  if(!currentUser){alert('通報・ブロックにはログインが必要です。');return}
