@@ -9,10 +9,17 @@ for(const p of ['www/index.html','ios/App/App/public/index.html'])assert.ok(sour
 const config=JSON.parse(fs.readFileSync('ios/App/App/capacitor.config.json'));
 assert.equal(config.appId,'com.ayuhide.koenofurima');assert.ok(!config.server?.url,'Remote URL must not override bundled index');
 const number=process.env.CI_BUILD_NUMBER||'';assert.match(number,/^[1-9][0-9]*$/);assert.ok(Number(number)>=expected.minimum_build_number,'Build number is older than reviewed release');
+const appIcon=fs.readFileSync('ios/App/App/Assets.xcassets/AppIcon.appiconset/AppIcon-512@2x.png');
+assert.equal(crypto.createHash('sha256').update(appIcon).digest('hex'),expected.ios_app_icon_sha256,
+  'iOS app icon differs from the release manifest');
+const plist='ios/App/App/Info.plist';let xml=fs.readFileSync(plist,'utf8');
+assert.match(xml, /<key>NSCameraUsageDescription<\/key>\s*<string>\s*[^<\s][^<]*<\/string>/,
+  'The iOS app must describe camera access for profile photo uploads');
+assert.match(xml, /<key>SKIncludeConsumableInAppPurchaseHistory<\/key>\s*<true\s*\/>/,
+  'StoreKit purchase recovery requires completed consumables in transaction history');
 const p='ios/App/App.xcodeproj/project.pbxproj',text=fs.readFileSync(p,'utf8');
 assert.equal((text.match(/CURRENT_PROJECT_VERSION = [0-9]+;/g)||[]).length,2);
 fs.writeFileSync(p,text.replace(/CURRENT_PROJECT_VERSION = [0-9]+;/g,'CURRENT_PROJECT_VERSION = '+number+';'));
-const plist='ios/App/App/Info.plist';let xml=fs.readFileSync(plist,'utf8');
 if(!xml.includes('<key>ITSAppUsesNonExemptEncryption</key>'))xml=xml.replace('</dict>\n</plist>','<key>ITSAppUsesNonExemptEncryption</key>\n<false/>\n</dict>\n</plist>');
 xml=xml.replace(/(<key>CFBundleDevelopmentRegion<\/key>\s*)<string>en<\/string>/,'$1<string>ja</string>');
 fs.writeFileSync(plist,xml);

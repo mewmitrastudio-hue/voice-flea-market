@@ -2,6 +2,7 @@
   "release": "2026.11.14-web46-checkout-wait1",
   "web_sha256": "4e0069527b0bdb59de911c43ed36f7092961ae04dd2bfd5a0a2d4d9be82c1473",
   "bundle_id": "com.ayuhide.koenofurima",
+  "ios_app_icon_sha256": "55ebba6206924a7e6df7f9c87659c87f673b88a8ca96671b547fb907f591eaec",
   "minimum_build_number": 46,
   "production_backend_applied": true,
   "production_backend_applied_at": "2026-10-16T22:09:17.179653+00:00",
