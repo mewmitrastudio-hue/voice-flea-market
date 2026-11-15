@@ -9,6 +9,9 @@ for(const p of ['www/index.html','ios/App/App/public/index.html'])assert.ok(sour
 const config=JSON.parse(fs.readFileSync('ios/App/App/capacitor.config.json'));
 assert.equal(config.appId,'com.ayuhide.koenofurima');assert.ok(!config.server?.url,'Remote URL must not override bundled index');
 const number=process.env.CI_BUILD_NUMBER||'';assert.match(number,/^[1-9][0-9]*$/);assert.ok(Number(number)>=expected.minimum_build_number,'Build number is older than reviewed release');
+const appIcon=fs.readFileSync('ios/App/App/Assets.xcassets/AppIcon.appiconset/AppIcon-512@2x.png');
+assert.equal(crypto.createHash('sha256').update(appIcon).digest('hex'),expected.ios_app_icon_sha256,
+  'iOS app icon differs from the release manifest');
 const plist='ios/App/App/Info.plist';let xml=fs.readFileSync(plist,'utf8');
 assert.match(xml, /<key>NSCameraUsageDescription<\/key>\s*<string>\s*[^<\s][^<]*<\/string>/,
   'The iOS app must describe camera access for profile photo uploads');
