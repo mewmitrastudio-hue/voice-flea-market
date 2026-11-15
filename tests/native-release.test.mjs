@@ -15,11 +15,17 @@ fs.writeFileSync(path.join(dir,'release-manifest.json'),JSON.stringify({web_sha2
 fs.writeFileSync(path.join(dir,'ios/App/App/SceneDelegate.swift'),'import Capacitor\nclass SceneDelegate { func create(){let controller=CAPBridgeViewController()} }\n');
 fs.writeFileSync(path.join(dir,'ios/App/App/capacitor.config.json'),JSON.stringify({appId:'com.ayuhide.koenofurima'}));
 fs.writeFileSync(path.join(dir,'ios/App/App.xcodeproj/project.pbxproj'),'CURRENT_PROJECT_VERSION = 9;\nCURRENT_PROJECT_VERSION = 9;');
-fs.writeFileSync(path.join(dir,'ios/App/App/Info.plist'),'<dict>\n</dict>\n</plist>');
+const plist=path.join(dir,'ios/App/App/Info.plist');
+fs.writeFileSync(plist,'<dict>\n</dict>\n</plist>');
 fs.writeFileSync(path.join(dir,'node_modules/@capacitor/core/dist/index.js'),'// core fixture');
 const script=root+'scripts/prepare-native-release.mjs';
 function run(n){return cp.spawnSync(process.execPath,[script],{cwd:dir,env:{...process.env,CI_BUILD_NUMBER:n},encoding:'utf8'})}
-assert.notEqual(run('9').status,0);assert.equal(run('10').status,0);assert.equal(run('10').status,0);
+assert.notEqual(run('9').status,0);
+const missingCameraDescription=run('10');
+assert.notEqual(missingCameraDescription.status,0);
+assert.match(missingCameraDescription.stderr,/must describe camera access/);
+fs.copyFileSync(root+'ios/App/App/Info.plist',plist);
+assert.equal(run('10').status,0);assert.equal(run('10').status,0);
 const scene=fs.readFileSync(path.join(dir,'ios/App/App/SceneDelegate.swift'),'utf8');assert.equal((scene.match(/public class KoeBoostPlugin/g)||[]).length,1);assert.ok(scene.includes('KoeBridgeViewController()'));
 assert.equal(fs.readFileSync(path.join(dir,'ios/App/App/public/capacitor-core.js'),'utf8'),'// core fixture');
 fs.appendFileSync(path.join(dir,'BoostPlugin.swift'),'changed');assert.notEqual(run('10').status,0);
