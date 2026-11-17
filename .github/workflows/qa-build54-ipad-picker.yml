@@ -6,7 +6,7 @@ permissions:
   contents: read
 jobs:
   picker:
-    runs-on: xcode-27
+    runs-on: macos-latest
     timeout-minutes: 18
     steps:
       - uses: actions/checkout@v4
@@ -21,19 +21,26 @@ jobs:
           import json, subprocess
           sims = json.load(open('/tmp/koe-sims.json'))
           runtimes = [item for item in sims['runtimes'] if item['isAvailable'] and item['name'].startswith('iOS')]
-          runtime = max(runtimes, key=lambda item: tuple(map(int, item['version'].split('.'))))
-          ipads = [item for item in sims['devicetypes'] if item['name'].startswith('iPad')]
           def rank(device):
               name = device['name']
               return ('iPad Air' in name and '11-inch' in name and 'M3' in name, 'iPad Air' in name, '11-inch' in name)
-          for device in sorted(ipads, key=rank, reverse=True):
-              result = subprocess.run(['xcrun','simctl','create','KoePickerTest',device['identifier'],runtime['identifier']], capture_output=True, text=True)
-              if result.returncode == 0:
-                  print('id=' + result.stdout.strip())
-                  print('runtime=' + runtime['name'] + ' / ' + device['name'])
-                  break
-          else:
-              raise SystemExit('No compatible iPad simulator device type')
+          available = [(device, runtime) for runtime in runtimes for device in sims['devices'].get(runtime['identifier'], [])
+                       if device['isAvailable'] and device['name'].startswith('iPad')]
+          if available:
+              device, runtime = max(available, key=lambda pair: rank(pair[0]))
+              print('id=' + device['udid'])
+              print('runtime=' + runtime['name'] + ' / ' + device['name'])
+              raise SystemExit(0)
+          ipads = [item for item in sims['devicetypes'] if item['name'].startswith('iPad')]
+          for runtime in runtimes:
+              for device in sorted(ipads, key=rank, reverse=True):
+                  result = subprocess.run(['xcrun','simctl','create','KoePickerTest',device['identifier'],runtime['identifier']], capture_output=True, text=True)
+                  if result.returncode == 0:
+                      print('id=' + result.stdout.strip())
+                      print('runtime=' + runtime['name'] + ' / ' + device['name'])
+                      raise SystemExit(0)
+                  print(result.stderr.strip(), file=__import__('sys').stderr)
+          raise SystemExit('No compatible iPad simulator device type')
           PY
       - name: Boot the selected simulator
         run: xcrun simctl boot "${{ steps.device.outputs.id }}"
