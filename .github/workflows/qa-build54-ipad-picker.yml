@@ -144,6 +144,7 @@ jobs:
           test.build_configurations.each do |config|
             config.build_settings.merge!('PRODUCT_BUNDLE_IDENTIFIER' => 'com.ayuhide.koenofurima.pickeruitests',
                                          'SWIFT_VERSION' => '5.0', 'TEST_TARGET_NAME' => 'App',
+                                         'PRODUCT_NAME' => 'PickerUITests',
                                          'TARGETED_DEVICE_FAMILY' => '1,2', 'GENERATE_INFOPLIST_FILE' => 'YES')
           end
           scheme = Xcodeproj::XCScheme.new
