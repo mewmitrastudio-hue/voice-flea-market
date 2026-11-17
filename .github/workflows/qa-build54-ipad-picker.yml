@@ -101,9 +101,7 @@ jobs:
                   let sell = app.buttons.matching(NSPredicate(format: "label BEGINSWITH %@ OR label CONTAINS %@", "声を出品", "声を出品")).firstMatch
                   XCTAssertTrue(sell.waitForExistence(timeout: 30))
                   sell.tap()
-                  let picker = app.webViews.firstMatch.descendants(matching: .any)
-                      .matching(NSPredicate(format: "label == %@ OR label CONTAINS[c] %@", "公開用の声サンプル", "Choose File"))
-                      .matching(NSPredicate(format: "elementType != %d", XCUIElement.ElementType.staticText.rawValue)).firstMatch
+                  let picker = app.webViews.firstMatch.buttons["公開用の声サンプル"].firstMatch
                   for _ in 0..<4 {
                       if picker.isHittable { break }
                       app.webViews.firstMatch.swipeUp()
@@ -111,25 +109,23 @@ jobs:
                   XCTAssertTrue(picker.isHittable, app.debugDescription)
                   picker.tap()
                   let chooseButtons = app.buttons.matching(NSPredicate(format: "label CONTAINS[c] %@ OR label == %@", "Choose File", "ファイルを選択"))
+                  XCTAssertFalse(app.buttons.matching(NSPredicate(format: "label CONTAINS[c] %@ OR label CONTAINS %@", "Take Video", "ビデオを撮る")).firstMatch.exists)
                   if let choose = chooseButtons.allElementsBoundByIndex.last(where: { $0.isHittable && $0.frame != picker.frame }) {
                       choose.tap()
                   }
-                  XCTAssertFalse(app.buttons.matching(NSPredicate(format: "label CONTAINS[c] %@ OR label CONTAINS %@", "Take Video", "ビデオを撮る")).firstMatch.exists)
-                  let search = app.searchFields.firstMatch
-                  if search.waitForExistence(timeout: 10) {
-                      search.tap()
-                      search.typeText("fixture-54")
-                  }
-                  let fixture = app.descendants(matching: .any)
-                      .matching(NSPredicate(format: "label BEGINSWITH %@", "fixture-54")).firstMatch
-                  if !fixture.waitForExistence(timeout: 5) {
-                      let onDevice = app.staticTexts.matching(NSPredicate(format: "label == %@ OR label == %@", "On My iPad", "このiPad内")).firstMatch
-                      if onDevice.exists { onDevice.tap() }
-                      let folder = app.staticTexts["声のフリマ"].firstMatch
-                      if folder.exists { folder.tap() }
-                  }
-                  XCTAssertTrue(fixture.waitForExistence(timeout: 15), app.debugDescription)
+                  let onDevice = app.cells["DOC.sidebar.item.On My iPad"]
+                  XCTAssertTrue(onDevice.waitForExistence(timeout: 15), app.debugDescription)
+                  onDevice.tap()
+                  let folder = app.cells["声のフリマ, Container"]
+                  XCTAssertTrue(folder.waitForExistence(timeout: 10), app.debugDescription)
+                  folder.tap()
+                  let fixture = app.cells
+                      .matching(NSPredicate(format: "label BEGINSWITH %@ OR identifier BEGINSWITH %@", "fixture-54", "fixture-54")).firstMatch
+                  if !fixture.waitForExistence(timeout: 5), folder.isHittable { folder.doubleTap() }
+                  XCTAssertTrue(fixture.waitForExistence(timeout: 12), app.debugDescription)
                   fixture.tap()
+                  let open = app.buttons.matching(NSPredicate(format: "label == %@ OR label == %@", "Open", "開く")).firstMatch
+                  if open.exists && open.isHittable { open.tap() }
                   XCTAssertTrue(app.staticTexts["Selected fixture-54.wav"].waitForExistence(timeout: 10), app.debugDescription)
                   XCTAssertEqual(app.state, .runningForeground)
               }
