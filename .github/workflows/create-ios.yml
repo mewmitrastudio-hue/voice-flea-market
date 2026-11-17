@@ -13,6 +13,18 @@ on:
       - 'release-manifest.json'
       - 'tests/**'
       - '.github/workflows/create-ios.yml'
+  pull_request:
+    branches: [main]
+    paths:
+      - 'index.html'
+      - 'capacitor.config.json'
+      - 'package*.json'
+      - 'ios/**'
+      - 'scripts/**'
+      - 'BoostPlugin.swift'
+      - 'release-manifest.json'
+      - 'tests/**'
+      - '.github/workflows/create-ios.yml'
 permissions:
   contents: read
 concurrency:
