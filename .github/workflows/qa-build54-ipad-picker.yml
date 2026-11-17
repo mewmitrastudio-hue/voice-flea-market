@@ -16,17 +16,24 @@ jobs:
       - name: Select and boot iPad Air
         id: device
         run: |
-          xcrun simctl list devices available --json > /tmp/koe-sims.json
+          xcrun simctl list --json > /tmp/koe-sims.json
           python3 - <<'PY' >> "$GITHUB_OUTPUT"
-          import json
-          sims = json.load(open('/tmp/koe-sims.json'))['devices']
-          for runtime, devices in sorted(sims.items(), reverse=True):
-              for device in devices:
-                  if 'iPad Air' in device['name'] and '11-inch' in device['name'] and 'M3' in device['name']:
-                      print('id=' + device['udid'])
-                      print('runtime=' + runtime)
-                      raise SystemExit(0)
-          raise SystemExit('No iPad Air 11-inch (M3) simulator is installed')
+          import json, subprocess
+          sims = json.load(open('/tmp/koe-sims.json'))
+          runtimes = [item for item in sims['runtimes'] if item['isAvailable'] and item['name'].startswith('iOS')]
+          runtime = max(runtimes, key=lambda item: tuple(map(int, item['version'].split('.'))))
+          ipads = [item for item in sims['devicetypes'] if item['name'].startswith('iPad')]
+          def rank(device):
+              name = device['name']
+              return ('iPad Air' in name and '11-inch' in name and 'M3' in name, 'iPad Air' in name, '11-inch' in name)
+          for device in sorted(ipads, key=rank, reverse=True):
+              result = subprocess.run(['xcrun','simctl','create','KoePickerTest',device['identifier'],runtime['identifier']], capture_output=True, text=True)
+              if result.returncode == 0:
+                  print('id=' + result.stdout.strip())
+                  print('runtime=' + runtime['name'] + ' / ' + device['name'])
+                  break
+          else:
+              raise SystemExit('No compatible iPad simulator device type')
           PY
           xcrun simctl boot "${{ steps.device.outputs.id }}"
       - name: Prepare release source and isolated UI test
@@ -41,6 +48,9 @@ jobs:
           app = pathlib.Path('ios/App/App')
           p = app/'public/index.html'
           assert p.read_bytes() == pathlib.Path('index.html').read_bytes()
+          html = p.read_text()
+          assert html.count('\ninit();\n') == 1
+          p.write_text(html.replace('\ninit();\n', '\n'))
           with p.open('a') as f:
               f.write("""<script>
           authPage.classList.remove('on');
@@ -138,6 +148,7 @@ jobs:
       - name: Run native file picker test
         run: |
           echo "Testing ${{ steps.device.outputs.runtime }}"
+          xcrun simctl bootstatus "${{ steps.device.outputs.id }}" -b
           xcodebuild test -project ios/App/App.xcodeproj -scheme Picker -destination 'platform=iOS Simulator,id=${{ steps.device.outputs.id }}' -parallel-testing-enabled NO -resultBundlePath /tmp/koe-picker.xcresult CODE_SIGNING_ALLOWED=NO
       - uses: actions/upload-artifact@v4
         if: always()
