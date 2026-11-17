@@ -35,7 +35,8 @@ jobs:
           else:
               raise SystemExit('No compatible iPad simulator device type')
           PY
-          xcrun simctl boot "${{ steps.device.outputs.id }}"
+      - name: Boot the selected simulator
+        run: xcrun simctl boot "${{ steps.device.outputs.id }}"
       - name: Prepare release source and isolated UI test
         env:
           CI_BUILD_NUMBER: '54'
