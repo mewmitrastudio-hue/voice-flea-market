@@ -1,0 +1,148 @@
+name: Build 54 iPad audio picker
+on:
+  push:
+    branches: [qa/build54-ipad-picker]
+permissions:
+  contents: read
+jobs:
+  picker:
+    runs-on: xcode-27
+    timeout-minutes: 18
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Select and boot iPad Air
+        id: device
+        run: |
+          xcrun simctl list devices available --json > /tmp/koe-sims.json
+          python3 - <<'PY' >> "$GITHUB_OUTPUT"
+          import json
+          sims = json.load(open('/tmp/koe-sims.json'))['devices']
+          for runtime, devices in sorted(sims.items(), reverse=True):
+              for device in devices:
+                  if 'iPad Air' in device['name'] and '11-inch' in device['name'] and 'M3' in device['name']:
+                      print('id=' + device['udid'])
+                      print('runtime=' + runtime)
+                      raise SystemExit(0)
+          raise SystemExit('No iPad Air 11-inch (M3) simulator is installed')
+          PY
+          xcrun simctl boot "${{ steps.device.outputs.id }}"
+      - name: Prepare release source and isolated UI test
+        env:
+          CI_BUILD_NUMBER: '54'
+        run: |
+          npm ci
+          npm run capawesome:build
+          gem list -i xcodeproj || gem install --user-install xcodeproj --no-document
+          python3 - <<'PY'
+          import pathlib, wave
+          app = pathlib.Path('ios/App/App')
+          p = app/'public/index.html'
+          assert p.read_bytes() == pathlib.Path('index.html').read_bytes()
+          with p.open('a') as f:
+              f.write("""<script>
+          authPage.classList.remove('on');
+          nav.classList.remove('hide');
+          go('home');
+          const audioInput = document.getElementById('sellAudio');
+          audioInput.addEventListener('change', () => {
+              const receipt = document.createElement('p');
+              receipt.textContent = 'Selected ' + audioInput.files[0]?.name;
+              audioInput.after(receipt);
+          });
+          </script>""")
+          p = app/'SceneDelegate.swift'
+          s = p.read_text()
+          marker = 'window?.makeKeyAndVisible()'
+          s = s.replace(marker, marker + """
+                  if let documents = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask).first {
+                      let file = documents.appendingPathComponent("fixture-54.wav")
+                      if !FileManager.default.fileExists(atPath: file.path),
+                         let source = Bundle.main.url(forResource: "fixture-54", withExtension: "wav", subdirectory: "public") {
+                          try? FileManager.default.copyItem(at: source, to: file)
+                      }
+                  }
+          """, 1)
+          p.write_text(s)
+          with wave.open(str(app/'public/fixture-54.wav'), 'wb') as sample:
+              sample.setparams((1, 2, 8000, 0, 'NONE', 'not compressed'))
+              sample.writeframes(bytes(1600))
+          PY
+          /usr/libexec/PlistBuddy -c 'Add :UIFileSharingEnabled bool true' ios/App/App/Info.plist
+          /usr/libexec/PlistBuddy -c 'Add :LSSupportsOpeningDocumentsInPlace bool true' ios/App/App/Info.plist
+          cat > ios/App/PickerUITests.swift <<'SWIFT'
+          import XCTest
+
+          final class PickerUITests: XCTestCase {
+              func testAudioPicker() {
+                  continueAfterFailure = false
+                  let app = XCUIApplication()
+                  app.launch()
+                  let sell = app.buttons.matching(NSPredicate(format: "label BEGINSWITH %@ OR label CONTAINS %@", "声を出品", "声を出品")).firstMatch
+                  XCTAssertTrue(sell.waitForExistence(timeout: 30))
+                  sell.tap()
+                  let picker = app.webViews.firstMatch.descendants(matching: .any)
+                      .matching(NSPredicate(format: "label == %@ OR label CONTAINS[c] %@", "公開用の声サンプル", "Choose File"))
+                      .matching(NSPredicate(format: "elementType != %d", XCUIElement.ElementType.staticText.rawValue)).firstMatch
+                  for _ in 0..<4 {
+                      if picker.isHittable { break }
+                      app.webViews.firstMatch.swipeUp()
+                  }
+                  XCTAssertTrue(picker.isHittable, app.debugDescription)
+                  picker.tap()
+                  let choose = app.buttons.matching(NSPredicate(format: "label CONTAINS[c] %@ OR label == %@", "Choose File", "ファイルを選択")).lastMatch
+                  if choose.waitForExistence(timeout: 3), choose.isHittable { choose.tap() }
+                  XCTAssertFalse(app.buttons.matching(NSPredicate(format: "label CONTAINS[c] %@ OR label CONTAINS %@", "Take Video", "ビデオを撮る")).firstMatch.exists)
+                  let search = app.searchFields.firstMatch
+                  if search.waitForExistence(timeout: 10) {
+                      search.tap()
+                      search.typeText("fixture-54")
+                  }
+                  let fixture = app.descendants(matching: .any)
+                      .matching(NSPredicate(format: "label BEGINSWITH %@", "fixture-54")).firstMatch
+                  if !fixture.waitForExistence(timeout: 5) {
+                      let onDevice = app.staticTexts.matching(NSPredicate(format: "label == %@ OR label == %@", "On My iPad", "このiPad内")).firstMatch
+                      if onDevice.exists { onDevice.tap() }
+                      let folder = app.staticTexts["声のフリマ"].firstMatch
+                      if folder.exists { folder.tap() }
+                  }
+                  XCTAssertTrue(fixture.waitForExistence(timeout: 15), app.debugDescription)
+                  fixture.tap()
+                  XCTAssertTrue(app.staticTexts["Selected fixture-54.wav"].waitForExistence(timeout: 10), app.debugDescription)
+                  XCTAssertEqual(app.state, .runningForeground)
+              }
+          }
+          SWIFT
+          cd ios/App
+          ruby <<'RUBY'
+          require 'xcodeproj'
+          project = Xcodeproj::Project.open('App.xcodeproj')
+          app = project.targets.find { |t| t.name == 'App' }
+          test = project.new_target(:ui_test_bundle, 'PickerUITests', :ios, '18.0')
+          test.add_dependency(app)
+          test.source_build_phase.add_file_reference(project.main_group.new_file('PickerUITests.swift'))
+          test.build_configurations.each do |config|
+            config.build_settings.merge!('PRODUCT_BUNDLE_IDENTIFIER' => 'com.ayuhide.koenofurima.pickeruitests',
+                                         'SWIFT_VERSION' => '5.0', 'TEST_TARGET_NAME' => 'App',
+                                         'TARGETED_DEVICE_FAMILY' => '1,2', 'GENERATE_INFOPLIST_FILE' => 'YES')
+          end
+          scheme = Xcodeproj::XCScheme.new
+          scheme.add_build_target(app)
+          scheme.add_test_target(test)
+          scheme.set_launch_target(app)
+          scheme.save_as('App.xcodeproj', 'Picker', true)
+          project.save
+          RUBY
+      - name: Run native file picker test
+        run: |
+          echo "Testing ${{ steps.device.outputs.runtime }}"
+          xcodebuild test -project ios/App/App.xcodeproj -scheme Picker -destination 'platform=iOS Simulator,id=${{ steps.device.outputs.id }}' -parallel-testing-enabled NO -resultBundlePath /tmp/koe-picker.xcresult CODE_SIGNING_ALLOWED=NO
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: ipad-picker-result
+          path: /tmp/koe-picker.xcresult
+          if-no-files-found: ignore
+          retention-days: 2
