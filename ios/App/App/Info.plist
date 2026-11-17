@@ -64,6 +64,12 @@
 		<string>UIInterfaceOrientationLandscapeLeft</string>
 		<string>UIInterfaceOrientationLandscapeRight</string>
 	</array>
+	<key>NSCameraUsageDescription</key>
+	<string>公開用の音声サンプルやプロフィール写真・動画を撮影するためにカメラを使用します。</string>
+	<key>NSMicrophoneUsageDescription</key>
+	<string>公開用の音声サンプルや動画を録音するためにマイクを使用します。</string>
+	<key>NSPhotoLibraryUsageDescription</key>
+	<string>プロフィール写真や出品用の画像・動画をライブラリから選択するために使用します。</string>
 	<key>UIViewControllerBasedStatusBarAppearance</key>
 	<true/>
 </dict>
