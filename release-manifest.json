@@ -1,6 +1,6 @@
 {
   "release": "2026.11.17-review-audio56",
-  "web_sha256": "7946f2c420060359a157444b9610b43038f3df127dd8e65bdd1c668421ee4034",
+  "web_sha256": "789a8153c0a63ccd62c76dba4aec56aadadbbd9bcfb4c1839002b0400d55a523",
   "bundle_id": "com.ayuhide.koenofurima",
   "ios_app_icon_sha256": "55ebba6206924a7e6df7f9c87659c87f673b88a8ca96671b547fb907f591eaec",
   "minimum_build_number": 56,
