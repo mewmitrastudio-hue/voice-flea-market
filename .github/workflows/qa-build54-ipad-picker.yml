@@ -110,8 +110,10 @@ jobs:
                   }
                   XCTAssertTrue(picker.isHittable, app.debugDescription)
                   picker.tap()
-                  let choose = app.buttons.matching(NSPredicate(format: "label CONTAINS[c] %@ OR label == %@", "Choose File", "ファイルを選択")).lastMatch
-                  if choose.waitForExistence(timeout: 3), choose.isHittable { choose.tap() }
+                  let chooseButtons = app.buttons.matching(NSPredicate(format: "label CONTAINS[c] %@ OR label == %@", "Choose File", "ファイルを選択"))
+                  if let choose = chooseButtons.allElementsBoundByIndex.last(where: { $0.isHittable && $0.frame != picker.frame }) {
+                      choose.tap()
+                  }
                   XCTAssertFalse(app.buttons.matching(NSPredicate(format: "label CONTAINS[c] %@ OR label CONTAINS %@", "Take Video", "ビデオを撮る")).firstMatch.exists)
                   let search = app.searchFields.firstMatch
                   if search.waitForExistence(timeout: 10) {
