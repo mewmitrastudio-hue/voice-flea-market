@@ -14,7 +14,7 @@ test('public sample selector is audio-only on iOS',()=>{
 
 test('delivery audio selector does not offer video camera capture',()=>{
  const html=readFileSync('index.html','utf8');
- const field=html.match(/<input id=\\"deliveryFile\\"[^>]+>/);
+ const field=html.match(/<input id="deliveryFile"[^>]+>/);
  assert.ok(field,'delivery audio picker missing');
  assert.doesNotMatch(field[0],/\.mp4|video\/\*/);
 });
