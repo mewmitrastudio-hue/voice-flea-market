@@ -25,7 +25,11 @@
 	<key>LSRequiresIPhoneOS</key>
 	<true/>
 	<key>NSCameraUsageDescription</key>
-	<string>プロフィール画像を撮影してアップロードするためにカメラを使用します。</string>
+	<string>公開用の声サンプルやプロフィール写真・動画を撮影するためにカメラを使用します。</string>
+	<key>NSMicrophoneUsageDescription</key>
+	<string>公開用の声サンプルや動画を録音するためにマイクを使用します。</string>
+	<key>NSPhotoLibraryUsageDescription</key>
+	<string>プロフィール写真や出品用の画像・動画を選ぶため、写真ライブラリにアクセスします。</string>
 	<key>SKIncludeConsumableInAppPurchaseHistory</key>
 	<true/>
 	<key>UIApplicationSceneManifest</key>
