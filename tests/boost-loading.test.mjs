@@ -5,10 +5,11 @@ import {test} from 'node:test';
 const html=readFileSync(new URL('../index.html',import.meta.url),'utf8');
 const source=html.slice(html.indexOf('async function boostRead('),html.indexOf('async function purchaseBoost('));
 function screen(listings=[]){
- const notices=[],select={value:'',replaceChildren(){},add(){}},history={textContent:''};
- const plugin={pendingTransactions:async()=>({transactions:[]}),products:async()=>({environment:'Sandbox',products:[{id:'silver'}]})};
- const context=vm.createContext({setTimeout,clearTimeout,Option:class{},formatJpDateTime:()=>'',currentUser:{id:'owner'},boostRequest:0,boostOwnHistory:[],boostHistoryReady:false,boostReady:false,boostStoreProducts:[],boostEnvironment:null,boostListingChanged(){},boostNotice:t=>notices.push(t),isNativeBoost:()=>true,boostApi:async()=>({enabled:true,environment:'Sandbox'}),nativeBoost:async()=>({plugin}),document:{getElementById:id=>id==='boostPreviewOverlay'?{classList:{add(){},contains(){return false}}}:id==='boostListingSelect'?select:history},sb:{from:table=>({select(){return this},eq(){return this},order(){return table==='listings'?Promise.resolve({data:listings}):this},limit:async()=>({data:[]})})}});
- vm.runInContext(source,context);return {context,notices,plugin};
+ const notices=[],select={value:'',replaceChildren(){},add(){}},history={textContent:''},options={hidden:true};
+ const plugin={pendingTransactions:async()=>({transactions:[]}),products:async()=>({environment:'Sandbox',products:[{id:'com.ayuhide.koenofurima.boost.silver',displayPrice:'¥300',currencyCode:'JPY',price:'300'}]})};
+ const context=vm.createContext({setTimeout,clearTimeout,Option:class{},formatJpDateTime:()=>'',currentUser:{id:'owner'},boostRequest:0,boostOwnHistory:[],boostHistoryReady:false,boostReady:false,boostStoreProducts:[],boostEnvironment:null,boostListingChanged(){},boostNotice:t=>notices.push(t),isNativeBoost:()=>true,boostApi:async()=>({enabled:true,environment:'Sandbox'}),nativeBoost:async()=>({plugin}),document:{getElementById:id=>id==='boostPreviewOverlay'?{classList:{add(){},contains(){return false}}}:id==='boostListingSelect'?select:id==='boostPurchaseOptions'?options:history},sb:{from:table=>({select(){return this},eq(){return this},order(){return table==='listings'?Promise.resolve({data:listings}):this},limit:async()=>({data:[]})})}});
+ vm.runInContext(html.slice(html.indexOf('function boostProductReadiness('),html.indexOf('function boostListingChanged(')),context);
+ vm.runInContext(source,context);return {context,notices,plugin,options};
 }
 test('without listings the screen explains the prerequisite without starting StoreKit',async()=>{
  const {context,notices}=screen();context.nativeBoost=()=>{throw Error('must not start StoreKit')};
@@ -19,9 +20,20 @@ test('a stalled read leaves loading with a stage-specific error and later reads 
  assert.equal(await context.boostRead(()=>42,'read',20),42);
 });
 test('completed Sandbox product loading enables selection and identifies the test environment',async()=>{
- const {context,notices}=screen([{id:'listing',title:'test'}]);await context.openBoostPreview('listing');
+ const {context,notices,options}=screen([{id:'listing',title:'test'}]);await context.openBoostPreview('listing');
+ assert.equal(options.hidden,false);
  assert.equal(context.boostReady,true);assert.equal(context.boostEnvironment,'Sandbox');assert.match(notices.at(-1),/^テスト購入です/);
  assert.ok(notices.includes('Appleから3プランの商品情報を取得しています…'));
+});
+test('unconfigured boost sales keep purchase controls hidden and history available',async()=>{
+ const {context,options}=screen([{id:'listing',title:'test'}]);
+ context.boostApi=async()=>({enabled:false});
+ context.nativeBoost=()=>{throw Error('must not start StoreKit')};
+ options.hidden=false;
+ await context.openBoostPreview('listing');
+ assert.equal(options.hidden,true);
+ assert.equal(context.boostHistoryReady,true);
+ assert.equal(context.boostReady,false);
 });
 test('the actual Capacitor proxy loads through async initialization and reaches native products',async()=>{
  const {context,notices}=screen([{id:'listing',title:'test'}]);

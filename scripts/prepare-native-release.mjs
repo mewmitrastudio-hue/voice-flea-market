@@ -15,6 +15,13 @@ assert.equal(crypto.createHash('sha256').update(appIcon).digest('hex'),expected.
 const plist='ios/App/App/Info.plist';let xml=fs.readFileSync(plist,'utf8');
 assert.match(xml, /<key>NSCameraUsageDescription<\/key>\s*<string>\s*[^<\s][^<]*<\/string>/,
   'The iOS app must describe camera access for profile photo uploads');
+for(const [key,label] of [
+  ['NSMicrophoneUsageDescription','microphone'],
+  ['NSPhotoLibraryUsageDescription','photo library']
+]){
+  const re=new RegExp('<key>'+key+'<\\/key>\\s*<string>\\s*[^<\\s][^<]*<\\/string>');
+  assert.match(xml,re,'The iOS app must describe '+label+' access for media capture/selection');
+}
 assert.match(xml, /<key>SKIncludeConsumableInAppPurchaseHistory<\/key>\s*<true\s*\/>/,
   'StoreKit purchase recovery requires completed consumables in transaction history');
 const p='ios/App/App.xcodeproj/project.pbxproj',text=fs.readFileSync(p,'utf8');
