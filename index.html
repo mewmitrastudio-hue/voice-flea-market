@@ -1231,7 +1231,7 @@ html body.normal-mode #home.page.on.home-has-pending{grid-template-rows:auto min
     <div class="field"><label for="profileBio">自己紹介</label><textarea id="profileBio" maxlength="500" placeholder="経験、得意な声、対応できる内容など"></textarea></div>
     <div class="field"><label for="profileSpecialties">得意ジャンル</label><input id="profileSpecialties" maxlength="120" placeholder="例：ナレーション、朗読、キャラクターボイス"></div>
     <div class="field"><label for="profileLanguages">対応言語・方言</label><input id="profileLanguages" maxlength="120" placeholder="例：日本語、英語、関西弁"></div>
-    <button class="btn full" type="button" onclick="saveBasicProfile()">保存</button>
+    <button id="profileSaveBtn" class="btn full" type="button" onclick="saveBasicProfile()">保存</button>
     <div id="profileEditMsg"></div>
   </div>
 </div>
@@ -4793,8 +4793,12 @@ async function openProfileEdit(name=''){
   if(!currentUser)return;
   const userId=currentUser.id,revision=++profileEditRevision;
   const ov=document.getElementById('profileEditOverlay');
-  const {data:p}=await sb.from('profiles').select('display_name,avatar_path,profile_tagline,profile_bio,profile_specialties,profile_languages').eq('id',userId).maybeSingle();
+  const {data:p,error}=await sb.from('profiles').select('display_name,avatar_path,profile_tagline,profile_bio,profile_specialties,profile_languages').eq('id',userId).maybeSingle();
   if(currentUser?.id!==userId||authReloadPending||profileEditRevision!==revision)return;
+  if(error||!p){
+    alert('プロフィールを読み込めませんでした。時間をおいて、もう一度「編集」を開いてください。');
+    return;
+  }
   document.getElementById('profileDisplayName').value=(p?.display_name&&p.display_name!=='ユーザー'?p.display_name:currentUser?.user_metadata?.display_name&&currentUser.user_metadata.display_name!=='ユーザー'?currentUser.user_metadata.display_name:p?.display_name)||name||'';
   document.getElementById('profileTagline').value=p?.profile_tagline||'';
   document.getElementById('profileBio').value=p?.profile_bio||'';
@@ -4857,7 +4861,8 @@ function closeProfileEdit(){
   const m=document.getElementById('profileEditMsg'); if(m)m.innerHTML='';
 }
 async function saveBasicProfile(){
-  if(!sb||!currentUser)return;
+  const button=document.getElementById('profileSaveBtn');
+  if(!sb||!currentUser||authReloadPending||button.disabled)return;
   const ownerId=currentUser.id,revision=profileEditRevision;
   const draftIds=['profileDisplayName','profileTagline','profileBio','profileSpecialties','profileLanguages'];
   const draftValues=draftIds.map(id=>document.getElementById(id)?.value||'');
@@ -4870,30 +4875,44 @@ async function saveBasicProfile(){
   let avatarPath=null;
   const file=document.getElementById('profileAvatarFile')?.files?.[0];
   const isCurrentDraft=()=>currentUser?.id===ownerId&&!authReloadPending&&profileEditRevision===revision&&draftIds.every((id,i)=>(document.getElementById(id)?.value||'')===draftValues[i])&&document.getElementById('profileAvatarFile')?.files?.[0]===file;
-  if(file){
-    if(!file.type.startsWith('image/'))return info('profileEditMsg','画像ファイルを選んでください。','err');
-    if(file.size>5*1024*1024)return info('profileEditMsg','アイコン画像は5MB以下にしてください。','err');
-    const ext=(file.name.split('.').pop()||'jpg').toLowerCase().replace(/[^a-z0-9]/g,'')||'jpg';
-    avatarPath=`${ownerId}/${crypto.randomUUID()}.${ext}`;
-    const {error:upErr}=await sb.storage.from('profile-avatars').upload(avatarPath,file,{upsert:false,contentType:file.type||'image/jpeg'});
-    if(upErr){if(!isCurrentDraft())return;return info('profileEditMsg','アイコン保存：'+upErr.message,'err');}
-  }
+  if(file&&!file.type.startsWith('image/'))return info('profileEditMsg','画像ファイルを選んでください。','err');
+  if(file&&file.size>5*1024*1024)return info('profileEditMsg','アイコン画像は5MB以下にしてください。','err');
 
-  const update={
-    display_name:name,
-    profile_tagline:tagline || null,
-    profile_bio:bio || null,
-    profile_specialties:specialties || null,
-    profile_languages:languages || null
-  };
-  if(avatarPath)update.avatar_path=avatarPath;
-  if(currentUser?.id!==ownerId)return;
-  const {error}=await sb.from('profiles').update(update).eq('id',ownerId);
-  if(currentUser?.id!==ownerId)return;
-  if(!isCurrentDraft())return;
-  if(error)return info('profileEditMsg',error.message,'err');
-  info('profileEditMsg','保存しました。');
-  setTimeout(async()=>{if(!isCurrentDraft())return;closeProfileEdit();await loadMe();if(currentUser?.id===ownerId)await loadListings(true);},500);
+  button.disabled=true;
+  button.textContent='保存中…';
+  try{
+    if(file){
+      const ext=(file.name.split('.').pop()||'jpg').toLowerCase().replace(/[^a-z0-9]/g,'')||'jpg';
+      avatarPath=`${ownerId}/${crypto.randomUUID()}.${ext}`;
+      const {error:upErr}=await sb.storage.from('profile-avatars').upload(avatarPath,file,{upsert:false,contentType:file.type||'image/jpeg'});
+      if(upErr){if(!isCurrentDraft())return;return info('profileEditMsg','アイコン保存：'+upErr.message,'err');}
+    }
+
+    const update={
+      display_name:name,
+      profile_tagline:tagline || null,
+      profile_bio:bio || null,
+      profile_specialties:specialties || null,
+      profile_languages:languages || null
+    };
+    if(avatarPath)update.avatar_path=avatarPath;
+    if(!isCurrentDraft())return;
+    const {error}=await sb.from('profiles').update(update).eq('id',ownerId);
+    if(!isCurrentDraft())return;
+    if(error)return info('profileEditMsg',error.message,'err');
+    info('profileEditMsg','保存しました。');
+    await new Promise(resolve=>setTimeout(resolve,500));
+    if(!isCurrentDraft())return;
+    closeProfileEdit();
+  }catch(e){
+    if(isCurrentDraft())info('profileEditMsg','プロフィールを保存できませんでした。もう一度お試しください。','err');
+    return;
+  }finally{
+    button.disabled=false;
+    button.textContent='保存';
+  }
+  await loadMe();
+  if(currentUser?.id===ownerId&&!authReloadPending)await loadListings(true);
 }
 function openProfileSafety(userId){
  if(!currentUser){alert('通報・ブロックにはログインが必要です。');return}
@@ -5493,6 +5512,7 @@ document.addEventListener('click',function(e){
    <h3 id="boostPreviewTitle">🚀 出品ブースト</h3>
    <button class="boost-close-top" type="button" onclick="closeBoostPreview()" aria-label="出品ブーストを閉じる">×</button>
   </div>
+  <div id="boostPurchaseOptions" hidden>
   <p id="boostPreviewListing">出品を見つけてもらいやすくするPRプランです。</p><label for="boostListingSelect">対象の出品</label><select id="boostListingSelect" onchange="boostListingChanged()"></select>
   <div class="boost-plan" data-boost-plan="silver">
    <div class="boost-plan-head"><span class="boost-tier boost-silver">◆ SILVER PR</span><strong>300円</strong></div>
@@ -5506,8 +5526,9 @@ document.addEventListener('click',function(e){
    <div class="boost-plan-head"><span class="boost-tier boost-platinum">✦ PLATINUM PR</span><strong>1,500円</strong></div>
    <small>30日間／おすすめ順でゴールド・シルバー・通常出品より上に表示</small><button class="btn full" type="button" data-boost-buy="platinum" onclick="purchaseBoost('platinum')" disabled>購入状況を確認中…</button>
   </div>
-  <div class="boost-note" id="boostVerificationStatus" role="status">購入と反映状況を確認しています…</div>
   <p class="boost-note">※ 自動更新のない1回ごとの購入です。価格はAppleの購入確認画面で確定します。期間はサーバーへの反映時から始まります。おすすめ順では、検索条件に一致する全出品を「プラチナ → ゴールド → シルバー → 通常出品」の順で表示します。有効期間中は上位プランを優先し、同じプラン内は10分ごとに先頭を交代します。検索・再表示時に反映し、続きを表示する間は順番を固定します。新しい順・価格順・納期順を選んだ場合はその順番を優先します。期間終了後は通常表示に戻ります。閲覧数・購入・売上は保証しません。</p>
+  </div>
+  <div class="boost-note" id="boostVerificationStatus" role="status">購入と反映状況を確認しています…</div>
   <div id="boostOwnHistory" class="boost-note"></div><button class="btn secondary full" type="button" id="boostReconcileButton" onclick="reconcileBoostPurchases()" disabled>購入の反映を確認</button>
   <button class="btn secondary boost-close" type="button" onclick="closeBoostPreview()">閉じる</button>
  </div>
@@ -5560,6 +5581,8 @@ async function boostRead(task,stage,timeout=15000){
 }
 async function openBoostPreview(listingId){
  const request=++boostRequest;boostReady=false;boostStoreProducts=[];boostOwnHistory=[];boostHistoryReady=false;
+ const purchaseOptions=document.getElementById('boostPurchaseOptions');
+ if(purchaseOptions)purchaseOptions.hidden=true;
  const overlay=document.getElementById('boostPreviewOverlay');
  if(!overlay?.classList.contains('show'))boostReturnFocus=document.activeElement;
  overlay?.classList.add('show');overlay?.querySelector?.('.boost-close-top')?.focus();
@@ -5594,7 +5617,13 @@ async function openBoostPreview(listingId){
   boostNotice('Appleから3プランの商品情報を取得しています…');
   const products=await boostRead(()=>plugin.products(),'Appleの商品取得',20000);
   if(request!==boostRequest||currentUser?.id!==userId)return;
-  if(products.environment!==status.environment){boostNotice('Appleの購入環境を確認できません。現在は購入できません。');return;}boostEnvironment=status.environment;boostStoreProducts=products.products||[];boostReady=true;boostListingChanged();
+  if(products.environment!==status.environment){boostNotice('Appleの購入環境を確認できません。現在は購入できません。');return;}boostEnvironment=status.environment;
+  boostStoreProducts=products.products||[];
+  const available=['silver','gold','platinum'].some(plan=>boostProductReadiness(plan,boostStoreProducts.find(product=>product.id==='com.ayuhide.koenofurima.boost.'+plan)).ready);
+  if(!available){boostNotice('Appleの商品情報を確認できません。時間をおいて開き直してください。');return;}
+  boostReady=true;
+  if(purchaseOptions)purchaseOptions.hidden=false;
+  boostListingChanged();
   boostNotice('対象の出品とプランを選ぶとAppleの購入確認画面が開きます。');
  }catch(error){if(request===boostRequest)boostNotice(error?.message?.includes('に時間がかかっています。')?error.message:'購入状況を取得できません。一度閉じてから開き直してください。');}
 }

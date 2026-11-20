@@ -1,6 +1,6 @@
 {
   "release": "2026.11.20-app-review",
-  "web_sha256": "8a032192d1101b84891086966f021e8ab89691c6f1909d9535a2ff115b632310",
+  "web_sha256": "04274bf6fd5c040e44de5601b570972f4139e37d2fad5f711ff3fc384d8dfe87",
   "bundle_id": "com.ayuhide.koenofurima",
   "ios_app_icon_sha256": "55ebba6206924a7e6df7f9c87659c87f673b88a8ca96671b547fb907f591eaec",
   "minimum_build_number": 57,

@@ -6,8 +6,9 @@ const html=readFileSync(new URL('../index.html',import.meta.url),'utf8');
 const source=html.slice(html.indexOf('async function boostRead('),html.indexOf('async function purchaseBoost('));
 function screen(listings=[]){
  const notices=[],select={value:'',replaceChildren(){},add(){}},history={textContent:''};
- const plugin={pendingTransactions:async()=>({transactions:[]}),products:async()=>({environment:'Sandbox',products:[{id:'silver'}]})};
+ const plugin={pendingTransactions:async()=>({transactions:[]}),products:async()=>({environment:'Sandbox',products:[{id:'com.ayuhide.koenofurima.boost.silver',currencyCode:'JPY',displayPrice:'¥300',price:'300'}]})};
  const context=vm.createContext({setTimeout,clearTimeout,Option:class{},formatJpDateTime:()=>'',currentUser:{id:'owner'},boostRequest:0,boostOwnHistory:[],boostHistoryReady:false,boostReady:false,boostStoreProducts:[],boostEnvironment:null,boostListingChanged(){},boostNotice:t=>notices.push(t),isNativeBoost:()=>true,boostApi:async()=>({enabled:true,environment:'Sandbox'}),nativeBoost:async()=>({plugin}),document:{getElementById:id=>id==='boostPreviewOverlay'?{classList:{add(){},contains(){return false}}}:id==='boostListingSelect'?select:history},sb:{from:table=>({select(){return this},eq(){return this},order(){return table==='listings'?Promise.resolve({data:listings}):this},limit:async()=>({data:[]})})}});
+ vm.runInContext(html.slice(html.indexOf('function boostProductPrice('),html.indexOf('function boostListingChanged(')),context);
  vm.runInContext(source,context);return {context,notices,plugin};
 }
 test('without listings the screen explains the prerequisite without starting StoreKit',async()=>{
@@ -22,7 +23,7 @@ test('Sandbox and Production show the same purchase instructions when the StoreK
  for(const environment of ['Sandbox','Production']){
   const {context,notices,plugin}=screen([{id:'listing',title:'test'}]);
   context.boostApi=async()=>({enabled:true,environment});
-  plugin.products=async()=>({environment,products:[{id:'silver'}]});
+  plugin.products=async()=>({environment,products:[{id:'com.ayuhide.koenofurima.boost.silver',currencyCode:'JPY',displayPrice:'¥300',price:'300'}]});
   await context.openBoostPreview('listing');
   assert.equal(context.boostReady,true);
   assert.equal(context.boostEnvironment,environment);
@@ -37,7 +38,7 @@ test('the actual Capacitor proxy loads through async initialization and reaches 
  context.Capacitor={PluginHeaders:[{name:'KoeBoost',methods:['products','pendingTransactions','purchase','finish'].map(name=>({name,rtype:'promise'}))}],nativePromise:async(name,method,options)=>{
   calls.push({name,method,options});
   if(method==='pendingTransactions')return {transactions:[]};
-  if(method==='products')return {environment:'Sandbox',products:[{id:'com.ayuhide.koenofurima.boost.silver',displayPrice:'¥300',currencyCode:'JPY'}]};
+  if(method==='products')return {environment:'Sandbox',products:[{id:'com.ayuhide.koenofurima.boost.silver',displayPrice:'¥300',currencyCode:'JPY',price:'300'}]};
   throw Error('loading must not purchase or finish');
  }};
  const core=readFileSync(new URL('../node_modules/@capacitor/core/dist/index.js',import.meta.url),'utf8').replace(/^export \{.*\};$/m,'globalThis.testCore={registerPlugin};');
@@ -59,7 +60,7 @@ test('product loading from a previous login cannot enable purchases after the ac
  s.plugin.products=()=>{reached.resolve();return products.promise;};
  const run=s.context.openBoostPreview('listing');await reached.promise;
  s.context.currentUser={id:'other'};
- products.resolve({environment:'Sandbox',products:[{id:'silver'}]});await run;
+ products.resolve({environment:'Sandbox',products:[{id:'com.ayuhide.koenofurima.boost.silver',currencyCode:'JPY',displayPrice:'¥300',price:'300'}]});await run;
  assert.equal(s.context.boostReady,false);assert.equal(s.context.boostStoreProducts.length,0);
 });
 function purchaseScreen(){
