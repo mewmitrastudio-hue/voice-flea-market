@@ -86,7 +86,7 @@ test('purchase responds immediately and repeated taps never create additional or
  await s.reached.verify.promise;assert.match(s.notices.at(-1),/購入履歴への反映を確認/);assert.ok(s.buttons.every(x=>x.disabled));
  await s.context.purchaseBoost('silver');s.verify.resolve({success:true,environment:'Sandbox',endsAt:'2026-10-24'});
  await s.reached.finish.promise;s.finish.resolve();await run;
- assert.deepEqual(s.calls,['pending','prepare','purchase','verify','finish']);assert.equal(s.context.boostBusy,false);assert.match(s.notices.at(-1),/Sandboxの購入を購入履歴に反映しました.*一般公開の出品順位には反映されません/);
+ assert.deepEqual(s.calls,['pending','prepare','purchase','verify','finish']);assert.equal(s.context.boostBusy,false);assert.match(s.notices.at(-1),/購入履歴に反映しました.*請求や一般公開の出品順位の変更はありません/);
 });
 test('Apple cancellation releases the lock and never verifies or finishes a transaction',async()=>{
  const s=purchaseScreen(),run=s.context.purchaseBoost('silver');
@@ -201,5 +201,5 @@ for(const plan of ['silver','gold','platinum'])test(`verified ${plan} purchase c
  s.order.resolve({orderId:'order',productId:'com.ayuhide.koenofurima.boost.'+plan});
  s.verify.resolve({success:true,environment:'Sandbox'});await run;
  assert.equal(purchaseArgs.productId,'com.ayuhide.koenofurima.boost.'+plan);assert.equal(purchaseArgs.orderId,'order');assert.equal(purchaseArgs.environment,'Sandbox');
- assert.deepEqual(s.calls,['prepare','verify','finish']);assert.equal(s.context.boostBusy,false);assert.match(s.notices.at(-1),/Sandboxの購入を購入履歴に反映しました.*一般公開の出品順位には反映されません/);
+ assert.deepEqual(s.calls,['prepare','verify','finish']);assert.equal(s.context.boostBusy,false);assert.match(s.notices.at(-1),/購入履歴に反映しました.*請求や一般公開の出品順位の変更はありません/);
 });

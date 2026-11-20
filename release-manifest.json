@@ -1,9 +1,9 @@
 {
-  "release": "2026.11.17-review-audio56",
-  "web_sha256": "527302f7d485c0062378999cb211ea5c16f9beee0f49fc8e39055bc6afab7d96",
+  "release": "2026.11.20-app-review",
+  "web_sha256": "8a032192d1101b84891086966f021e8ab89691c6f1909d9535a2ff115b632310",
   "bundle_id": "com.ayuhide.koenofurima",
   "ios_app_icon_sha256": "55ebba6206924a7e6df7f9c87659c87f673b88a8ca96671b547fb907f591eaec",
-  "minimum_build_number": 56,
+  "minimum_build_number": 57,
   "production_backend_applied": true,
   "production_backend_applied_at": "2026-10-16T22:09:17.179653+00:00",
   "boost_native_sha256": "335e5aef03376655666f8e482d50b33cf816fd4a4131c96d0bc1e719114e94c4",
