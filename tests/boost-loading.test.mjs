@@ -18,10 +18,17 @@ test('a stalled read leaves loading with a stage-specific error and later reads 
  const {context}=screen();await assert.rejects(context.boostRead(()=>new Promise(()=>{}),'Appleの商品取得',5),/Appleの商品取得に時間がかかっています/);
  assert.equal(await context.boostRead(()=>42,'read',20),42);
 });
-test('completed Sandbox product loading enables selection and identifies the test environment',async()=>{
- const {context,notices}=screen([{id:'listing',title:'test'}]);await context.openBoostPreview('listing');
- assert.equal(context.boostReady,true);assert.equal(context.boostEnvironment,'Sandbox');assert.match(notices.at(-1),/^テスト購入です/);
- assert.ok(notices.includes('Appleから3プランの商品情報を取得しています…'));
+test('Sandbox and Production show the same purchase instructions when the StoreKit environment matches',async()=>{
+ for(const environment of ['Sandbox','Production']){
+  const {context,notices,plugin}=screen([{id:'listing',title:'test'}]);
+  context.boostApi=async()=>({enabled:true,environment});
+  plugin.products=async()=>({environment,products:[{id:'silver'}]});
+  await context.openBoostPreview('listing');
+  assert.equal(context.boostReady,true);
+  assert.equal(context.boostEnvironment,environment);
+  assert.equal(notices.at(-1),'対象の出品とプランを選ぶとAppleの購入確認画面が開きます。');
+  assert.ok(notices.includes('Appleから3プランの商品情報を取得しています…'));
+ }
 });
 test('the actual Capacitor proxy loads through async initialization and reaches native products',async()=>{
  const {context,notices}=screen([{id:'listing',title:'test'}]);
@@ -41,7 +48,7 @@ test('the actual Capacitor proxy loads through async initialization and reaches 
  // The real proxy has a callable `then`, unlike a plain-object test double.
  const raw=context.testCore.registerPlugin('KoeBoost');assert.equal(typeof raw.then,'function');
  await context.openBoostPreview('listing');
- assert.equal(context.boostReady,true);assert.match(notices.at(-1),/^テスト購入です/);
+ assert.equal(context.boostReady,true);assert.match(notices.at(-1),/Appleの購入確認画面が開きます/);
  assert.deepEqual(calls.map(x=>x.method),['pendingTransactions','products']);
  const again=await context.nativeBoost();assert.equal(again.plugin,raw);
  assert.equal(calls.length,2,'initialization must not dispatch a fictitious then method');
@@ -76,10 +83,10 @@ test('purchase responds immediately and repeated taps never create additional or
  await s.context.purchaseBoost('silver');s.order.resolve({orderId:'order',productId:'silver'});
  await s.reached.purchase.promise;assert.match(s.notices.at(-1),/購入画面を開いて/);
  await s.context.purchaseBoost('silver');s.purchase.resolve({status:'purchased',signedTransaction:'signed',transactionId:'tx'});
- await s.reached.verify.promise;assert.match(s.notices.at(-1),/出品への反映を確認/);assert.ok(s.buttons.every(x=>x.disabled));
+ await s.reached.verify.promise;assert.match(s.notices.at(-1),/購入履歴への反映を確認/);assert.ok(s.buttons.every(x=>x.disabled));
  await s.context.purchaseBoost('silver');s.verify.resolve({success:true,environment:'Sandbox',endsAt:'2026-10-24'});
  await s.reached.finish.promise;s.finish.resolve();await run;
- assert.deepEqual(s.calls,['pending','prepare','purchase','verify','finish']);assert.equal(s.context.boostBusy,false);assert.match(s.notices.at(-1),/反映が完了/);
+ assert.deepEqual(s.calls,['pending','prepare','purchase','verify','finish']);assert.equal(s.context.boostBusy,false);assert.match(s.notices.at(-1),/Sandboxの購入を購入履歴に反映しました.*一般公開の出品順位には反映されません/);
 });
 test('Apple cancellation releases the lock and never verifies or finishes a transaction',async()=>{
  const s=purchaseScreen(),run=s.context.purchaseBoost('silver');
@@ -194,5 +201,5 @@ for(const plan of ['silver','gold','platinum'])test(`verified ${plan} purchase c
  s.order.resolve({orderId:'order',productId:'com.ayuhide.koenofurima.boost.'+plan});
  s.verify.resolve({success:true,environment:'Sandbox'});await run;
  assert.equal(purchaseArgs.productId,'com.ayuhide.koenofurima.boost.'+plan);assert.equal(purchaseArgs.orderId,'order');assert.equal(purchaseArgs.environment,'Sandbox');
- assert.deepEqual(s.calls,['prepare','verify','finish']);assert.equal(s.context.boostBusy,false);assert.match(s.notices.at(-1),/反映が完了/);
+ assert.deepEqual(s.calls,['prepare','verify','finish']);assert.equal(s.context.boostBusy,false);assert.match(s.notices.at(-1),/Sandboxの購入を購入履歴に反映しました.*一般公開の出品順位には反映されません/);
 });

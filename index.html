@@ -5488,9 +5488,9 @@ document.addEventListener('click',function(e){
    <div class="boost-plan-head"><span class="boost-tier boost-platinum">✦ PLATINUM PR</span><strong>1,500円</strong></div>
    <small>30日間／おすすめ順でゴールド・シルバー・通常出品より上に表示</small><button class="btn full" type="button" data-boost-buy="platinum" onclick="purchaseBoost('platinum')" disabled>準備中</button>
   </div>
-  <div class="boost-note" id="boostVerificationStatus" role="status">反映状況：課金機能の準備中（購入・有効化はできません）</div>
-  <p class="boost-note">※ 自動更新のない1回ごとの購入です。価格はAppleの購入確認画面で確定します。期間はサーバーへの反映時から始まります。おすすめ順では、検索条件に一致する全出品を「プラチナ → ゴールド → シルバー → 通常出品」の順で表示します。有効期間中は上位プランを優先し、同じプラン内は10分ごとに先頭を交代します。検索・再表示時に反映し、続きを表示する間は順番を固定します。新しい順・価格順・納期順を選んだ場合はその順番を優先します。期間終了後は通常表示に戻ります。閲覧数・購入・売上は保証しません。Sandboxはテスト購入で、一般公開のPRには反映しません。</p>
-  <div id="boostOwnHistory" class="boost-note"></div><button class="btn secondary full" type="button" id="boostReconcileButton" onclick="reconcileBoostPurchases()" disabled>購入の反映を確認（iPhoneアプリ）</button>
+  <div class="boost-note" id="boostVerificationStatus" role="status">購入と反映状況を確認しています…</div>
+  <p class="boost-note">※ 自動更新のない1回ごとの購入です。価格はAppleの購入確認画面で確定します。期間はサーバーへの反映時から始まります。おすすめ順では、検索条件に一致する全出品を「プラチナ → ゴールド → シルバー → 通常出品」の順で表示します。有効期間中は上位プランを優先し、同じプラン内は10分ごとに先頭を交代します。検索・再表示時に反映し、続きを表示する間は順番を固定します。新しい順・価格順・納期順を選んだ場合はその順番を優先します。期間終了後は通常表示に戻ります。閲覧数・購入・売上は保証しません。</p>
+  <div id="boostOwnHistory" class="boost-note"></div><button class="btn secondary full" type="button" id="boostReconcileButton" onclick="reconcileBoostPurchases()" disabled>購入の反映を確認</button>
   <button class="btn secondary boost-close" type="button" onclick="closeBoostPreview()">閉じる</button>
  </div>
 </div>
@@ -5576,7 +5576,7 @@ async function openBoostPreview(listingId){
   const products=await boostRead(()=>plugin.products(),'Appleの商品取得',20000);
   if(request!==boostRequest||currentUser?.id!==userId)return;
   if(products.environment!==status.environment){boostNotice('Appleの購入環境を確認できません。現在は購入できません。');return;}boostEnvironment=status.environment;boostStoreProducts=products.products||[];boostReady=true;boostListingChanged();
-  boostNotice(status.environment==='Sandbox'?'テスト購入です。実際の請求と一般公開PRは発生しません。':'対象の出品とプランを選ぶとAppleの購入確認画面が開きます。');
+  boostNotice('対象の出品とプランを選ぶとAppleの購入確認画面が開きます。');
  }catch(error){if(request===boostRequest)boostNotice(error?.message?.includes('に時間がかかっています。')?error.message:'購入状況を取得できません。一度閉じてから開き直してください。');}
 }
 async function purchaseBoost(plan){
@@ -5605,14 +5605,20 @@ async function purchaseBoost(plan){
   if(result.status==='cancelled'){boostNotice('購入をキャンセルしました。');return;}
   if(result.status==='pending'){boostReady=false;boostNotice('Appleで購入の承認待ちです。再購入せず、承認後に「購入の反映を確認」を押してください。');return;}
   if(result.status!=='purchased'||!result.signedTransaction)throw new Error('購入結果を確認できません。再購入せず「購入の反映を確認」を押してください。');
-  boostReady=false;boostNotice('購入が完了しました。出品への反映を確認しています。再購入せずお待ちください。');
+  boostReady=false;boostNotice('Appleの購入結果を受け取りました。購入履歴への反映を確認しています。再購入せずお待ちください。');
   const receipt=await boostApi({action:'verify',signedTransaction:result.signedTransaction});
   if(!receipt.success)throw new Error('購入の反映を確認できません。再購入せず「購入の反映を確認」を押してください。');
   if(currentUser?.id!==purchaseUserId)return;
   await plugin.finish({transactionId:result.transactionId});
   if(currentUser?.id!==purchaseUserId)return;
   if(boostRequest===purchaseRequest)await openBoostPreview(listingId);
-  boostNotice(receipt.revoked?'この購入は返金または取り消し済みです。':`購入の反映が完了しました。${receipt.environment==='Sandbox'?'テスト購入です。':''}終了：${formatJpDateTime(receipt.endsAt)}`);
+  if(receipt.revoked){
+   boostNotice('この購入は返金または取り消し済みです。');
+  }else if(receipt.environment==='Sandbox'){
+   boostNotice('Sandboxの購入を購入履歴に反映しました。「テスト」の履歴で確認できます。一般公開の出品順位には反映されません。');
+  }else{
+   boostNotice(`購入の反映が完了しました。終了：${formatJpDateTime(receipt.endsAt)}`);
+  }
  }catch(e){boostReady=false;boostNotice(e.message||'購入の反映を確認できません。再購入せず購入の反映を確認してください。');}
  finally{boostBusy=false;boostPurchasePlan=null;boostListingChanged();}
 }
