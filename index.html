@@ -1125,7 +1125,7 @@ html body.normal-mode #home.page.on.home-scroll-required{
 html body.normal-mode #home.page.on.home-has-pending{grid-template-rows:auto minmax(min-content,1fr) auto auto auto auto auto}
 </style>
 <body><div id="pullRefreshIndicator" class="pull-refresh-indicator">↓ 引っ張って更新</div><div class="app">
-<div class="topbar"><div class="brandwrap"><div class="brandicon">🎙️</div><div class="brandtext"><div class="brand">声のフリマ</div><div class="tag"><span class="line1">世界に、あなたの声を売る。</span><span class="line2">あなたの声を、世界が買う。</span></div></div></div><div class="topactions"><button id="refreshBtn" class="refreshbtn hide" onclick="refreshAllData()" aria-label="最新情報に更新" title="最新情報に更新">↻</button><button id="bellBtn" class="bellbtn hide" onclick="openNotifications()" aria-label="お知らせ">🔔<span id="bellBadge" class="bellbadge"></span></button><button id="favoriteBtn" class="bellbtn hide" onclick="openFavorites()" aria-label="お気に入り">♡<span id="favoriteBadge" class="bellbadge"></span></button><button id="menuBtn" aria-controls="mainMenuOverlay" aria-haspopup="dialog" aria-expanded="false" class="bellbtn hide" onclick="openMainMenu()" aria-label="メニュー">☰</button></div></div>
+<div class="topbar"><div class="brandwrap"><div class="brandicon">🎙️</div><div class="brandtext"><div class="brand">声のフリマ</div><div class="tag"><span class="line1">世界に、あなたの声を売る。</span><span class="line2">あなたの声を、世界が買う。</span></div></div></div><div class="topactions"><button id="refreshBtn" class="refreshbtn hide" onclick="refreshAllData()" aria-label="最新情報に更新" title="最新情報に更新">↻</button><button id="bellBtn" class="bellbtn hide" onclick="openNotifications()" aria-label="お知らせ" title="お知らせ">🔔<span id="bellBadge" class="bellbadge"></span></button><button id="favoriteBtn" class="bellbtn hide" onclick="openFavorites()" aria-label="お気に入り">♡<span id="favoriteBadge" class="bellbadge"></span></button><button id="menuBtn" aria-controls="mainMenuOverlay" aria-haspopup="dialog" aria-expanded="false" class="bellbtn hide" onclick="openMainMenu()" aria-label="メニュー">☰</button></div></div>
 
 <div id="globalPageNav" class="global-page-nav" aria-label="ページ移動"><button type="button" onclick="goBackPage()" id="globalBackBtn" aria-label="前の画面に戻る">← 戻る</button><button type="button" class="global-home-btn" onclick="goHomeNow()" aria-label="ホームへ戻る">🏠 ホーム</button><button type="button" class="global-guide-btn" onclick="openManualCenter()" aria-haspopup="dialog" aria-controls="manualOverlay">📖 使い方</button></div>
 
@@ -1571,7 +1571,7 @@ html body.normal-mode #home.page.on.home-has-pending{grid-template-rows:auto min
   </div>
 </div>
 <div id="financeOverlay" class="finance-overlay" onclick="if(event.target===this)closeFinanceCenter()"><div class="finance-box"><div class="finance-head"><h3>売上金</h3><button class="finance-close" onclick="closeFinanceCenter()" aria-label="閉じる">×</button></div><div id="appleRefundReviewNotice" class="notice" role="status" aria-live="polite"></div><button id="financePendingCheckout" class="btn secondary full" type="button" onclick="openPendingCheckoutFromHistory()" hidden>未確認の支払い状況を確認</button><div id="financeBody"></div></div></div>
-<div id="notifOverlay" class="notif-overlay" onclick="if(event.target===this)closeNotifications()"><aside class="notif-sheet"><div class="notif-head"><h2>お知らせ</h2><div class="notif-actions"><button class="notif-readall" onclick="markAllNotificationsRead()">すべて既読</button><button class="notif-close" onclick="closeNotifications()" aria-label="閉じる">×</button></div></div><div class="small">必要な連絡をまとめて確認できます。</div><div id="notifContent"><div class="notif-empty">読み込み中...</div></div></aside></div>
+<div id="notifOverlay" class="notif-overlay" onclick="if(event.target===this)closeNotifications()"><aside class="notif-sheet"><div class="notif-head"><h2>お知らせ</h2><div class="notif-actions"><button class="notif-readall" onclick="markAllNotificationsRead()">すべて既読</button><button class="notif-close" onclick="closeNotifications()" aria-label="閉じる">×</button></div></div><div class="small">必要な連絡をまとめて確認できます。ベルの数字はお知らせの件数で、未読メッセージの通数とは別です。</div><div id="notifContent"><div class="notif-empty">読み込み中...</div></div></aside></div>
 <div id="rulesOverlay" class="rules-overlay" onclick="if(event.target===this)closeRulesCenter()"><div class="rules-box"><div class="rules-head"><h3>ルール・ポリシー</h3><button class="rules-close" onclick="closeRulesCenter()" aria-label="閉じる">×</button></div><div class="rules-beta">安心してご利用いただくため、取引・決済・返金・音声の権利・AI利用などのルールを定めています。ご利用前に各項目をご確認ください。</div><div class="rules-tabs"><button id="ruleTabTerms" class="rules-tab active" onclick="showRuleDoc('terms')">利用規約</button><button id="ruleTabPrivacy" class="rules-tab" onclick="showRuleDoc('privacy')">プライバシーポリシー</button><button id="ruleTabProhibited" class="rules-tab" onclick="showRuleDoc('prohibited')">禁止事項</button><button id="ruleTabCancel" class="rules-tab" onclick="showRuleDoc('cancel')">キャンセル・返金</button><button id="ruleTabAi" class="rules-tab" onclick="showRuleDoc('ai')">音声・AI利用</button><button id="ruleTabCommerce" class="rules-tab" onclick="showRuleDoc('commerce')">特商法・運営者情報</button></div><div id="rulesBody" class="rules-body"></div></div></div>
 <div id="safetyOverlay" class="safety-overlay" onclick="if(event.target===this)closeSafetyCenter()"><div class="safety-box"><div class="safety-head"><h3 id="safetyTitle">お問い合わせ</h3><button class="safety-close" onclick="closeSafetyCenter()" aria-label="閉じる">×</button></div><div id="safetyIntro" class="safety-note">使い方、不具合、その他のお問い合わせを運営へ送れます。</div><div id="safetyPartnerActions" class="safety-actions hide">
 <button id="blockUserBtn" class="safety-action danger" onclick="toggleBlockCurrentPartner()">このユーザーをブロック</button>
@@ -2628,7 +2628,7 @@ async function goBackPage(){
   const prev=pageHistory.pop()||'home';
   await go(prev,{fromHistory:true});
 }
-async function go(id,opts={}){pageNavigationRequest++;if(id==='voices'&&!opts.keepSelectedListing)selectedListingId=null;const allowed=['home','voices','sell','jobs','messages','me'];if(!allowed.includes(id))id='home';const current=document.querySelector('.page.on')?.id;if(current&&allowed.includes(current)&&current!==id&&!opts.fromHistory&&!opts.skipHistory)pageHistory.push(current);if(pageHistory.length>20)pageHistory=pageHistory.slice(-20);setShellMode(id==='messages'?'messages':'normal');document.querySelectorAll('.page').forEach(p=>p.classList.remove('on'));document.getElementById(id).classList.add('on');updateGlobalPageNav(id);document.querySelectorAll('#nav button').forEach((b,i)=>{b.classList.toggle('on',allowed[i]===id);if(allowed[i]===id)b.setAttribute('aria-current','page');else b.removeAttribute('aria-current')});if(currentUser&&!opts.skipSave)writeUIState('page',id);if(!opts.keepScroll){document.getElementById(id).scrollTop=0;if(id!=='messages'){document.querySelector('.app').scrollTop=0;window.scrollTo(0,0)}}if(id==='voices')await loadListings();if(id==='jobs')await loadJobs();if(id==='messages'&&!opts.skipList)await loadConversations();if(id==='me')await loadMe();}
+async function go(id,opts={}){pageNavigationRequest++;if(id==='voices'&&!opts.keepSelectedListing)selectedListingId=null;const allowed=['home','voices','sell','jobs','messages','me'];if(!allowed.includes(id))id='home';const current=document.querySelector('.page.on')?.id;if(current&&allowed.includes(current)&&current!==id&&!opts.fromHistory&&!opts.skipHistory)pageHistory.push(current);if(pageHistory.length>20)pageHistory=pageHistory.slice(-20);setShellMode(id==='messages'?'messages':'normal');document.querySelectorAll('.page').forEach(p=>p.classList.remove('on'));document.getElementById(id).classList.add('on');updateGlobalPageNav(id);document.querySelectorAll('#nav button').forEach((b,i)=>{b.classList.toggle('on',allowed[i]===id);if(allowed[i]===id)b.setAttribute('aria-current','page');else b.removeAttribute('aria-current')});if(currentUser&&!opts.skipSave)writeUIState('page',id);if(!opts.keepScroll){document.getElementById(id).scrollTop=0;if(id!=='messages'){document.querySelector('.app').scrollTop=0;window.scrollTo(0,0)}}if(id==='voices')await loadListings();if(id==='jobs')await loadJobs();if(id==='messages'&&!opts.skipList)await loadConversations();if(id==='me')await loadMe();if(id==='home'&&typeof updateHomeUnreadCount==='function')updateHomeUnreadCount();}
 async function restoreUI(){let page=readUIState('page')||'home';if(page==='messages'){try{const saved=JSON.parse(readUIState('chat')||'null');if(saved?.id){await go('messages',{skipSave:true,skipHistory:true,skipList:true});await openConversation(saved.id,saved.title||'チャット',{skipSave:true});return}}catch(e){clearChatState()}}await go(page,{skipSave:true,skipHistory:true});}
 let authSubscription=null,authInitRunning=false,authBootstrapping=false;
 let authEventRevision=0,authUIRevision=0,authReloadPending=false,signOutPending=false;
@@ -2913,16 +2913,8 @@ async function loadHome(){
   if(currentUser?.id!==userId||authReloadPending)return;
   const salesAmount=salesResult?.payout;
 
-  let unread=0;
-  for(const c of convs||[]){
-    const seen=safeLocalStorage.getItem(seenKey(c.id))||'1970-01-01T00:00:00.000Z';
-    const {count:n}=await sb.from('messages').select('*',{count:'exact',head:true})
-      .eq('conversation_id',c.id)
-      .neq('sender_id',userId)
-      .gt('created_at',seen);
-    if(currentUser?.id!==userId||authReloadPending)return;
-    unread+=n||0;
-  }
+  const unread=await countUnreadMessages(convs);
+  if(currentUser?.id!==userId||authReloadPending)return;
 
   const salesEl=document.getElementById('homeSalesAmount');
   const unreadEl=document.getElementById('homeUnreadCount');
@@ -3580,6 +3572,28 @@ async function markConversationSeen(id){
    safeLocalStorage.setItem(seenKey(id),new Date().toISOString());
  }
 }
+// 未読メッセージ数の算出はホームとバッジで共通（会話ごとに、既読時刻より後の相手メッセージを合計）。
+async function countUnreadMessages(convs){
+ if(!sb||!currentUser)return 0;
+ const userId=currentUser.id;
+ let list=convs;
+ if(!list){
+   const {data}=await sb.from('conversations').select('id').or(`buyer_id.eq.${userId},seller_id.eq.${userId}`);
+   list=data||[];
+ }
+ let count=0;
+ for(const c of list){
+   const seen=safeLocalStorage.getItem(seenKey(c.id))||'1970-01-01T00:00:00.000Z';
+   const {count:n}=await sb.from('messages').select('*',{count:'exact',head:true}).eq('conversation_id',c.id).neq('sender_id',userId).gt('created_at',seen);
+   count+=n||0;
+ }
+ return count;
+}
+async function updateHomeUnreadCount(){
+ const el=document.getElementById('homeUnreadCount');
+ if(!el||!sb||!currentUser)return;
+ try{el.textContent=`${await countUnreadMessages()}件`;}catch(e){console.warn(e)}
+}
 async function ensureConversation(jobId,buyerId,sellerId){
  let q=sb.from('conversations').select('id,buyer_id,seller_id,job_id').eq('job_id',jobId).eq('buyer_id',buyerId).eq('seller_id',sellerId).limit(1);
  const {data,error}=await q;if(error)return {error};if(data?.length)return {data:data[0]};
@@ -3815,7 +3829,7 @@ async function loadConversations(){
  }
  if(!isCurrent())return;
  rows.sort((a,b)=>b.activity-a.activity);
- conversationList.innerHTML=rows.map(row=>row.html).join('')||'<div class="card small">表示中のメッセージはありません。</div>';loadMessageBadge()
+ conversationList.innerHTML=rows.map(row=>row.html).join('')||'<div class="card small">表示中のメッセージはありません。</div>';loadMessageBadge();updateHomeUnreadCount()
  }catch(error){
    if(isCurrent())conversationList.innerHTML='<div class="card"><div class="err" role="alert">会話を読み込めませんでした。通信状況を確認してください。</div><button type="button" class="btn secondary full" onclick="loadConversations()">もう一度読み込む</button></div>';
  }
@@ -4079,7 +4093,7 @@ async function loadChatMessages(older=false){
    }
    return separator+`<div class="chat-message-row theirs-row">${avatarMarkup(profileMap[m.sender_id]||{display_name:'ユーザー'},'xs',m.sender_id)}<div class="chat-message-content"><div class="bubble theirs">${esc(body)}</div>${when?`<div class="chat-message-time">${when}</div>`:''}</div></div>`;
  }).join('')||'<div class="small">まだメッセージはありません。最初のメッセージを送ってみましょう。</div>';
- ids.forEach(markConversationSeen);
+ await Promise.all(ids.map(markConversationSeen));
  if(history.hasMore)chatMessages.insertAdjacentHTML('afterbegin','<button id="loadOlderChatBtn" type="button" class="btn secondary full" onclick="loadOlderChatMessages()">以前のメッセージを読み込む</button>');
  requestAnimationFrame(()=>{if(isCurrent())chatMessages.scrollTop=older?previousScroll+chatMessages.scrollHeight-previousHeight:followLatest?chatMessages.scrollHeight:previousScroll})
 }
@@ -4465,13 +4479,7 @@ async function acceptDeliveryConfirmed(){
 }
 async function loadMessageBadge(){
  if(!sb||!currentUser||!msgBadge)return;
- const {data:cs}=await sb.from('conversations').select('id').or(`buyer_id.eq.${currentUser.id},seller_id.eq.${currentUser.id}`);
- let count=0;
- for(const c of cs||[]){
-   const seen=safeLocalStorage.getItem(seenKey(c.id))||'1970-01-01T00:00:00.000Z';
-   const {count:n}=await sb.from('messages').select('*',{count:'exact',head:true}).eq('conversation_id',c.id).neq('sender_id',currentUser.id).gt('created_at',seen);
-   count+=n||0;
- }
+ const count=await countUnreadMessages();
  const label=count>99?'99+':String(count);
  msgBadge.textContent=label;
  msgBadge.classList.toggle('show',count>0);
