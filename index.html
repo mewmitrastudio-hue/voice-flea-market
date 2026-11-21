@@ -462,15 +462,20 @@ body.normal-mode #nav button{height:46px!important;min-height:46px!important;bor
 .chat-message-row{display:flex;align-items:flex-end;gap:7px;margin:6px 0}
 .chat-message-row.mine-row{justify-content:flex-end}
 .chat-message-row.theirs-row{justify-content:flex-start}
-.chat-message-row .bubble{margin:0}
-.chat-message-content{display:flex;flex-direction:column;max-width:82%}
+.chat-message-row .bubble{margin:0;max-width:100%}
+.chat-message-content{display:flex;flex-direction:column;max-width:min(82%,560px)}
 .mine-row .chat-message-content{align-items:flex-end}
 .theirs-row .chat-message-content{align-items:flex-start}
-.chat-message-time{font-size:9px;color:#8a8498;margin-top:3px;padding:0 4px;white-space:nowrap}
+.chat-message-time{font-size:9px;color:#8a8498;padding:0 2px 1px;white-space:nowrap}
+.chat-system-note .chat-message-time{margin-top:3px;padding:0 4px}
 .listing-date{font-size:10px;color:#817a91;margin-top:7px}
 .purchase-guide{margin:-2px 2px 10px;padding:10px 12px;border-radius:12px;background:#f4f1ff;color:#5148c9;font-size:11px;font-weight:700;line-height:1.55}
 .trade-date{font-size:10px;color:#817a91;margin-top:4px}
 .chat-system-row{display:flex;justify-content:center;margin:8px 0}.chat-system-note{max-width:88%;padding:7px 12px;border-radius:999px;background:#f5f5fa;border:1px solid #e7e4f4;color:#667085;font-size:11px;line-height:1.45;text-align:center;box-shadow:0 2px 8px rgba(73,57,130,.04)}
+.chat-date-separator{display:flex;justify-content:center;margin:14px 0 6px}
+.chat-date-separator span{background:rgba(24,32,51,.52);color:#fff;font-size:10px;font-weight:700;padding:4px 11px;border-radius:999px}
+.chat-sender-name{font-size:10px;font-weight:700;color:var(--sub);margin:0 0 2px 4px}
+.conversation-trade-title{font-size:11px;font-weight:800;color:#5146a8;margin-top:3px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .public-profile-overlay{position:fixed;inset:0;z-index:100001;display:none;align-items:center;justify-content:center;padding:18px;background:rgba(20,22,35,.42);backdrop-filter:blur(3px)}
 .public-profile-overlay.show{display:flex}
 .public-profile-box{width:min(100%,460px);max-height:88dvh;overflow:auto;background:#fff;border-radius:24px;padding:20px;box-shadow:0 22px 70px rgba(36,28,74,.24)}
@@ -645,6 +650,12 @@ body.messages-mode .chatrow .small{display:block;max-width:100%;overflow:hidden;
 body.messages-mode .conversation-time{max-width:86px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;text-align:right}
 body.messages-mode .unread-dot{flex:0 0 auto;align-self:flex-end}
 @media(max-width:390px){body.messages-mode .chatrow{padding:11px}body.messages-mode .conversation-time{max-width:72px;font-size:9px}}
+@media(min-width:820px){
+ body.messages-mode #conversationList{max-width:780px;margin-left:auto;margin-right:auto}
+ body.chat-mode .chatmessages{width:100%;max-width:780px;margin-left:auto;margin-right:auto}
+ body.chat-mode .chatdelivery{width:100%;max-width:780px;margin-left:auto;margin-right:auto}
+ body.chat-mode .trade-info-panel{max-width:752px;margin-left:auto;margin-right:auto}
+}
 
 .chat-cancel-btn{border:0;background:transparent;color:#8a849f;font-size:10px;padding:4px 2px 0;cursor:pointer;text-decoration:underline}
 
@@ -3855,38 +3866,44 @@ async function loadConversations(){
  if(!isCurrent())return;
  if(error)throw error;
  const cs=data||[];if(!cs.length){conversationList.innerHTML='<div class="card small">まだメッセージはありません。</div>';msgBadge?.classList.remove('show');return}
- const partnerIds=[...new Set(cs.map(c=>c.buyer_id===owner?c.seller_id:c.buyer_id))];
- let profiles={};
- if(partnerIds.length){const r=await sb.from('profiles').select('id,display_name,avatar_path').in('id',partnerIds);if(!isCurrent())return;if(r.error)throw r.error;(r.data||[]).forEach(x=>profiles[x.id]=x)}
- // LINEのように「相手ごとに1行」にまとめる。取引データ自体は分けたまま保持する。
- const grouped={};
- for(const c of cs){
-   if(isConversationHidden(c.id))continue;
+ const visible=cs.filter(c=>!isConversationHidden(c.id));
+ // 相手プロフィールと取引タイトルは会話ごとに引かず、まとめて一括取得する。
+ const partnerIds=[...new Set(visible.map(c=>c.buyer_id===owner?c.seller_id:c.buyer_id))];
+ const listingIds=[...new Set(visible.map(c=>c.listing_id).filter(Boolean))];
+ const jobIds=[...new Set(visible.map(c=>c.job_id).filter(Boolean))];
+ const profiles={},titleMap={};
+ const lookups=[];
+ if(partnerIds.length)lookups.push(sb.from('profiles').select('id,display_name,avatar_path').in('id',partnerIds).then(r=>{if(r.error)throw r.error;(r.data||[]).forEach(x=>profiles[x.id]=x)}));
+ if(listingIds.length)lookups.push(sb.from('listings').select('id,title').in('id',listingIds).then(r=>{(r.data||[]).forEach(x=>titleMap['l:'+x.id]=x.title)}));
+ if(jobIds.length)lookups.push(sb.from('jobs').select('id,title').in('id',jobIds).then(r=>{(r.data||[]).forEach(x=>titleMap['j:'+x.id]=x.title)}));
+ if(lookups.length){await Promise.all(lookups);if(!isCurrent())return}
+ // 取引（会話）ごとに1行で表示する。チャット内では従来どおり相手単位の履歴に取引区切りを出す。
+ const tradeTitle=c=>c.is_inquiry?('購入前の問い合わせ：'+(titleMap['l:'+c.listing_id]||'出品')):c.listing_id?(titleMap['l:'+c.listing_id]||'音声取引'):(titleMap['j:'+c.job_id]||'声の依頼');
+ // 最新メッセージと未読数は会話単位で並列に取得する。従来は会話ごとに逐次2クエリで、
+ // 会話数が増えるほど一覧表示が遅くなっていた（実地で10秒超）。
+ const fetchRow=async c=>{
+   const seen=safeLocalStorage.getItem(seenKey(c.id))||'1970-01-01T00:00:00.000Z';
+   const [msgRes,unreadRes]=await Promise.all([
+     sb.from('messages').select('id,sender_id,body,created_at').eq('conversation_id',c.id).order('created_at',{ascending:false}).limit(20),
+     sb.from('messages').select('*',{count:'exact',head:true}).eq('conversation_id',c.id).neq('sender_id',owner).gt('created_at',seen)
+   ]);
+   if(msgRes.error)throw msgRes.error;
+   if(unreadRes.error)throw unreadRes.error;
+   const msgs=msgRes.data||[];
+   const preview=msgs.find(m=>m.body!=='⭐ 取引評価を送信しました。')||null;
+   return {c,last:msgs[0]||null,preview,unread:unreadRes.count||0};
+ };
+ const fetched=[];
+ for(let i=0;i<visible.length;i+=8){
+   fetched.push(...await Promise.all(visible.slice(i,i+8).map(fetchRow)));
+   if(!isCurrent())return;
+ }
+ const rows=fetched.map(({c,last,preview,unread})=>{
    const partner=c.buyer_id===owner?c.seller_id:c.buyer_id;
-   (grouped[partner] ||= []).push(c);
- }
- const rows=[];
- for(const [partner,group] of Object.entries(grouped)){
-   group.sort((a,b)=>new Date(b.created_at||0)-new Date(a.created_at||0));
-   let latestConversation=group[0], latestMsg=null, latestPreview=null, unreadCount=0;
-   for(const c of group){
-     const {data:msgs,error:messageError}=await sb.from('messages').select('id,sender_id,body,created_at').eq('conversation_id',c.id).order('created_at',{ascending:false}).limit(20);
-     if(!isCurrent())return;if(messageError)throw messageError;
-     const last=msgs?.[0]||null;
-     const preview=(msgs||[]).find(m=>m.body!=='⭐ 取引評価を送信しました。')||null;
-     if(last && (!latestMsg || new Date(last.created_at)>new Date(latestMsg.created_at))){latestMsg=last;latestConversation=c;}
-     if(preview && (!latestPreview || new Date(preview.created_at)>new Date(latestPreview.created_at)))latestPreview=preview;
-     const seen=safeLocalStorage.getItem(seenKey(c.id))||'1970-01-01T00:00:00.000Z';
-     const {count:uc,error:unreadError}=await sb.from('messages').select('*',{count:'exact',head:true}).eq('conversation_id',c.id).neq('sender_id',owner).gt('created_at',seen);
-     if(!isCurrent())return;if(unreadError)throw unreadError;
-     unreadCount+=uc||0;
-   }
    const name=profiles[partner]?.display_name||'ユーザー';
-   const ids=group.map(c=>c.id);
-   const allAccepted=group.every(c=>c.delivery_status==='accepted');
-   const action=unreadCount?`<span class="unread-dot">${unreadCount}</span>`:(allAccepted?`<button type="button" class="history-hide-btn" onclick='event.stopPropagation();hidePartnerConversations(${JSON.stringify(ids)})'>非表示</button>`:'');
-   rows.push({activity:new Date(latestMsg?.created_at||latestConversation.created_at||0).getTime(),html:`<div class="chatrow" tabindex="0" role="link" onkeydown="if(event.target===this&&(event.key==='Enter'||event.key===' ')){event.preventDefault();this.click()}" onclick="openConversation('${latestConversation.id}','${inlineText(name)}')"><div class="chathead"><div class="chat-partner">${avatarMarkup(profiles[partner]||{display_name:'ユーザー'},'sm',partner)}<div style="min-width:0"><b>${esc(name)}</b><div class="small" style="margin-top:4px">${esc(latestPreview?.body||'チャットを開始できます')}</div></div></div><div style="display:flex;flex-direction:column;align-items:flex-end;gap:6px">${latestMsg?.created_at?`<span class="conversation-time">${formatJpDateTime(latestMsg.created_at,true)}</span>`:''}${action}</div></div>${allAccepted?'<div class="history-hide-note">完了した取引の記録も、この相手とのチャット履歴にまとめて残ります。</div>':''}</div>`});
- }
+   const action=unread?`<span class="unread-dot">${unread}</span>`:(c.delivery_status==='accepted'?`<button type="button" class="history-hide-btn" onclick="event.stopPropagation();hideConversationForMe('${c.id}')">非表示</button>`:'');
+   return {activity:new Date(last?.created_at||c.created_at||0).getTime(),html:`<div class="chatrow" tabindex="0" role="link" onkeydown="if(event.target===this&&(event.key==='Enter'||event.key===' ')){event.preventDefault();this.click()}" onclick="openConversation('${c.id}','${inlineText(name)}')"><div class="chathead"><div class="chat-partner">${avatarMarkup(profiles[partner]||{display_name:'ユーザー'},'sm',partner)}<div style="min-width:0"><b>${esc(name)}</b><div class="conversation-trade-title">${esc(tradeTitle(c))}</div><div class="small" style="margin-top:2px">${esc(preview?.body||'チャットを開始できます')}</div></div></div><div style="display:flex;flex-direction:column;align-items:flex-end;gap:6px">${last?.created_at?`<span class="conversation-time">${formatJpDateTime(last.created_at,true)}</span>`:''}${action}</div></div></div>`};
+ });
  if(!isCurrent())return;
  rows.sort((a,b)=>b.activity-a.activity);
  conversationList.innerHTML=rows.map(row=>row.html).join('')||'<div class="card small">表示中のメッセージはありません。</div>';loadMessageBadge();updateHomeUnreadCount()
@@ -4053,6 +4070,23 @@ async function openConversation(id,title='チャット',opts={}){
   await Promise.all([loadTradeInfoPanel(c),loadChatMessages(),loadDeliveries()]);if(!isCurrent())return;await applyChatBlockState();if(!isCurrent())return;await loadMessageBadge();if(isCurrent())await loadHome()
 }
 function closeChat(){document.getElementById('hideCurrentConversationBtn')?.remove();saveChatDraft(currentConversationId);chatInput.value='';conversationOpenRequest++;renderedChatConversation=null;clearChatNotice();clearChatState();const tip=document.getElementById('tradeInfoPanel');if(tip){tip.classList.remove('show');tip.innerHTML=''}const tr=document.getElementById('tradeInfoReopen');if(tr)tr.classList.remove('show');currentConversationId=null;currentConversation=null;currentConversationPartner=null;currentConversationGroupIds=[];setShellMode('messages');chatBox.classList.remove('on');conversationList.style.display='grid';loadConversations()}
+function formatJpTime(value){
+ if(!value)return '';
+ const d=new Date(value);if(Number.isNaN(d.getTime()))return '';
+ return `${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}`;
+}
+function chatDateSeparator(value){
+ const d=new Date(value);if(Number.isNaN(d.getTime()))return null;
+ const key=`${d.getFullYear()}-${d.getMonth()}-${d.getDate()}`;
+ const now=new Date();
+ const todayKey=`${now.getFullYear()}-${now.getMonth()}-${now.getDate()}`;
+ const yesterday=new Date(now.getFullYear(),now.getMonth(),now.getDate()-1);
+ const yesterdayKey=`${yesterday.getFullYear()}-${yesterday.getMonth()}-${yesterday.getDate()}`;
+ if(key===todayKey)return {key,label:'今日'};
+ if(key===yesterdayKey)return {key,label:'昨日'};
+ const week=['日','月','火','水','木','金','土'][d.getDay()];
+ return {key,label:`${d.getFullYear()}/${String(d.getMonth()+1).padStart(2,'0')}/${String(d.getDate()).padStart(2,'0')}（${week}）`};
+}
 let chatMessageRequest=0;
 let renderedChatConversation=null;
 let chatHistoryLimit=500;
@@ -4121,12 +4155,19 @@ async function loadChatMessages(older=false){
  renderedChatConversation=conversationId;
  const seenConversationSeparators=new Set();
  const seenRatingConversations=new Set();
+ let lastDateKey='';
  chatMessages.innerHTML=(data||[]).filter(m=>!isMessageHiddenForMe(m.id)).map(m=>{
    let separator='';
+   // LINEのように、日付が変わる所に日付区切りを入れる。
+   const dateInfo=chatDateSeparator(m.created_at);
+   if(dateInfo&&dateInfo.key!==lastDateKey){
+     lastDateKey=dateInfo.key;
+     separator+=`<div class="chat-date-separator"><span>${esc(dateInfo.label)}</span></div>`;
+   }
    if(!seenConversationSeparators.has(m.conversation_id)){
      seenConversationSeparators.add(m.conversation_id);
      const meta=convMeta[m.conversation_id]||{title:'取引'};
-     separator=`<div class="trade-separator"><span>${esc(formatJpDateTime(meta.created_at,false)||'')}　${esc(meta.title||'取引')}</span></div>`;
+     separator+=`<div class="trade-separator"><span>${esc(formatJpDateTime(meta.created_at,false)||'')}　${esc(meta.title||'取引')}</span></div>`;
    }
    const body=String(m.body||'');
    const isRatingNotice=body.startsWith('⭐ 取引評価を送信しました。') || (body.startsWith('⭐ ') && body.includes('さんを評価しました。'));
@@ -4138,7 +4179,7 @@ async function loadChatMessages(older=false){
      seenRatingConversations.add(key);
    }
    const isSystem=/^(🛒 |📦 |✅ |⭐ )/.test(body);
-   const when=formatJpDateTime(m.created_at,true);
+   const when=formatJpTime(m.created_at);
    if(isSystem){
      let shortBody=body;
      if(body.startsWith('📦 音声を納品しました。'))shortBody='📦 音声を納品しました';
@@ -4149,9 +4190,10 @@ async function loadChatMessages(older=false){
    const mine=m.sender_id===currentUser.id;
    if(mine){
      const cancelled=body==='送信を取り消しました';
-     return separator+`<div class="chat-message-row mine-row"><div class="chat-message-content"><div class="bubble mine${cancelled?' cancelled-message':''}" ${cancelled?'':`data-message-id="${m.id}" oncontextmenu="return false"`}>${esc(body)}</div>${when?`<div class="chat-message-time">${when}</div>`:''}</div></div>`;
+     return separator+`<div class="chat-message-row mine-row">${when?`<div class="chat-message-time">${when}</div>`:''}<div class="chat-message-content"><div class="bubble mine${cancelled?' cancelled-message':''}" ${cancelled?'':`data-message-id="${m.id}" oncontextmenu="return false"`}>${esc(body)}</div></div></div>`;
    }
-   return separator+`<div class="chat-message-row theirs-row">${avatarMarkup(profileMap[m.sender_id]||{display_name:'ユーザー'},'xs',m.sender_id)}<div class="chat-message-content"><div class="bubble theirs">${esc(body)}</div>${when?`<div class="chat-message-time">${when}</div>`:''}</div></div>`;
+   const senderName=profileMap[m.sender_id]?.display_name||'ユーザー';
+   return separator+`<div class="chat-message-row theirs-row">${avatarMarkup(profileMap[m.sender_id]||{display_name:'ユーザー'},'xs',m.sender_id)}<div class="chat-message-content"><div class="chat-sender-name">${esc(senderName)}</div><div class="bubble theirs">${esc(body)}</div></div>${when?`<div class="chat-message-time">${when}</div>`:''}</div>`;
  }).join('')||'<div class="small">まだメッセージはありません。最初のメッセージを送ってみましょう。</div>';
  await Promise.all(ids.map(markConversationSeen));
  if(history.hasMore)chatMessages.insertAdjacentHTML('afterbegin','<button id="loadOlderChatBtn" type="button" class="btn secondary full" onclick="loadOlderChatMessages()">以前のメッセージを読み込む</button>');
