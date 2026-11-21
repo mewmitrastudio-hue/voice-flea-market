@@ -1,6 +1,6 @@
 {
-  "release": "2026.11.21-build57-integration",
-  "web_sha256": "4e39ad4663d8a1bed1b3a9210c6259888d68405e4cec5d38720a97201f4151c3",
+  "release": "2026.11.22-boost-wording",
+  "web_sha256": "06cbfe4629d68d8b8a278740e15ad2b299bbdce6ac2928f57e780bd93e94fecf",
   "bundle_id": "com.ayuhide.koenofurima",
   "ios_app_icon_sha256": "55ebba6206924a7e6df7f9c87659c87f673b88a8ca96671b547fb907f591eaec",
   "minimum_build_number": 57,

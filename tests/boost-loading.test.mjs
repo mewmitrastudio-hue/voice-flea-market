@@ -4,16 +4,20 @@ import assert from 'node:assert/strict';
 import {test} from 'node:test';
 const html=readFileSync(new URL('../index.html',import.meta.url),'utf8');
 const source=html.slice(html.indexOf('async function boostRead('),html.indexOf('async function purchaseBoost('));
-function screen(listings=[]){
+function screen(listings=[],ownListings=listings){
  const notices=[],select={value:'',replaceChildren(){},add(){}},history={textContent:''};
  const plugin={pendingTransactions:async()=>({transactions:[]}),products:async()=>({environment:'Sandbox',products:[{id:'com.ayuhide.koenofurima.boost.silver',currencyCode:'JPY',displayPrice:'¥300',price:'300'}]})};
- const context=vm.createContext({setTimeout,clearTimeout,Option:class{},formatJpDateTime:()=>'',currentUser:{id:'owner'},boostRequest:0,boostOwnHistory:[],boostHistoryReady:false,boostReady:false,boostStoreProducts:[],boostEnvironment:null,boostListingChanged(){},boostNotice:t=>notices.push(t),isNativeBoost:()=>true,boostApi:async()=>({enabled:true,environment:'Sandbox'}),nativeBoost:async()=>({plugin}),document:{getElementById:id=>id==='boostPreviewOverlay'?{classList:{add(){},contains(){return false}}}:id==='boostListingSelect'?select:history},sb:{from:table=>({select(){return this},eq(){return this},order(){return table==='listings'?Promise.resolve({data:listings}):this},limit:async()=>({data:[]})})}});
+ const context=vm.createContext({setTimeout,clearTimeout,Option:class{},formatJpDateTime:()=>'',currentUser:{id:'owner'},boostRequest:0,boostOwnHistory:[],boostHistoryReady:false,boostReady:false,boostStoreProducts:[],boostEnvironment:null,boostListingChanged(){},boostNotice:t=>notices.push(t),isNativeBoost:()=>true,boostApi:async()=>({enabled:true,environment:'Sandbox'}),nativeBoost:async()=>({plugin}),document:{getElementById:id=>id==='boostPreviewOverlay'?{classList:{add(){},contains(){return false}}}:id==='boostListingSelect'?select:history},sb:{from:table=>({select(){return this},eq(){return this},order(){return table==='listings'?Promise.resolve({data:listings}):this},limit:async()=>({data:table==='listings'?ownListings:[]})})}});
  vm.runInContext(html.slice(html.indexOf('function boostProductPrice('),html.indexOf('function boostListingChanged(')),context);
  vm.runInContext(source,context);return {context,notices,plugin};
 }
 test('without listings the screen explains the prerequisite without starting StoreKit',async()=>{
  const {context,notices}=screen();context.nativeBoost=()=>{throw Error('must not start StoreKit')};
  await context.openBoostPreview();assert.match(notices.at(-1),/ブーストできる出品がありません/);assert.equal(context.boostReady,false);
+});
+test('with listings but none public the screen asks to publish one instead of creating one',async()=>{
+ const {context,notices}=screen([],[{id:'own'}]);context.nativeBoost=()=>{throw Error('must not start StoreKit')};
+ await context.openBoostPreview();assert.match(notices.at(-1),/公開中の出品がありません。ブーストは公開中の出品に購入できます。/);assert.doesNotMatch(notices.at(-1),/出品を登録してください/);assert.equal(context.boostReady,false);
 });
 test('a stalled read leaves loading with a stage-specific error and later reads still work',async()=>{
  const {context}=screen();await assert.rejects(context.boostRead(()=>new Promise(()=>{}),'Appleの商品取得',5),/Appleの商品取得に時間がかかっています/);
