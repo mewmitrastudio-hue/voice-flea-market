@@ -1,8 +1,9 @@
 {
-  "release": "2026.11.14-web46-checkout-wait1",
-  "web_sha256": "578e542898bb3d67060c507f59b767e6352c6cf39532f22cc7a417345e5e9fc0",
+  "release": "2026.11.21-build57-integration",
+  "web_sha256": "4e39ad4663d8a1bed1b3a9210c6259888d68405e4cec5d38720a97201f4151c3",
   "bundle_id": "com.ayuhide.koenofurima",
-  "minimum_build_number": 46,
+  "ios_app_icon_sha256": "55ebba6206924a7e6df7f9c87659c87f673b88a8ca96671b547fb907f591eaec",
+  "minimum_build_number": 57,
   "production_backend_applied": true,
   "production_backend_applied_at": "2026-10-16T22:09:17.179653+00:00",
   "boost_native_sha256": "335e5aef03376655666f8e482d50b33cf816fd4a4131c96d0bc1e719114e94c4",
