@@ -2852,7 +2852,8 @@ function resetPendingTradeNotice(){
 }
 function pendingTradeRowMarkup(row){
  const title=esc(row.title||'音声の取引'),label=pendingTradeLabels[row.action]||'取引状況を確認してください';
- return `<button type="button" class="pending-trade-row" onclick="openPendingTrade('${row.kind}','${row.item_id}')"><span>${title}${row.is_test?' <small>テスト取引</small>':''}</span><strong>${label}</strong></button>`;
+ const meta=[formatJpDateTime(row.created_at,false),row.party==='buyer'?'購入した取引':row.party==='seller'?'出品した取引':''].filter(Boolean).join(' ／ ');
+ return `<button type="button" class="pending-trade-row" onclick="openPendingTrade('${row.kind}','${row.item_id}')"><span>${title}${row.is_test?' <small>テスト取引</small>':''}${meta?`<br><small>${esc(meta)}</small>`:''}</span><strong>${label}</strong></button>`;
 }
 function renderPendingTradeNotice(errorText=''){
  if(pendingTradeState.owner!==currentUser?.id)return;
@@ -2957,7 +2958,7 @@ async function createListing(){if(!currentUser)return;
  if(!validWholeNumber(sellPrice.value,50))return info('sellMsg','購入できる最低価格は50円です。50以上の整数で入力してください。','err');
  if(!validWholeNumber(sellDays.value,1)||Number(sellDays.value)>365)return info('sellMsg','納期は1から365までの整数で入力してください。','err');
  const listing={seller_id:ownerId,title:sellTitle.value.trim(),category:sellCategory.value,description:sellDesc.value.trim(),price_jpy:+sellPrice.value,delivery_days:+sellDays.value,ai_use:sellAI.value};
- let path=null;const f=sellAudio.files[0];if(f){const ext=(f.name.split('.').pop()||'').toLowerCase().replace(/[^a-z0-9]/g,'');const allowed=['m4a','mp3','wav','aac','mp4','mpeg','ogg','webm'];const mime=(f.type||'').toLowerCase();if(!allowed.includes(ext) && !mime.startsWith('audio/'))return info('sellMsg','音声ファイルを選択してください（m4a / mp3 / wav / aac / mp4 など）。','err');path=`${ownerId}/${crypto.randomUUID()}.${ext||'audio'}`;const contentType=mime||({m4a:'audio/mp4',mp4:'audio/mp4',mp3:'audio/mpeg',mpeg:'audio/mpeg',wav:'audio/wav',aac:'audio/aac',ogg:'audio/ogg',webm:'audio/webm'}[ext]||'application/octet-stream');const {error:ue}=await sb.storage.from('voice-samples').upload(path,f,{upsert:false,contentType});if(ue)return info('sellMsg','音声アップロード: '+ue.message,'err')}
+ let path=null;const f=sellAudio.files[0];if(f){const ext=(f.name.split('.').pop()||'').toLowerCase().replace(/[^a-z0-9]/g,'');const allowed=['m4a','mp3','wav','aac','mp4','mpeg','ogg','webm'];const mime=(f.type||'').toLowerCase();if(!allowed.includes(ext) && !mime.startsWith('audio/'))return info('sellMsg','音声ファイルを選択してください（m4a / mp3 / wav / aac / mp4 など）。','err');path=`${ownerId}/${crypto.randomUUID()}.${ext||'audio'}`;const contentType=mime||({m4a:'audio/mp4',mp4:'audio/mp4',mp3:'audio/mpeg',mpeg:'audio/mpeg',wav:'audio/wav',aac:'audio/aac',ogg:'audio/ogg',webm:'audio/webm'}[ext]||'application/octet-stream');const {data:ud,error:ue}=await sb.storage.from('voice-samples').upload(path,f,{upsert:false,contentType});if(ue)return info('sellMsg','音声アップロード: '+ue.message,'err');if(!ud?.path||ud.path!==path){await sb.storage.from('voice-samples').remove([path]);return info('sellMsg','音声アップロードの完了を確認できませんでした。出品を中止しました。通信状態を確認して、もう一度お試しください。','err')}}
 if(currentUser?.id!==ownerId)return;
 const {error}=await sb.from('listings').insert({...listing,sample_path:path});if(currentUser?.id!==ownerId)return;if(error){if(path)await sb.storage.from('voice-samples').remove([path]);return info('sellMsg',error.message,'err')}info('sellMsg','クラウドへ出品しました。');sellTitle.value='';sellDesc.value='';sellAudio.value='';loadHome()}
 
@@ -3439,7 +3440,7 @@ async function loadListings(reset=true){
 
     if(v.sample_path){
       const {data:u}=sb.storage.from('voice-samples').getPublicUrl(v.sample_path);
-      audio=`<audio controls src="${u.publicUrl}"></audio>`;
+      audio=`<audio class="listing-card-sample" controls preload="none" aria-label="${esc(v.title||'音声サービス')}のサンプル" src="${u.publicUrl}"></audio>`;
     }
 
     const own=v.seller_id===currentUser?.id;
@@ -3459,6 +3460,16 @@ async function loadListings(reset=true){
     listingList.innerHTML=cards||'<div class="card small">この範囲に条件に合う出品はありません。「さらに表示」がある場合は続きも確認できます。</div>';
   }else if(cards){
     listingList.insertAdjacentHTML('beforeend',cards);
+  }
+
+  for(const sample of listingList.querySelectorAll('audio.listing-card-sample:not([data-sample-error-bound])')){
+    sample.dataset.sampleErrorBound='1';
+    sample.addEventListener('error',()=>{
+      const message=document.createElement('p');
+      message.setAttribute('role','status');
+      message.textContent='現在、このサンプルは再生できません。';
+      sample.replaceWith(message);
+    },{once:true});
   }
 
   listingOffset+=(data||[]).length;
@@ -4318,7 +4329,8 @@ async function loadDeliveries(){
  authorizationActionStates.set(conversationId,authorization);
  if(authorization?.manual&&(authorization.state==='canceled'||authorization.paymentState==='canceled'&&!authorization.authorizationExpired)){deliveryArea.innerHTML='<div class="notice">この取引はキャンセル済みです。購入代金の決済は確定していません。</div>';return;}
  let html='';
- if(authorization?.needsPayment||!authorization?.canFulfill&&!authorization?.authorizationExpired&&authorization?.state!=='queued'){
+ // 受取確認済み（完了）の取引では決済は確定済みのため、支払い確認の警告は出さない。
+ if(conversation.delivery_status!=='accepted'&&(authorization?.needsPayment||!authorization?.canFulfill&&!authorization?.authorizationExpired&&authorization?.state!=='queued')){
   html='<div class="notice">支払いの確認が必要です。確認が終わるまで制作・納品・受取確認は進められません。</div>';
   if(isBuyer&&authorization.needsPayment&&!conversation.delivery_path&&authorization.applicationId&&Number.isSafeInteger(authorization.agreedAmountJpy))html+=`<button class="btn full" type="button" onclick="startStripeCheckout(null,this,'${authorization.applicationId}')">${financeYen(authorization.agreedAmountJpy)}の依頼の支払いを準備</button>`;
   else html+=`<button class="btn secondary full" type="button" onclick="openSafetyCenter('support')">支払い状況を運営に確認する</button>`;
@@ -5111,7 +5123,7 @@ async function loadMe(){
 
   const registeredName=String(currentUser.user_metadata?.display_name||'').trim();
   const displayName=(p?.display_name&&p.display_name!=='ユーザー'?p.display_name:registeredName&&registeredName!=='ユーザー'?registeredName:p?.display_name)||currentUser.email||'ユーザー';
-  meText.innerHTML=`<div class="profile-main-row">${avatarMarkup({...p,display_name:displayName},'lg',currentUser.id)}<div class="profile-main-info"><b class="profile-name">${esc(displayName)}</b><div class="small profile-email">${esc(currentUser.email||'')}</div>${p?.profile_tagline?`<div class="profile-tagline">${esc(p.profile_tagline)}</div>`:''}<div class="profile-badges"><span class="identity-badge ${verified?'verified':'unverified'}">${verified?'✓ 本人確認済み':'本人確認 未完了'}</span>${avg?`<span class="rating-badge">★ ${avg}（${ratings.length}件）</span>`:'<span class="rating-badge muted">まだ評価はありません</span>'}</div></div><button class="btn secondary profile-edit-btn" type="button" onclick="openProfileEdit('${inlineText(displayName)}')">編集</button></div>`;
+  meText.innerHTML=`<div class="profile-main-row">${avatarMarkup({...p,display_name:displayName},'lg',currentUser.id)}<div class="profile-main-info"><b class="profile-name">${esc(displayName)}</b><div class="small profile-email">${esc(currentUser.email||'')}</div><div class="small">このメールアドレスはあなた本人にだけ表示され、他の利用者には公開されません。</div>${p?.profile_tagline?`<div class="profile-tagline">${esc(p.profile_tagline)}</div>`:''}<div class="profile-badges"><span class="identity-badge ${verified?'verified':'unverified'}">${verified?'✓ 本人確認済み':'本人確認 未完了'}</span>${avg?`<span class="rating-badge">★ ${avg}（${ratings.length}件）</span>`:'<span class="rating-badge muted">まだ評価はありません</span>'}</div></div><button class="btn secondary profile-edit-btn" type="button" onclick="openProfileEdit('${inlineText(displayName)}')">編集</button></div>`;
 
   const {data:l}=await sb.from('listings').select('*').eq('seller_id',owner).order('created_at',{ascending:false});
   if(!isCurrent())return;
