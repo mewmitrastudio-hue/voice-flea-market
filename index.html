@@ -456,6 +456,8 @@ body.normal-mode #nav button{height:46px!important;min-height:46px!important;bor
 .profile-tagline{font-size:12px;margin-top:5px;color:#5d5872}
 .listing-seller-wrap{display:flex;align-items:center;gap:10px;min-width:0}
 .seller-profile-link{display:block;border:0;background:transparent;padding:3px 0 0;color:#6258d8;font-size:11px;text-align:left;text-decoration:underline}
+.listing-title-link{border:0;background:transparent;padding:0;font:inherit;font-weight:700;color:inherit;text-align:left;cursor:pointer}
+.listing-detail-link{display:block;border:0;background:transparent;padding:6px 0 0;color:#6258d8;font-size:11px;text-align:left;text-decoration:underline;cursor:pointer}
 .chat-partner{display:flex;align-items:center;gap:9px}
 .chat-message-row{display:flex;align-items:flex-end;gap:7px;margin:6px 0}
 .chat-message-row.mine-row{justify-content:flex-end}
@@ -1242,6 +1244,15 @@ html body.normal-mode #home.page.on.home-has-pending{grid-template-rows:auto min
     <button type="button" class="avatar-preview-close" onclick="closeAvatarPreview()" aria-label="閉じる">×</button>
     <img id="avatarPreviewImage" src="" alt="プロフィール画像">
 
+  </div>
+</div>
+<div id="listingDetailOverlay" class="public-profile-overlay" onclick="if(event.target===this)closeListingDetail()">
+  <div class="public-profile-box">
+    <div class="public-profile-head">
+      <h3>出品の詳細</h3>
+      <button type="button" class="profile-edit-close" onclick="closeListingDetail()" aria-label="閉じる">×</button>
+    </div>
+    <div id="listingDetailContent"><div class="small">読み込み中...</div></div>
   </div>
 </div>
 <div id="publicProfileOverlay" class="public-profile-overlay" onclick="if(event.target===this)closePublicProfile()">
@@ -3316,6 +3327,7 @@ let listingOffset=0,listingRotationEpoch=null;
 let listingSearchTimer=null;
 let listingSearchToken=0;
 let selectedListingId=null;
+const listingDetailCache=new Map();
 
 function scheduleListingSearch(){
   selectedListingId=null;
@@ -3421,6 +3433,7 @@ async function loadListings(reset=true){
   const verifiedBoostIds=new Set(data.filter(v=>v.boost_plan).map(v=>v.id));
   const verifiedBoostPlans=new Map(data.filter(v=>v.boost_plan).map(v=>[v.id,v.boost_plan]));
   const rows=data.filter(v=>v.id===selectedListingId||!isPurchasedListingHidden(v.id));
+  if(reset)listingDetailCache.clear();
   const cards=rows.map(v=>{
     let audio='';
 
@@ -3433,23 +3446,13 @@ async function loadListings(reset=true){
     const purchased=paidListingIds.has(v.id);
     const purchaseState=listingPurchaseReadiness(purchaseStateKnown?(purchaseRowsByListing.get(v.id)||[]):null);
     const favorited=favoriteListingIds.has(v.id);
-    const nativePurchasePending=false; // Native purchases use StoreKit through startStripeCheckout's iOS route.
-
-    let action='';
-
-    if(own){
-      action=`<button class="btn full" type="button" disabled style="margin-top:14px;opacity:.62">あなたの出品です</button>`;
-    }else if(purchased){
-      action=`<button class="btn full" type="button" disabled style="margin-top:14px;background:#e9fbef;color:#16844f;border:1px solid #bcebcf;opacity:1">${authorizedListingIds.has(v.id)?'与信取引の状況を確認してください':'✓ 購入済み・支払い完了'}</button><button class="btn full" type="button" style="margin-top:8px" onclick="openPurchasedListingChat('${esc(v.id)}','${esc(v.seller_id)}','${inlineText(v.title)}')">今回の取引を開く</button><button class="btn secondary full" type="button" ${nativePurchasePending||purchaseState.blocked?'disabled':''} style="margin-top:8px" onclick="startStripeCheckout('${esc(v.id)}',this)">${purchaseState.blocked?'取引状況の確認が必要です':nativePurchasePending?'アプリ内の通常購入は準備中':'もう一度購入する'}</button>${purchaseState.blocked?`<p class="small" role="status">${esc(purchaseState.reason)}</p>`:''}<button class="btn secondary full" type="button" style="margin-top:8px" onclick="hidePurchasedListingFromSearch('${esc(v.id)}')">検索一覧から非表示</button>`;
-    }else{
-      action=`<button class="btn full" type="button" ${nativePurchasePending||purchaseState.blocked?'disabled':''} style="margin-top:14px" onclick="startStripeCheckout('${esc(v.id)}',this)">${purchaseState.blocked?'購入状況を確認してください':nativePurchasePending?'アプリ内の通常購入は準備中':'購入する'}</button>${purchaseState.blocked?`<p class="small" role="status">${esc(purchaseState.reason)}</p><button class="btn secondary full" type="button" onclick="${purchaseStateKnown?"go('messages')":'loadListings(true)'}">${purchaseStateKnown?'取引一覧を確認する':'購入状況を再読み込み'}</button>`:''}`;
-    }
-
-    if(!own&&!purchased)action+=`<button class="btn secondary full" type="button" style="margin-top:8px" onclick="openListingInquiry('${esc(v.id)}')">購入前に質問する</button>`;
+    const detailState={row:v,ownerId:listingOwner,own,purchased,authorized:authorizedListingIds.has(v.id),purchaseState,purchaseStateKnown,boostPlan:verifiedBoostPlans.get(v.id)||null};
+    listingDetailCache.set(v.id,detailState);
+    const action=listingActionHtml(v,detailState);
     const desc=(v.description||'').trim();
-    const descHtml=desc?`<div class="small" style="margin-top:8px;line-height:1.6">${esc(desc.length>120?desc.slice(0,120)+'…':desc)}</div>`:'';
+    const descHtml=desc?`<div class="small" style="margin-top:8px;line-height:1.6;cursor:pointer" onclick="openListingDetail('${esc(v.id)}')">${esc(desc.length>120?desc.slice(0,120)+'…':desc)}</div>`:'';
 
-    return `<div class="card voice" data-listing-id="${esc(v.id)}">${verifiedBoostIds.has(v.id)?`<span class="boost-pr-tag boost-${verifiedBoostPlans.get(v.id)||'silver'}">PR・優先表示</span>`:''}<div class="row"><div class="listing-seller-wrap">${avatarMarkup(v.profiles,'sm',v.seller_id)}<div><b>${esc(v.title)}</b><button type="button" class="seller-profile-link" onclick="openPublicProfile('${esc(v.seller_id)}')">${esc(v.profiles?.display_name||'出品者')} のプロフィール</button></div></div><div class="listing-card-actions"><button type="button" class="favorite-heart ${favorited?'on':''}" onclick="toggleFavoriteListing('${esc(v.id)}',this)" aria-label="お気に入り">${favorited?'♥':'♡'}</button><div class="price">${Number(v.price_jpy).toLocaleString()}円</div></div></div><span class="pill">${esc(v.category)}</span><span class="pill">${v.delivery_days}日</span><span class="pill">AI:${esc(v.ai_use)}</span>${descHtml}${audio}<div class="listing-date">出品日：${formatJpDateTime(v.created_at,false)||'-'}</div>${action}</div>`;
+    return `<div class="card voice" data-listing-id="${esc(v.id)}">${verifiedBoostIds.has(v.id)?`<span class="boost-pr-tag boost-${verifiedBoostPlans.get(v.id)||'silver'}">PR・優先表示</span>`:''}<div class="row"><div class="listing-seller-wrap">${avatarMarkup(v.profiles,'sm',v.seller_id)}<div><button type="button" class="listing-title-link" onclick="openListingDetail('${esc(v.id)}')">${esc(v.title)}</button><button type="button" class="seller-profile-link" onclick="openPublicProfile('${esc(v.seller_id)}')">${esc(v.profiles?.display_name||'出品者')} のプロフィール</button></div></div><div class="listing-card-actions"><button type="button" class="favorite-heart ${favorited?'on':''}" onclick="toggleFavoriteListing('${esc(v.id)}',this)" aria-label="お気に入り">${favorited?'♥':'♡'}</button><div class="price">${Number(v.price_jpy).toLocaleString()}円</div></div></div><span class="pill">${esc(v.category)}</span><span class="pill">${v.delivery_days}日</span><span class="pill">AI:${esc(v.ai_use)}</span>${descHtml}${audio}<button type="button" class="listing-detail-link" onclick="openListingDetail('${esc(v.id)}')">詳細を見る</button><div class="listing-date">出品日：${formatJpDateTime(v.created_at,false)||'-'}</div>${action}</div>`;
   }).join('');
 
   if(reset){
@@ -3472,6 +3475,52 @@ async function loadListings(reset=true){
   }else{
     listingLoadMoreBtn?.classList.add('hide');
   }
+}
+function listingActionHtml(v,state,detail=false){
+  const {own,purchased,authorized,purchaseState,purchaseStateKnown}=state;
+  const nativePurchasePending=false; // Native purchases use StoreKit through startStripeCheckout's iOS route.
+  const nav=detail?'closeListingDetail();':'';
+  let action='';
+
+  if(own){
+    action=`<button class="btn full" type="button" disabled style="margin-top:14px;opacity:.62">あなたの出品です</button>`;
+  }else if(purchased){
+    action=`<button class="btn full" type="button" disabled style="margin-top:14px;background:#e9fbef;color:#16844f;border:1px solid #bcebcf;opacity:1">${authorized?'与信取引の状況を確認してください':'✓ 購入済み・支払い完了'}</button><button class="btn full" type="button" style="margin-top:8px" onclick="${nav}openPurchasedListingChat('${esc(v.id)}','${esc(v.seller_id)}','${inlineText(v.title)}')">今回の取引を開く</button><button class="btn secondary full" type="button" ${nativePurchasePending||purchaseState.blocked?'disabled':''} style="margin-top:8px" onclick="startStripeCheckout('${esc(v.id)}',this)">${purchaseState.blocked?'取引状況の確認が必要です':nativePurchasePending?'アプリ内の通常購入は準備中':'もう一度購入する'}</button>${purchaseState.blocked?`<p class="small" role="status">${esc(purchaseState.reason)}</p>`:''}<button class="btn secondary full" type="button" style="margin-top:8px" onclick="${nav}hidePurchasedListingFromSearch('${esc(v.id)}')">検索一覧から非表示</button>`;
+  }else{
+    action=`<button class="btn full" type="button" ${nativePurchasePending||purchaseState.blocked?'disabled':''} style="margin-top:14px" onclick="startStripeCheckout('${esc(v.id)}',this)">${purchaseState.blocked?'購入状況を確認してください':nativePurchasePending?'アプリ内の通常購入は準備中':'購入する'}</button>${purchaseState.blocked?`<p class="small" role="status">${esc(purchaseState.reason)}</p><button class="btn secondary full" type="button" onclick="${nav}${purchaseStateKnown?"go('messages')":'loadListings(true)'}">${purchaseStateKnown?'取引一覧を確認する':'購入状況を再読み込み'}</button>`:''}`;
+  }
+
+  if(!own&&!purchased)action+=`<button class="btn secondary full" type="button" style="margin-top:8px" onclick="${nav}openListingInquiry('${esc(v.id)}')">購入前に質問する</button>`;
+  return action;
+}
+function closeListingDetail(){
+  document.getElementById('listingDetailOverlay')?.classList.remove('show');
+}
+function openListingDetail(listingId){
+  const ov=document.getElementById('listingDetailOverlay');
+  const box=document.getElementById('listingDetailContent');
+  if(!ov||!box)return;
+  const entry=listingDetailCache.get(listingId);
+  if(!entry||entry.ownerId!==currentUser?.id)return;
+  const v=entry.row;
+  let audio='';
+  if(v.sample_path){
+    const {data:u}=sb.storage.from('voice-samples').getPublicUrl(v.sample_path);
+    audio=`<audio class="listing-detail-sample" controls preload="none" aria-label="${esc(v.title||'音声サービス')}のサンプル" src="${u.publicUrl}"></audio>`;
+  }
+  const desc=(v.description||'').trim();
+  const sellerName=v.profiles?.display_name||'出品者';
+  box.innerHTML=`${entry.boostPlan?`<span class="boost-pr-tag boost-${entry.boostPlan}">PR・優先表示</span>`:''}<div class="public-profile-main">${avatarMarkup(v.profiles,'md',v.seller_id)}<div><h2 style="font-size:19px">${esc(v.title)}</h2><div class="price" style="margin-top:6px">${Number(v.price_jpy).toLocaleString()}円</div></div></div><div style="margin-top:10px"><span class="pill">${esc(v.category)}</span><span class="pill">${v.delivery_days}日</span><span class="pill">AI:${esc(v.ai_use)}</span></div><div class="listing-date">出品日：${formatJpDateTime(v.created_at,false)||'-'}</div>${desc?`<div class="public-profile-section"><b>説明</b><p>${esc(desc)}</p></div>`:''}${audio?`<div class="public-profile-section"><b>サンプル</b><div style="margin-top:8px">${audio}</div></div>`:''}<div class="public-profile-section"><b>出品者</b><div class="listing-seller-wrap" style="margin-top:8px">${avatarMarkup(v.profiles,'sm',v.seller_id)}<div><b>${esc(sellerName)}</b><button type="button" class="seller-profile-link" onclick="openPublicProfile('${esc(v.seller_id)}')">プロフィールを見る</button></div></div></div>${listingActionHtml(v,entry,true)}`;
+  const sample=box.querySelector('.listing-detail-sample');
+  if(sample){
+    sample.addEventListener('error',()=>{
+      const message=document.createElement('p');
+      message.setAttribute('role','status');
+      message.textContent='現在、このサンプルは再生できません。';
+      sample.replaceWith(message);
+    },{once:true});
+  }
+  ov.classList.add('show');
 }
 async function deleteMyListing(listingId){
   if(!sb||!currentUser||!listingId)return;
