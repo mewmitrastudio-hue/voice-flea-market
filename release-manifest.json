@@ -1,6 +1,6 @@
 {
   "release": "2026.11.14-web46-checkout-wait1",
-  "web_sha256": "2e2efdfa527a5a29949da5056b233af33cedf6f2ac679331072a09f6d7cf46d1",
+  "web_sha256": "344f0c675ddb395df7cf77283c19bff590ee7f573854be1551cb2aeb9917fbf8",
   "bundle_id": "com.ayuhide.koenofurima",
   "minimum_build_number": 46,
   "production_backend_applied": true,

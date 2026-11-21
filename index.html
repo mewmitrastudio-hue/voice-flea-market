@@ -665,7 +665,7 @@ body.messages-mode .unread-dot{flex:0 0 auto;align-self:flex-end}
 .mylisting-info b{color:#1f9bd1;max-width:180px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .mylisting-info span{font-weight:800;color:#36334f}
 .mylisting-info small{width:100%;color:#8a849f;font-size:11px}
-.mylisting-delete{flex:0 0 auto;border:1px solid #eadff6;background:#fff;border-radius:12px;padding:8px 9px;color:#7567c9;font-weight:800;font-size:11px;display:flex;align-items:center;gap:3px}
+.mylisting-delete{flex:0 0 auto;border:1px solid #f2d0cc;background:#fffafa;border-radius:12px;padding:8px 9px;color:#b42318;font-weight:800;font-size:11px;display:flex;align-items:center;gap:3px}
 
 .manage-visibility-card{margin-top:16px}
 .manage-row{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:10px 0;border-bottom:1px solid #eee9fa}
@@ -1066,6 +1066,9 @@ button:focus-visible,a:focus-visible,summary:focus-visible{outline:3px solid #6d
 .home-help p{font-size:13px;line-height:1.8;color:#514a61}
 .page-shortcuts{display:flex;flex-wrap:wrap;gap:8px;margin:12px 0 18px}
 .page-shortcuts button{min-height:44px;padding:9px 12px;border:1px solid #d8d1ee;border-radius:12px;background:#fff;color:#5142a2;font:inherit;font-size:13px}
+.page-shortcuts button.on{background:linear-gradient(145deg,#5b67f1,#7c5cf5);color:#fff;border-color:transparent;font-weight:900;box-shadow:0 6px 14px rgba(91,103,241,.24)}
+.my-tab-panel[hidden]{display:none!important}
+.vf-confirm-card .field{text-align:left}
 .field input:focus,.field textarea:focus,.field select:focus{outline:3px solid #d8cffb;border-color:#6b4ac7}
 .voice-filter-row label{min-height:44px;display:inline-flex;align-items:center;font-size:13px;gap:6px}
 .chatcomposer textarea{font-size:16px!important;min-width:0}
@@ -1215,7 +1218,7 @@ html body.normal-mode #home.page.on.home-has-pending{grid-template-rows:auto min
 
 <section id="messages" class="page"><div class="messages-list-head"><div class="messages-list-title"><b>メッセージ</b><span>取引相手とのやり取り</span></div><button type="button" class="message-home-btn" onclick="goHomeNow()" aria-label="ホームへ戻る">🏠 ホーム</button></div><h2>メッセージ</h2><div id="conversationList" class="chatlist"></div><div id="chatBox" class="card chatbox"><div class="chatroom-head"><button class="chatback" onclick="closeChat()" aria-label="メッセージ一覧へ">‹</button><div class="chatroom-title"><b id="chatTitle">チャット</b><span id="chatSub">取引メッセージ</span></div><div class="chatroom-actions"><button type="button" class="message-home-btn compact" onclick="goHomeNow()" aria-label="ホームへ戻る">🏠 ホーム</button><button id="chatSafetyBtn" class="safety-chat-btn" onclick="openSafetyCenter('chat')">通報・ブロック</button></div></div><button id="tradeInfoReopen" class="trade-info-reopen" type="button" onclick="showTradeInfoPanel()" aria-label="確認済みの取引情報をもう一度見る">取引情報を見る</button><div id="tradeInfoPanel" class="trade-info-panel"></div><div id="chatMessages" class="chatmessages"></div><div id="deliveryArea" class="chatdelivery"></div><div class="chatdock"><div class="chatcomposer"><textarea id="chatInput" aria-label="取引相手へのメッセージ" placeholder="メッセージを入力"></textarea><button id="chatSendBtn" type="button" class="btn" onclick="sendChatMessage()">送信</button></div><div id="chatMsg"></div></div></div></section>
 
-<section id="me" class="page"><h2>マイページ</h2><section id="mePendingTrades" class="pending-trade-notice" aria-live="polite" hidden></section><nav class="page-shortcuts" aria-label="マイページ内の移動"><button type="button" onclick="menuGoMySection('myListings')">出品管理</button><button type="button" onclick="menuGoMySection('myPurchasedVoices')">購入した音声</button><button type="button" onclick="menuGoMySection('mySoldVoices')">販売した音声</button><button type="button" onclick="menuGoMySection('myBuyerJobs')">依頼した声</button><button type="button" onclick="menuGoMySection('mySellerJobs')">受注した声</button><button type="button" onclick="menuGoMySection('myHiddenTrades')">取引履歴</button></nav><div class="card profile-compact profile-card-main"><div id="meText">-</div></div><div id="myListings"></div><div id="mySoldVoices"></div><div id="myPurchasedVoices"></div><div id="mySellerJobs"></div><div id="myBuyerJobs"></div><div id="myHiddenTrades"></div>
+<section id="me" class="page"><h2>マイページ</h2><section id="mePendingTrades" class="pending-trade-notice" aria-live="polite" hidden></section><nav class="page-shortcuts" role="tablist" aria-label="マイページ内の移動"><button type="button" role="tab" id="myTab-myListings" data-my-tab="myListings" aria-controls="myListings" aria-selected="true" class="on" onclick="selectMySection('myListings')">出品管理</button><button type="button" role="tab" id="myTab-myPurchasedVoices" data-my-tab="myPurchasedVoices" aria-controls="myPurchasedVoices" aria-selected="false" onclick="selectMySection('myPurchasedVoices')">購入した音声</button><button type="button" role="tab" id="myTab-mySoldVoices" data-my-tab="mySoldVoices" aria-controls="mySoldVoices" aria-selected="false" onclick="selectMySection('mySoldVoices')">販売した音声</button><button type="button" role="tab" id="myTab-myBuyerJobs" data-my-tab="myBuyerJobs" aria-controls="myBuyerJobs" aria-selected="false" onclick="selectMySection('myBuyerJobs')">依頼した声</button><button type="button" role="tab" id="myTab-mySellerJobs" data-my-tab="mySellerJobs" aria-controls="mySellerJobs" aria-selected="false" onclick="selectMySection('mySellerJobs')">受注した声</button><button type="button" role="tab" id="myTab-myHiddenTrades" data-my-tab="myHiddenTrades" aria-controls="myHiddenTrades" aria-selected="false" onclick="selectMySection('myHiddenTrades')">取引履歴</button></nav><div class="card profile-compact profile-card-main"><div id="meText">-</div></div><div id="myListings" class="my-tab-panel" role="tabpanel" aria-labelledby="myTab-myListings"></div><div id="mySoldVoices" class="my-tab-panel" role="tabpanel" aria-labelledby="myTab-mySoldVoices" hidden></div><div id="myPurchasedVoices" class="my-tab-panel" role="tabpanel" aria-labelledby="myTab-myPurchasedVoices" hidden></div><div id="mySellerJobs" class="my-tab-panel" role="tabpanel" aria-labelledby="myTab-mySellerJobs" hidden></div><div id="myBuyerJobs" class="my-tab-panel" role="tabpanel" aria-labelledby="myTab-myBuyerJobs" hidden></div><div id="myHiddenTrades" class="my-tab-panel" role="tabpanel" aria-labelledby="myTab-myHiddenTrades" hidden></div>
 <div id="visibilityBlockManager" class="card manage-visibility-card">
   <h3 style="margin-top:0">非表示・ブロック管理</h3>
   <div class="small">非表示にした会話の再表示や、ブロックしたユーザーの解除ができます。</div>
@@ -2629,6 +2632,22 @@ function markMyListingsSeen(){
   const el=document.getElementById('homeMyListingCount');
   // 出品件数は通知の既読状態で変更しない。
 }
+const mySectionIds=['myListings','myPurchasedVoices','mySoldVoices','myBuyerJobs','mySellerJobs','myHiddenTrades'];
+function showMySection(sectionId){
+  const target=mySectionIds.includes(sectionId)?sectionId:'myListings';
+  mySectionIds.forEach(id=>{
+    const panel=document.getElementById(id);
+    if(panel)panel.hidden=id!==target;
+    const tab=document.querySelector(`[data-my-tab="${id}"]`);
+    if(tab){const on=id===target;tab.classList.toggle('on',on);tab.setAttribute('aria-selected',on?'true':'false');}
+  });
+  return target;
+}
+function selectMySection(sectionId){
+  const target=showMySection(sectionId);
+  const el=document.getElementById(target);
+  if(el)el.scrollIntoView({behavior:'smooth',block:'start'});
+}
 let mySectionRequest=0;
 async function menuGoMySection(sectionId){
   const request=++mySectionRequest,owner=currentUser?.id;
@@ -2637,7 +2656,8 @@ async function menuGoMySection(sectionId){
   await go('me');
   setTimeout(()=>{
     if(request!==mySectionRequest||currentUser?.id!==owner||document.querySelector('.page.on')?.id!=='me')return;
-    const el=document.getElementById(sectionId);
+    const target=showMySection(sectionId);
+    const el=document.getElementById(target);
     if(el)el.scrollIntoView({behavior:'smooth',block:'start'});
   },120);
 }
@@ -2804,18 +2824,52 @@ async function signIn(){if(typeof hidePasswordVisibility==='function')hidePasswo
 // Account deletion must be performed by a verified server-side Supabase Edge Function.
 // Fail closed if the backend has not yet been deployed; never delete only local profile data.
 let accountDeletionInProgress=false;
-async function requestAccountDeletion(){
+let accountDeletionOwner=null;
+function requestAccountDeletion(){
   if(accountDeletionInProgress)return;
   if(!sb||!currentUser){alert('ログイン後に操作してください。');return;}
-  const first=confirm('アカウントを削除すると、ログインできなくなります。未完了の取引・返金・売上金がある場合は先に対応が必要です。削除すると出品とブーストの表示は終了します。Apple購入の返金はAppleへの申請が必要です。削除手続きを進めますか？');
-  if(!first)return;
-  const typed=prompt('本人確認のため「削除」と入力してください。');
-  if(typed!=='削除'){
-    if(typed!==null)alert('入力が一致しないため、削除は実行していません。');
-    return;
-  }
+  accountDeletionOwner=currentUser.id;
+  const overlay=document.getElementById('accountDeleteOverlay');
+  if(!overlay)return;
+  const input=document.getElementById('accountDeleteConfirmInput');
+  if(input)input.value='';
+  const msg=document.getElementById('accountDeleteMsg');
+  if(msg)msg.innerHTML='';
+  updateAccountDeleteButton();
+  overlay.classList.add('show');
+  overlay.setAttribute('aria-hidden','false');
+  input?.focus();
+}
+function closeAccountDelete(){
+  if(accountDeletionInProgress)return;
+  accountDeletionOwner=null;
+  const overlay=document.getElementById('accountDeleteOverlay');
+  if(!overlay)return;
+  overlay.classList.remove('show');
+  overlay.setAttribute('aria-hidden','true');
+  const input=document.getElementById('accountDeleteConfirmInput');
+  if(input)input.value='';
+  const msg=document.getElementById('accountDeleteMsg');
+  if(msg)msg.innerHTML='';
+}
+function updateAccountDeleteButton(){
+  const input=document.getElementById('accountDeleteConfirmInput');
+  const btn=document.getElementById('accountDeleteExecuteBtn');
+  if(!btn)return;
+  const ready=input?.value==='削除';
+  btn.disabled=accountDeletionInProgress||!ready;
+  const hint=document.getElementById('accountDeleteHint');
+  if(hint)hint.style.display=ready?'none':'';
+}
+async function executeAccountDeletion(){
+  if(accountDeletionInProgress)return;
+  if(!sb||!currentUser||currentUser.id!==accountDeletionOwner)return;
+  const input=document.getElementById('accountDeleteConfirmInput');
+  if(input?.value!=='削除')return;
   const ownerId=currentUser.id;
+  const msg=document.getElementById('accountDeleteMsg');
   accountDeletionInProgress=true;
+  updateAccountDeleteButton();
   try{
     const {data:{session},error:sessionError}=await sb.auth.getSession();
     if(currentUser?.id!==ownerId)return;
@@ -2830,14 +2884,14 @@ async function requestAccountDeletion(){
       throw new Error(detail?.message||'削除結果を確認できませんでした。再ログイン後に確認してください。');
     }
     if(!data||data.success!==true)throw new Error(data?.message||'削除完了を確認できませんでした。');
-    alert('アカウントの削除が完了しました。');
+    if(msg)msg.innerHTML='<div class="ok" role="status">アカウントの削除が完了しました。</div>';
     await sb.auth.signOut();
     location.reload();
   }catch(e){
     console.error('Account deletion failed',e);
     if(currentUser?.id!==ownerId)return;
-    alert(e.message||'削除結果を確認できませんでした。再ログイン後に確認してください。');
-  }finally{accountDeletionInProgress=false;}
+    if(msg)msg.innerHTML=`<div class="err" role="alert">${esc(e.message||'削除結果を確認できませんでした。再ログイン後に確認してください。')}</div>`;
+  }finally{accountDeletionInProgress=false;updateAccountDeleteButton();}
 }
 async function signOut(){
  if(typeof hidePasswordVisibility==='function')hidePasswordVisibility();
@@ -3591,7 +3645,7 @@ jobList.innerHTML=jobs.map(j=>{
    return `<div class="card"><div class="row"><div><b>${esc(j.title)}</b><div class="small">${esc(j.profiles?.display_name||'依頼者')}</div></div><div class="price">${Number(j.budget_jpy).toLocaleString()}円</div></div><p class="small">${esc(j.description||'')}</p><span class="pill">AI:${esc(j.ai_use)}</span>${action}</div>`;
  }
  const list=byJob[j.id]||[];const pending=list.filter(a=>a.status==='pending').length;
- const appHtml=list.length?`<div class="${pending?'countbadge':'pill'}">応募 ${list.length}件${pending?'・未確認 '+pending+'件':''}</div>${list.map(a=>`<div class="appbox"><div class="row"><b>${esc(a.profiles?.display_name||'応募者')}</b><span class="pill">${statusLabel(a.status)}</span></div><div class="appmsg">${esc(a.message||'メッセージなし')}</div><div class="small">提示金額：${financeYen(a.agreed_price_jpy??a.proposed_price_jpy??j.budget_jpy)}</div>${a.status==='pending'?`<div class="appactions"><button class="btn" onclick="reviewApplication('${a.id}','accepted')">承認</button><button class="btn reject" onclick="reviewApplication('${a.id}','rejected')">見送る</button></div>`:a.status==='accepted'?`<button class="btn full" onclick="openJobChat('${j.id}','${j.buyer_id}','${a.applicant_id}','${inlineText(j.title)}')">チャットする</button><button class="btn secondary full" type="button" onclick="startStripeCheckout(null,this,'${a.id}')">依頼の支払いを準備</button><button class="btn secondary full" type="button" onclick="reviewApplication('${a.id}','rejected')">承認を取り消す（支払い前）</button>`:''}</div>`).join('')}`:'<div class="small" style="margin-top:10px">まだ応募はありません。</div>';
+ const appHtml=list.length?`<div class="${pending?'countbadge':'pill'}">応募 ${list.length}件${pending?'・未確認 '+pending+'件':''}</div>${list.map(a=>`<div class="appbox"><div class="row"><b>${esc(a.profiles?.display_name||'応募者')}</b><span class="pill">${statusLabel(a.status)}</span></div><div class="appmsg">${esc(a.message||'メッセージなし')}</div><div class="small">提示金額：${financeYen(a.agreed_price_jpy??a.proposed_price_jpy??j.budget_jpy)}</div>${a.status==='pending'?`<div class="appactions"><button class="btn" onclick="reviewApplication('${a.id}','accepted')">承認</button><button class="btn reject" onclick="reviewApplication('${a.id}','rejected')">見送る</button></div>`:a.status==='accepted'?`<button class="btn full" onclick="openJobChat('${j.id}','${j.buyer_id}','${a.applicant_id}','${inlineText(j.title)}')">チャットする</button><button class="btn secondary full" type="button" onclick="startStripeCheckout(null,this,'${a.id}')">依頼の支払いを準備</button><button class="btn reject full" type="button" onclick="reviewApplication('${a.id}','rejected')">承認を取り消す（支払い前）</button>`:''}</div>`).join('')}`:'<div class="small" style="margin-top:10px">まだ応募はありません。</div>';
  return `<div class="card"><div class="row"><div><b>${esc(j.title)}</b><div class="small">${esc(j.profiles?.display_name||'依頼者')}</div></div><div class="price">${Number(j.budget_jpy).toLocaleString()}円</div></div><p class="small">${esc(j.description||'')}</p><span class="pill">AI:${esc(j.ai_use)}</span><div class="ok">あなたの募集です</div>${appHtml}</div>`
 }).join('')||'<div class="card small">まだ募集がありません。</div>';
 loadJobBadge();loadMessageBadge();
@@ -5222,7 +5276,7 @@ async function loadTradePanel(id,offset=0){
  const rows=data?.rows||[];
  const cards=rows.map(c=>{
   const title=inlineText(c.title),status=c.completed?'完了':c.delivery_status==='accepted'?'評価待ち':c.delivery_status==='submitted'?'受取確認待ち':'納品待ち';
-  return `<div class="card trade-history-card mypage-item-card"><b>${esc(c.title)}</b><div class="small">${esc(c.partner_name||'取引相手')} ・ ${c.amount_jpy==null?'金額情報なし':Number(c.amount_jpy).toLocaleString()+'円'}</div><div class="trade-date">取引開始日：${formatJpDateTime(c.created_at,false)}</div><span class="delivery-status">${status}</span><button class="btn secondary full" onclick="go('messages').then(()=>openConversation('${c.id}','${title}'))">取引詳細を見る</button>${c.completed?`<div style="display:flex;gap:8px;margin-top:8px"><button class="btn secondary" onclick="${c.is_hidden?'restoreTradeForMe':'hideTradeForMe'}('${c.id}')">${c.is_hidden?'再表示':'非表示'}</button><button class="btn secondary" onclick="removeCompletedTradeForMe('${c.id}')">一覧から削除</button></div>`:''}</div>`;
+  return `<div class="card trade-history-card mypage-item-card"><b>${esc(c.title)}</b><div class="small">${esc(c.partner_name||'取引相手')} ・ ${c.amount_jpy==null?'金額情報なし':Number(c.amount_jpy).toLocaleString()+'円'}</div><div class="trade-date">取引開始日：${formatJpDateTime(c.created_at,false)}</div><span class="delivery-status">${status}</span><button class="btn full" onclick="go('messages').then(()=>openConversation('${c.id}','${title}'))">取引詳細を見る</button>${c.completed?`<div style="display:flex;gap:8px;margin-top:8px"><button class="btn secondary" onclick="${c.is_hidden?'restoreTradeForMe':'hideTradeForMe'}('${c.id}')">${c.is_hidden?'再表示':'非表示'}</button><button class="btn reject" onclick="removeCompletedTradeForMe('${c.id}')">一覧から削除</button></div>`:''}</div>`;
  }).join('');
  body.querySelector('[data-trade-more]')?.remove();
  if(offset)body.insertAdjacentHTML('beforeend',cards);else body.innerHTML=cards||'<p class="small">条件に合う取引はありません。</p>';
@@ -5495,6 +5549,19 @@ function showRuleDoc(kind){const body=document.getElementById('rulesBody');if(bo
     <p>この納品を受け取り済みにしますか？</p>
     <button class="btn full" type="button" onclick="acceptDeliveryConfirmed()">受け取る</button>
     <button class="btn secondary full" type="button" onclick="closeDeliveryConfirm()">キャンセル</button>
+  </div>
+</div>
+
+<div id="accountDeleteOverlay" class="vf-confirm-overlay" aria-hidden="true">
+  <div class="vf-confirm-card" role="dialog" aria-modal="true" aria-labelledby="accountDeleteTitle">
+    <div class="vf-confirm-icon">🗑️</div>
+    <h3 id="accountDeleteTitle">アカウントを削除</h3>
+    <p>アカウントを削除すると、ログインできなくなります。未完了の取引・返金・売上金がある場合は先に対応が必要です。削除すると出品とブーストの表示は終了します。Apple購入の返金はAppleへの申請が必要です。</p>
+    <div class="field"><label for="accountDeleteConfirmInput">本人確認のため「削除」と入力してください</label><input id="accountDeleteConfirmInput" type="text" autocomplete="off" placeholder="削除" oninput="updateAccountDeleteButton()"></div>
+    <div class="small" id="accountDeleteHint" style="margin:-4px 0 10px;text-align:left">「削除」と入力すると「アカウントを削除する」ボタンが押せるようになります。</div>
+    <div id="accountDeleteMsg"></div>
+    <button id="accountDeleteExecuteBtn" class="btn danger-btn full" type="button" onclick="executeAccountDeletion()" disabled>アカウントを削除する</button>
+    <button class="btn secondary full" type="button" onclick="closeAccountDelete()">やめる</button>
   </div>
 </div>
 
