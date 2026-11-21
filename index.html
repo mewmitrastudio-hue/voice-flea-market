@@ -1180,7 +1180,7 @@ html body.normal-mode #home.page.on.home-has-pending{grid-template-rows:auto min
 </div>
 </section>
 
-<section id="home" class="page"><div class="home-welcome"><h1>今日は、声で何をしよう？</h1><p>声を探す・売る・依頼する。やりたいことから始めましょう。</p></div><div class="quickgrid"><button class="quickcard" onclick="go('sell')"><span class="qi">🎙️</span>声を出品<small>声をアピールして、販売や仕事につなげる</small></button><button class="quickcard" onclick="go('voices')"><span class="qi">🔎</span>声を探す・購入<small>動画・広告・ナレーションなどに合う声を探す</small></button><button class="quickcard" onclick="go('jobs')"><span class="qi">📣</span>声を依頼<small>欲しい声や用途を投稿して募集する</small></button><button class="quickcard" onclick="go('messages')"><span class="qi">💬</span>メッセージ<small>取引相手とやり取りする</small></button></div><button class="home-boost-entry" type="button" onclick="openBoostPreview()" aria-haspopup="dialog" aria-controls="boostPreviewOverlay"><span><strong>🚀 出品ブースト</strong><small>自分の出品をPRで目立たせる有料プラン</small></span><span aria-hidden="true">›</span></button><button class="btn secondary full" type="button" onclick="openIapReadiness()">購入設定の診断（読取専用）</button><details class="home-help"><summary>初めての方へ：使い方を確認</summary><p><strong>声を買いたい方：</strong>「声を探す・購入」からサンプルと価格を確認。内容を相談したいときは、出品の相談ボタンから始められます。</p><p><strong>声を売りたい方：</strong>「声を出品」で公開サンプル、料金、納期を登録します。</p><p><strong>希望の声を募集したい方：</strong>「声を依頼」で用途と予算を投稿。募集への応募も同じ画面で確認できます。</p><p>取引相手との連絡は「メッセージ」、出品や取引の管理は「マイページ」へ。</p><button class="btn secondary full" type="button" onclick="openManualCenter()">詳しい使い方を見る</button></details><section id="homePendingTrades" class="pending-trade-notice" aria-live="polite" hidden></section><div class="home-summary-title">あなたの利用状況</div><div class="home-summary-grid"><button class="home-summary-card" type="button" onclick="openFinanceCenter('seller')"><span>💰 本番売上</span><strong id="homeSalesAmount">0円</strong></button><button class="home-summary-card" type="button" onclick="go('messages')"><span>💬 未読</span><strong id="homeUnreadCount">0件</strong></button><button class="home-summary-card" type="button" onclick="menuGoMySection('myListings')"><span>🎙️ 出品を確認</span><strong id="homeMyListingCount">0件</strong></button><button class="home-summary-card favorite-summary-card" type="button" onclick="openFavorites()"><span>♥ お気に入り</span><strong id="homeFavoriteCount">0件</strong></button></div></section>
+<section id="home" class="page"><div class="home-welcome"><h1>今日は、声で何をしよう？</h1><p>声を探す・売る・依頼する。やりたいことから始めましょう。</p></div><div class="quickgrid"><button class="quickcard" onclick="go('sell')"><span class="qi">🎙️</span>声を出品<small>声をアピールして、販売や仕事につなげる</small></button><button class="quickcard" onclick="go('voices')"><span class="qi">🔎</span>声を探す・購入<small>動画・広告・ナレーションなどに合う声を探す</small></button><button class="quickcard" onclick="go('jobs')"><span class="qi">📣</span>声を依頼<small>欲しい声や用途を投稿して募集する</small></button><button class="quickcard" onclick="go('messages')"><span class="qi">💬</span>メッセージ<small>取引相手とやり取りする</small></button></div><button class="home-boost-entry" type="button" onclick="openBoostPreview()" aria-haspopup="dialog" aria-controls="boostPreviewOverlay"><span><strong>🚀 出品ブースト</strong><small>自分の出品をPRで目立たせる有料プラン</small></span><span aria-hidden="true">›</span></button><button id="iapReadinessMenuBtn" class="btn secondary full hide" type="button" onclick="openIapReadiness()">購入設定の診断（読取専用）</button><details class="home-help"><summary>初めての方へ：使い方を確認</summary><p><strong>声を買いたい方：</strong>「声を探す・購入」からサンプルと価格を確認。内容を相談したいときは、出品の相談ボタンから始められます。</p><p><strong>声を売りたい方：</strong>「声を出品」で公開サンプル、料金、納期を登録します。</p><p><strong>希望の声を募集したい方：</strong>「声を依頼」で用途と予算を投稿。募集への応募も同じ画面で確認できます。</p><p>取引相手との連絡は「メッセージ」、出品や取引の管理は「マイページ」へ。</p><button class="btn secondary full" type="button" onclick="openManualCenter()">詳しい使い方を見る</button></details><section id="homePendingTrades" class="pending-trade-notice" aria-live="polite" hidden></section><div class="home-summary-title">あなたの利用状況</div><div class="home-summary-grid"><button class="home-summary-card" type="button" onclick="openFinanceCenter('seller')"><span>💰 本番売上</span><strong id="homeSalesAmount">0円</strong></button><button class="home-summary-card" type="button" onclick="go('messages')"><span>💬 未読</span><strong id="homeUnreadCount">0件</strong></button><button class="home-summary-card" type="button" onclick="menuGoMySection('myListings')"><span>🎙️ 出品を確認</span><strong id="homeMyListingCount">0件</strong></button><button class="home-summary-card favorite-summary-card" type="button" onclick="openFavorites()"><span>♥ お気に入り</span><strong id="homeFavoriteCount">0件</strong></button></div></section>
 
 <section id="voices" class="page"><h2>声を探す・購入</h2>
 <details class="purchase-guide"><summary>🔎 声の探し方・購入の流れ</summary><p>ここは、声を売りたい人と声を探している人が出会う「声のフリマ」です。動画・YouTube・SNS・広告・商品紹介・企業の説明動画・店舗や施設の案内・朗読・ゲームやアプリのキャラクターボイスなど、必要な声を探せます。出品者のアピールやサンプルを聴いて、気になる声を見つけてください。条件が合えば購入し、必要に応じて取引相手と内容を相談しながら進められます。</p></details><div class="field"><input id="voiceSearch" aria-label="声を検索" type="search" placeholder="英語、関西弁、YouTube、出品者名..." oninput="scheduleListingSearch()"></div><div class="small" style="margin:-4px 2px 10px">タイトル・カテゴリー・説明・AI条件・出品者名から検索できます。予算上限と納期で絞り込めます。</div><div class="voice-filter-row"><label><input id="hidePurchasedToggle" type="checkbox" onchange="selectedListingId=null;loadListings(true)"> 購入済みを非表示</label><label><input id="hideOwnToggle" type="checkbox" onchange="selectedListingId=null;loadListings(true)"> 自分の出品を除外</label></div><div class="listing-search-options"><label>予算上限（円）<input id="voiceMaxPrice" type="number" min="0" step="100" inputmode="numeric" placeholder="指定なし" onchange="scheduleListingSearch()"></label><label>納期<select id="voiceMaxDays" onchange="scheduleListingSearch()"><option value="">指定なし</option><option value="3">3日以内</option><option value="7">7日以内</option><option value="14">14日以内</option></select></label><label>並び順<select id="voiceSort" onchange="scheduleListingSearch()"><option value="recommended">おすすめ（PR優先）</option><option value="newest">新しい順</option><option value="price">価格が安い順</option><option value="delivery">納期が短い順</option></select></label></div><div id="listingSearchMeta" class="small" style="margin:0 2px 10px"></div><div id="listingList"></div><button id="listingLoadMoreBtn" class="btn secondary full hide" type="button" style="margin-top:12px" onclick="loadMoreListings()">さらに表示</button></section>
@@ -1191,7 +1191,7 @@ html body.normal-mode #home.page.on.home-has-pending{grid-template-rows:auto min
   <p class="small">ここは、自分の声をアピールして仕事や販売につなげる「声のフリマ」です。「低い声に自信があります」「CMに使ってください」「ナレーションやります」など、あなたの強みや得意な声を自由にアピールしてください。ナレーション・セリフ・朗読・キャラクターボイスなどのサンプルを公開し、声を探している企業・制作会社・クリエイター・依頼者に見つけてもらえます。</p>
   <p class="small"><b>出品例：</b>動画・CMナレーション／朗読／アニメ・ゲーム向けボイス／商品・サービス案内／落ち着いた声／元気な声／方言／外国語など</p>
   <p class="small"><b>出品のコツ：</b>「どんな声を提供できるか」が伝わる30秒〜1分程度のサンプルがおすすめです。得意な声・使ってほしい用途・納期・希望料金などを書き、「料金や内容は相談OK」など交渉できることも説明欄でアピールしましょう。</p>
-</details><div class="card"><div class="field"><label for="sellTitle">タイトル</label><input id="sellTitle" placeholder="例：自然な日本語を読みます"></div><div class="field"><label for="sellCategory">カテゴリー</label><select id="sellCategory"><option>外国語・学習</option><option>日本語・方言</option><option>YouTube・SNS</option><option>ナレーション</option><option>歌</option><option>メッセージ</option><option>その他</option></select></div><div class="field"><label for="sellDesc">説明</label><textarea id="sellDesc" placeholder="声の特徴、対応できる内容など"></textarea></div><div class="field"><label for="sellPrice">価格（円）</label><input id="sellPrice" type="number" value="1000" min="50"></div><div class="field"><label for="sellDays">納期（日）</label><input id="sellDays" type="number" value="3" min="1" max="365"></div><div class="field"><label for="sellAI">音声のAI利用を認めますか？</label><select id="sellAI"><option>禁止</option><option>案件ごとに相談</option><option>許可</option></select></div><div class="field"><label for="sellAudio">公開用の声サンプル</label><input id="sellAudio" type="file" accept="audio/*,.m4a,.mp3,.wav,.aac,.mp4,.ogg,.webm"><div class="small">対応形式：m4a / mp3 / wav / aac / mp4 などの音声ファイル</div></div><div class="notice">ここへ登録する音声は「公開サンプル」として扱います。取引後の納品音声は別の非公開領域へ保存します。</div><button class="btn full" onclick="createListing()">声を出品する</button><div id="sellMsg"></div></div></section>
+</details><div class="card"><div class="field"><label for="sellTitle">タイトル</label><input id="sellTitle" placeholder="例：自然な日本語を読みます"></div><div class="field"><label for="sellCategory">カテゴリー</label><select id="sellCategory"><option>外国語・学習</option><option>日本語・方言</option><option>YouTube・SNS</option><option>ナレーション</option><option>歌</option><option>メッセージ</option><option>その他</option></select></div><div class="field"><label for="sellDesc">説明</label><textarea id="sellDesc" placeholder="声の特徴、対応できる内容など"></textarea></div><div class="field"><label for="sellPrice">価格（円）</label><input id="sellPrice" type="number" value="1000" min="50"><div class="small" id="sellFeePreview" aria-live="polite"></div></div><div class="field"><label for="sellDays">納期（日）</label><input id="sellDays" type="number" value="3" min="1" max="365"></div><div class="field"><label for="sellAI">音声のAI利用を認めますか？</label><select id="sellAI"><option>禁止</option><option>案件ごとに相談</option><option>許可</option></select></div><div class="field"><label for="sellAudio">公開用の声サンプル</label><input id="sellAudio" type="file" accept="audio/*,.m4a,.mp3,.wav,.aac,.mp4,.ogg,.webm"><div class="small">対応形式：m4a / mp3 / wav / aac / mp4 などの音声ファイル</div></div><div class="notice">ここへ登録する音声は「公開サンプル」として扱います。取引後の納品音声は別の非公開領域へ保存します。</div><button class="btn full" onclick="createListing()">声を出品する</button><div id="sellMsg"></div></div></section>
 
 <section id="jobs" class="page"><h2>声の依頼を探す / 募集する</h2>
 <div class="card" style="margin-bottom:14px">
@@ -1541,7 +1541,7 @@ html body.normal-mode #home.page.on.home-has-pending{grid-template-rows:auto min
 
     <div class="manual-section">
       <b>💰 売上を確認する</b>
-      <p>マイページまたは右上メニューの「売上金」から、本番照合済み・返金なしの取引の当初の売り手配分を確認できます。テスト・未照合・返金記録のある取引は集計から除きます。実際の銀行入金・振込可能残高・納品後の売上確定額ではありません。</p>
+      <p>マイページまたは右上メニューの「売上金」から、本番確認済み・返金なしの取引の当初の売り手配分を確認できます。テスト・確認中・返金記録のある取引は集計から除きます。実際の銀行入金・振込可能残高・納品後の売上確定額ではありません。</p>
     </div>
 
     <div class="manual-section">
@@ -1678,26 +1678,26 @@ async function fetchSellerFinance(){
 }
 function sellerFinanceNotice(data){
  const applePending=Number.isSafeInteger(data.apple_settlement_pending)&&data.apple_settlement_pending>=0?data.apple_settlement_pending:null;
- return `未照合 ${Number(data.unverified||0)}件・テスト ${Number(data.test||0)}件・返金記録のある取引 ${Number(data.adjusting||0)}件は金額に含めません。各件数は重複する場合があります。${applePending===null?' Apple購入の精算状況は未確認です。':` Apple本番購入の精算待ち ${applePending}件は、実際のApple手数料・受取額の照合前のため金額に含めません。`}`;
+ return `確認中 ${Number(data.unverified||0)}件・テスト ${Number(data.test||0)}件・返金記録のある取引 ${Number(data.adjusting||0)}件は金額に含めません。各件数は重複する場合があります。${applePending===null?' Apple購入の精算状況は未確認です。':` Apple本番購入で精算を確認中の ${applePending}件は、実際のApple手数料・受取額の確認前のため金額に含めません。`}`;
 }
 function applySellerFinance(data){
  const home=document.getElementById('homeSalesAmount');
  if(home)home.textContent=financeYen(data.payout);
  const summary=document.getElementById('sellerSalesSummary');
- if(summary)summary.innerHTML=`<div class="finance-summary" style="margin:0"><div class="finance-caption">返金なし・本番照合済み ${data.count}件</div><div class="finance-line finance-primary-line"><span>当初の売り手受取額</span><strong class="finance-total">${financeYen(data.payout)}</strong></div><div class="finance-caption">${esc(sellerFinanceNotice(data))}<br>契約上の配分を集計した金額です。銀行入金・振込可能残高・納品後の確定額ではありません。</div></div>`;
+ if(summary)summary.innerHTML=`<div class="finance-summary" style="margin:0"><div class="finance-caption">返金なし・本番確認済み ${data.count}件</div><div class="finance-line finance-primary-line"><span>当初の売り手受取額</span><strong class="finance-total">${financeYen(data.payout)}</strong></div><div class="finance-caption">${esc(sellerFinanceNotice(data))}<br>契約上の配分を集計した金額です。銀行入金・振込可能残高・納品後の確定額ではありません。</div></div>`;
  window.voiceFleaFinanceData={...(window.voiceFleaFinanceData||{}),sellerAcceptedPayout:data.payout,sellerAcceptedCount:data.count,sellerDetailLimited:true,sellerReconciliationNotice:sellerFinanceNotice(data)};
 }
 async function refreshAppleRefundReviewNotice(){
  const target=document.getElementById('appleRefundReviewNotice'),owner=currentUser?.id,request=++appleRefundNoticeRequest;
  if(!target||!owner||!sb)return;
- target.textContent='Apple返金の照合状況を確認しています…';
+ target.textContent='Apple返金の状況を確認しています…';
  const current=()=>currentUser?.id===owner&&request===appleRefundNoticeRequest;
  try{
   const {data,error}=await sb.rpc('apple_refund_review_status');
   if(!current())return;
   if(error||typeof data?.reviewRequired!=='boolean'||!Number.isSafeInteger(data.count)||data.count<0||data.reviewRequired!==(data.count>0))throw new Error('Refund review status unavailable');
-  target.textContent=data.reviewRequired?`Apple返金の内容を照合中の取引が${data.count}件あります。対象取引の新しい納品・受取・送金手続きを保留しています。金額は未確定です。運営へお問い合わせください。`:'Apple返金の要照合記録はありません。表示額は銀行への入金確認を意味しません。';
- }catch(error){if(current())target.textContent='Apple返金の照合状況を確認できません。返金・入金が完了したとは判断せず、画面を開き直すか運営へお問い合わせください。';}
+  target.textContent=data.reviewRequired?`Apple返金の内容を確認中の取引が${data.count}件あります。対象取引の新しい納品・受取・送金手続きを保留しています。金額は未確定です。運営へお問い合わせください。`:'Apple返金の要確認記録はありません。表示額は銀行への入金確認を意味しません。';
+ }catch(error){if(current())target.textContent='Apple返金の状況を確認できません。返金・入金が完了したとは判断せず、画面を開き直すか運営へお問い合わせください。';}
 }
 function pendingCheckoutFromBuyerHistory(){
  if(activeFinanceMode!=='buyer'||!currentUser||authReloadPending||window.Capacitor?.isNativePlatform?.()===true)return null;
@@ -1864,7 +1864,7 @@ function showFinancePanel(mode='buyer'){
  }else{
    if(d.sellerDetailLimited){
     const amount=financeYen(d.sellerAcceptedPayout);
-    body.innerHTML=`<div class="finance-summary"><div class="finance-caption">返金なし・本番照合済み ${Number(d.sellerAcceptedCount||0)}件</div><div class="finance-line finance-primary-line"><span>当初の売り手受取額</span><strong class="finance-total">${amount}</strong></div><div class="finance-caption">${esc(d.sellerReconciliationNotice||'')}<br>ホーム・マイページと同じ集計です。銀行入金・振込可能残高・納品後の確定額ではありません。</div></div><div class="finance-muted">売上総額・返金額・手数料の正確な内訳は、この画面では確認できないため表示していません。</div>`;
+    body.innerHTML=`<div class="finance-summary"><div class="finance-caption">返金なし・本番確認済み ${Number(d.sellerAcceptedCount||0)}件</div><div class="finance-line finance-primary-line"><span>当初の売り手受取額</span><strong class="finance-total">${amount}</strong></div><div class="finance-caption">${esc(d.sellerReconciliationNotice||'')}<br>ホーム・マイページと同じ集計です。銀行入金・振込可能残高・納品後の確定額ではありません。</div></div><div class="finance-muted">売上総額・返金額・手数料の正確な内訳は、この画面では確認できないため表示していません。</div>`;
     return;
   }
   const gross=Number(d.sellerAcceptedGross||0);
@@ -1938,6 +1938,7 @@ function setAdminMenuVisibility(){
   document.getElementById('adminModerationMenuBtn')?.classList.toggle('hide',hidden);
   document.getElementById('adminMailMenuBtn')?.classList.toggle('hide',hidden);
   document.getElementById('adminSupportMenuBtn')?.classList.toggle('hide',hidden);
+  document.getElementById('iapReadinessMenuBtn')?.classList.toggle('hide',hidden);
 }
 
 async function openModerationQueue(){
@@ -2397,7 +2398,7 @@ async function checkAppleManualEvidenceStatus(){openAppleManualEvidence();if(app
 
 const adminPaymentViews={dashboard:{rows:[],cursor:null,request:0,loading:false},refund:{rows:[],cursor:null,request:0,loading:false}};
 function paymentEnvironment(row){return row.environment==='Production'?'本番':row.environment==='Test'?'テスト':'環境未確認'}
-function paymentRefundLabel(row){return row.refunded_amount_jpy==null||!(row.stripe_reconciled_at||row.payment_channel==='ios'&&row.apple_verified_at)?'未照合':financeYen(row.refunded_amount_jpy)}
+function paymentRefundLabel(row){return row.refunded_amount_jpy==null||!(row.stripe_reconciled_at||row.payment_channel==='ios'&&row.apple_verified_at)?'確認中':financeYen(row.refunded_amount_jpy)}
 function paymentStatusLabel(row){return row.status==='authorized'?'与信済み・受取確認後に決済':row.status==='refunded'?'返金記録あり（全額）':row.status==='partially_refunded'?'返金記録あり（一部）':'支払い済み'}
 function renderAdminPaymentRows(view){
   const box=document.getElementById(view==='refund'?'adminRefundList':'adminRecentPayments');
@@ -2936,6 +2937,15 @@ async function loadHome(){
 
   loadFavoriteBadge();
 }
+function updateSellFeePreview(){
+ const preview=document.getElementById('sellFeePreview'),input=document.getElementById('sellPrice');
+ if(!preview||!input)return;
+ if(!validWholeNumber(input.value,50)){preview.textContent='価格を入力すると、Webで売れた場合の手数料（15%）と受取額の目安を表示します。';return;}
+ const price=Number(input.value),fee=Math.round(price*FINANCE_FEE_RATE);
+ preview.textContent=`Webで売れた場合の目安：販売価格 ${financeYen(price)} ／ 手数料（15%）${financeYen(fee)} ／ あなたの受取額 ${financeYen(price-fee)}`;
+}
+document.getElementById('sellPrice')?.addEventListener('input',updateSellFeePreview);
+updateSellFeePreview();
 async function createListing(){if(!currentUser)return;
  const ownerId=currentUser.id;
  if(!sellTitle.value.trim())return info('sellMsg','タイトルを入力してください。','err');
@@ -3870,7 +3880,7 @@ async function loadTradeInfoPanel(c){
        amount=pay.amount_jpy;purchaseDate=paidAt;dateLabel='購入日';
        paymentNote='決済状態：'+paymentStatusLabel(pay)+'。銀行入金・納品後の売上確定を示すものではありません。';
        if(pay.apple_environment==='Sandbox'||pay.stripe_livemode===false)paymentNote='テスト購入です。実際の請求・売上・振込は発生しません。'+paymentNote;
-     }else paymentNote=paymentError?'決済記録を取得できないため、購入日時と金額を表示していません。':'この取引と決済記録の対応が未照合のため、購入日時と金額を表示していません。';
+     }else paymentNote=paymentError?'決済記録を取得できないため、購入日時と金額を表示していません。':'この取引と決済記録の対応を確認中のため、購入日時と金額を表示していません。';
    }else if(c.job_id){
      const {data:j}=await sb.from('jobs').select('title,budget_jpy').eq('id',c.job_id).maybeSingle();
      if(j){itemTitle=j.title||'声の依頼';amount=j.budget_jpy}
@@ -3888,7 +3898,7 @@ async function loadTradeInfoPanel(c){
    const rows=[
      ['取引',itemTitle],
      [dateLabel,formatJpDateTime(purchaseDate||c.created_at,false)||'-'],
-     [amountLabel,amount!=null?`${Number(amount).toLocaleString()}円`:'未照合'],
+     [amountLabel,amount!=null?`${Number(amount).toLocaleString()}円`:'確認中'],
      [roleLabel,partnerName],
      ['状態',state],
      ['納品日時',c.delivered_at?formatJpDateTime(c.delivered_at,true):'-'],
@@ -5489,7 +5499,7 @@ document.addEventListener('click',function(e){
    <small>30日間／おすすめ順でゴールド・シルバー・通常出品より上に表示</small><button class="btn full" type="button" data-boost-buy="platinum" onclick="purchaseBoost('platinum')" disabled>準備中</button>
   </div>
   <div class="boost-note" id="boostVerificationStatus" role="status">反映状況：課金機能の準備中（購入・有効化はできません）</div>
-  <p class="boost-note">※ 自動更新のない1回ごとの購入です。価格はAppleの購入確認画面で確定します。期間はサーバーへの反映時から始まります。おすすめ順では、検索条件に一致する全出品を「プラチナ → ゴールド → シルバー → 通常出品」の順で表示します。有効期間中は上位プランを優先し、同じプラン内は10分ごとに先頭を交代します。検索・再表示時に反映し、続きを表示する間は順番を固定します。新しい順・価格順・納期順を選んだ場合はその順番を優先します。期間終了後は通常表示に戻ります。閲覧数・購入・売上は保証しません。Sandboxはテスト購入で、一般公開のPRには反映しません。</p>
+  <p class="boost-note">※ 自動更新のない1回ごとの購入です。価格はAppleの購入確認画面で確定します。期間はサーバーへの反映時から始まります。おすすめ順では、検索条件に一致する全出品を「プラチナ → ゴールド → シルバー → 通常出品」の順で表示します。有効期間中は上位プランを優先し、同じプラン内は10分ごとに先頭を交代します。検索・再表示時に反映し、続きを表示する間は順番を固定します。新しい順・価格順・納期順を選んだ場合はその順番を優先します。期間終了後は通常表示に戻ります。閲覧数・購入・売上は保証しません。</p>
   <div id="boostOwnHistory" class="boost-note"></div><button class="btn secondary full" type="button" id="boostReconcileButton" onclick="reconcileBoostPurchases()" disabled>購入の反映を確認（iPhoneアプリ）</button>
   <button class="btn secondary boost-close" type="button" onclick="closeBoostPreview()">閉じる</button>
  </div>
@@ -5524,9 +5534,15 @@ function boostProductReadiness(plan,product){
  return {ready:true,message:''};
 }
 function boostListingChanged(){
- const id=document.getElementById('boostListingSelect').value,active=boostActiveListing(id);
+ const id=document.getElementById('boostListingSelect').value,active=boostActiveListing(id),native=isNativeBoost();
  document.querySelectorAll('[data-boost-buy]').forEach(button=>{
   const plan=button.dataset.boostBuy,product=boostStoreProducts.find(p=>p.id==='com.ayuhide.koenofurima.boost.'+plan),price=boostProductPrice(product),readiness=boostProductReadiness(plan,product);
+  if(!native){
+   button.disabled=true;
+   button.textContent='Web版では購入できません';
+   button.closest('.boost-plan').querySelector('strong').textContent=price||{silver:'300円',gold:'800円',platinum:'1,500円'}[plan];
+   return;
+  }
   button.disabled=boostBusy||!boostReady||!boostHistoryReady||active||!id||!readiness.ready;
   button.textContent=boostBusy?(boostPurchasePlan===button.dataset.boostBuy?'購入画面を準備中…':'処理中…'):active?'利用中・期間終了後に購入できます':!boostReady||!boostHistoryReady?'購入状況を確認してください':!id?'対象の出品を選んでください':!readiness.ready?readiness.message:price+'で購入';
   button.closest('.boost-plan').querySelector('strong').textContent=price||'価格はAppleで確認';
@@ -5782,6 +5798,7 @@ function closeIapReadiness(){iapReadinessRevision++;const el=document.getElement
 async function readinessWait(fn){let timer;try{return await Promise.race([Promise.resolve().then(fn),new Promise((_,reject)=>{timer=setTimeout(()=>reject(new Error('未確認：読取が時間内に完了しませんでした。')),25000);})]);}finally{clearTimeout(timer);}}
 function readinessFlag(value){return value===true?'有効':value===false?'無効':'未確認';}
 async function openIapReadiness(){
+ if(!isVoiceFleaAdmin())return;
  const request=++iapReadinessRevision,owner=currentUser?.id,revision=authUIRevision;
  iapReadinessFocus=document.activeElement;
  const overlay=document.getElementById('iapReadinessOverlay'),output=document.getElementById('iapReadinessResult');overlay.hidden=false;overlay.querySelector('button')?.focus();output.textContent='確認中…';
