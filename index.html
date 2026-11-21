@@ -1380,6 +1380,17 @@ html body.normal-mode #home.page.on.home-has-pending{grid-template-rows:auto min
       <div class="admin-stat-card"><span>本番の決済記録</span><strong id="adminStatPaid">-</strong><small>Stripe照合済みの記録</small></div>
       <div class="admin-stat-card"><span>本番の返金控除後決済額</span><strong id="adminStatGross">-</strong><small>Stripe記録額・銀行入金とは別</small></div>
       <div class="admin-stat-card"><span>本番の返金記録額</span><strong id="adminStatFees">-</strong><small>Stripe記録額・銀行入金とは別</small></div>
+      <div class="admin-stat-card"><span>iOS売上（ブースト本番）</span><strong id="adminStatIosBoost">-</strong><small>購入記録額・Appleの実請求額とは別</small></div>
+      <div class="admin-stat-card"><span>未対応のお問い合わせ</span><strong id="adminStatSupportOpen">-</strong><small>お問い合わせ管理の未対応件数</small></div>
+      <div class="admin-stat-card"><span>照合待ちの決済（本番）</span><strong id="adminStatUnreconciled">-</strong><small>Stripe照合が未完了の記録</small></div>
+      <div class="admin-stat-card"><span>対応待ちの通報</span><strong id="adminStatModeration">-</strong><small>通報対応キューの件数</small></div>
+    </div>
+
+    <div class="admin-dashboard-section">
+      <b>対応が必要な項目</b>
+      <div id="adminActionSummary" class="small">読み込み中...</div>
+      <div id="adminActionList" class="admin-dashboard-list"></div>
+      <div class="small">各項目のボタンから、既存の管理画面（お問い合わせ管理・通報対応・決済記録）へ移動できます。</div>
     </div>
 
     <div class="admin-dashboard-section">
@@ -2216,6 +2227,93 @@ async function loadAdminDashboard(){
   const results=await Promise.all(financial);
   if(request!==adminDashboardRequest||currentUser?.id!==owner||!isVoiceFleaAdmin())return;
   if(msg)msg.textContent=errors.length||results.some(x=>x===false)?'一部の情報を取得できませんでした。各項目の表示を確認してください。':'取得処理が終了しました。購入記録は各項目で確認できます。';
+  void loadAdminActionSummary(owner,request);
+}
+
+let adminActionRequest=0;
+function adminActionItemHtml(title,meta,buttonHtml,amount){
+  return `<div class="admin-dashboard-item"><div class="admin-dashboard-item-head"><div class="admin-dashboard-item-title">${title}</div>${amount?`<div class="admin-dashboard-item-amount">${amount}</div>`:''}</div><div class="admin-dashboard-meta">${meta}</div>${buttonHtml||''}</div>`;
+}
+async function loadAdminActionSummary(owner,request){
+  if(!sb||typeof sb.rpc!=='function'||!isVoiceFleaAdmin())return;
+  const myRequest=++adminActionRequest;
+  const current=()=>myRequest===adminActionRequest&&request===adminDashboardRequest&&currentUser?.id===owner&&isVoiceFleaAdmin();
+  const sumBox=document.getElementById('adminActionSummary');
+  const listBox=document.getElementById('adminActionList');
+  if(!sumBox||!listBox)return;
+  sumBox.textContent='対応が必要な項目を確認しています。';
+  const settle=p=>Promise.resolve(p).then(res=>({res}),()=>({res:null}));
+  try{
+    const [support,moderation,payments,boosts]=await Promise.all([
+      settle(sb.rpc('admin_support_inquiries',{filter_status:'open',query_text:'',before_created:null,before_id:null})),
+      settle(sb.rpc('moderation_queue')),
+      settle(sb.rpc('admin_payment_receipts',{before_created:null,before_id:null})),
+      settle(sb.rpc('admin_boost_receipts',{before_created:null,before_id:null}))
+    ]);
+    if(!current())return;
+    let failures=0;
+    let supportOpen=null,moderationCount=null,unreconciledCount=null;
+    const groups=[];
+    if(boosts.res&&!boosts.res.error&&boosts.res.data&&Array.isArray(boosts.res.data.summary)){
+      const prod=boosts.res.data.summary.find(x=>x.environment==='Production')||{};
+      adminSetStat('adminStatIosBoost',financeYen(prod.valid_reference_amount_jpy||0));
+    }else{failures++;adminSetStat('adminStatIosBoost','取得不可');}
+    if(support.res&&!support.res.error&&support.res.data&&support.res.data.summary){
+      supportOpen=Number(support.res.data.summary.open||0);
+      adminSetStat('adminStatSupportOpen',String(supportOpen));
+      if(supportOpen>0){
+        const rows=Array.isArray(support.res.data.rows)?support.res.data.rows:[];
+        const shown=rows.slice(0,5);
+        const items=shown.map(x=>adminActionItemHtml(esc(x.subject||'お問い合わせ'),`受付日時：${esc(formatJpDateTime(x.created_at))} ／ ${esc(supportStatusLabel(x.status))}`,`<button class="btn secondary" type="button" style="margin-top:8px" onclick="openAdminActionSupport()">お問い合わせ管理を開く</button>`));
+        groups.push(`<div style="margin-top:10px"><b>お問い合わせ（未対応 ${supportOpen}件）</b>${items.join('')}${supportOpen>shown.length?`<div class="small">ほか ${supportOpen-shown.length}件はお問い合わせ管理で確認できます。</div>`:''}</div>`);
+      }
+    }else{failures++;adminSetStat('adminStatSupportOpen','取得不可');}
+    if(moderation.res&&!moderation.res.error&&moderation.res.data&&Array.isArray(moderation.res.data.reports)){
+      const reports=moderation.res.data.reports;
+      moderationCount=reports.length;
+      adminSetStat('adminStatModeration',String(moderationCount));
+      if(moderationCount>0){
+        const shown=reports.slice(0,5);
+        const items=shown.map(x=>adminActionItemHtml(esc(x.reason||x.subject||'通報'),`${esc(formatJpDateTime(x.created_at))} ／ ${esc(x.status||'')}`,`<button class="btn secondary" type="button" style="margin-top:8px" onclick="openAdminActionModeration()">通報対応を開く</button>`));
+        groups.push(`<div style="margin-top:10px"><b>通報（対応待ち ${moderationCount}件）</b>${items.join('')}${moderationCount>shown.length?`<div class="small">ほか ${moderationCount-shown.length}件は通報対応で確認できます。</div>`:''}</div>`);
+      }
+    }else{failures++;adminSetStat('adminStatModeration','取得不可');}
+    if(payments.res&&!payments.res.error&&payments.res.data&&Array.isArray(payments.res.data.summary)){
+      const prod=payments.res.data.summary.find(x=>x.environment==='Production')||{};
+      unreconciledCount=Number(prod.unreconciled_count||0);
+      adminSetStat('adminStatUnreconciled',String(unreconciledCount));
+      if(unreconciledCount>0){
+        const rows=(Array.isArray(payments.res.data.rows)?payments.res.data.rows:[]).filter(r=>r.environment==='Production'&&(r.refunded_amount_jpy==null||r.stripe_reconciled_at==null)).slice(0,5);
+        const items=rows.map(r=>adminActionItemHtml(esc(r.listing_title||'出品取引'),`記録日時：${esc(formatJpDateTime(r.paid_at||r.created_at))} ／ 照合待ち`,`<button class="btn secondary" type="button" style="margin-top:8px" onclick="scrollToAdminPayments()">決済記録で確認</button>`,financeYen(r.amount_jpy)));
+        if(!items.length)items.push(adminActionItemHtml('照合待ちの決済があります','直近の決済記録には含まれていません。下の決済記録をたどって確認してください。',`<button class="btn secondary" type="button" style="margin-top:8px" onclick="scrollToAdminPayments()">決済記録で確認</button>`));
+        groups.push(`<div style="margin-top:10px"><b>決済の照合（本番・照合待ち ${unreconciledCount}件）</b>${items.join('')}${unreconciledCount>rows.length?`<div class="small">ほか ${unreconciledCount-rows.length}件は決済記録で確認できます。</div>`:''}</div>`);
+      }
+    }else{failures++;adminSetStat('adminStatUnreconciled','取得不可');}
+    const parts=[];
+    if(supportOpen!==null)parts.push(`未対応のお問い合わせ ${supportOpen}件`);
+    if(moderationCount!==null)parts.push(`対応待ちの通報 ${moderationCount}件`);
+    if(unreconciledCount!==null)parts.push(`照合待ちの決済（本番） ${unreconciledCount}件`);
+    sumBox.textContent=parts.length?parts.join(' ／ ')+(failures?'（一部取得できませんでした）':''):'対応が必要な項目を取得できませんでした。';
+    const total=(supportOpen||0)+(moderationCount||0)+(unreconciledCount||0);
+    listBox.innerHTML=groups.length?groups.join(''):failures&&parts.length===0?'<div class="small">項目を取得できませんでした。「更新」で再試行してください。</div>':total===0?'<div class="small">対応が必要な項目はありません。</div>':'';
+  }catch{
+    if(!current())return;
+    sumBox.textContent='対応が必要な項目を取得できませんでした。';
+    listBox.innerHTML='<div class="small">項目を取得できませんでした。「更新」で再試行してください。</div>';
+  }
+}
+function openAdminActionSupport(){
+  closeAdminDashboard();
+  const sel=document.getElementById('adminSupportStatus');
+  if(sel)sel.value='open';
+  void openAdminSupportDesk();
+}
+function openAdminActionModeration(){
+  closeAdminDashboard();
+  void openModerationQueue();
+}
+function scrollToAdminPayments(){
+  document.getElementById('adminRecentPayments')?.scrollIntoView({behavior:'smooth',block:'start'});
 }
 let appleFinanceRevision=0,appleFinancePreview=null,appleFinanceBusy=false,appleProceedsWorkbook=null,appleProceedsRequest=0,appleProceedsSaving=false;
 function resetAppleFinancialReport(){
