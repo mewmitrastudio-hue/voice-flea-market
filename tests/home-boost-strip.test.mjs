@@ -163,6 +163,18 @@ test('home loads the strip, which delegates boost validity to the ranked search 
 test('strip styles scroll horizontally with snap-sized cards', () => {
   assert.match(html, /\.home-boost-scroll\{[^}]*overflow-x:auto/);
   assert.match(html, /\.home-boost-scroll\{[^}]*display:flex/);
-  assert.match(html, /\.home-boost-card\{[^}]*flex:0 0 176px/);
+  assert.match(html, /\.home-boost-card\{[^}]*flex:0 0 180px/);
   assert.match(html, /\.home-boost-card \.listing-appeal\{/);
+});
+
+test('strip design stays quiet: plain section label, flat white cards, generous spacing', () => {
+  // No emoji or extra pill in the heading; the per-card PR tag carries disclosure.
+  assert.match(html, /<div class="home-boost-head"><h2>ブースト中のおすすめ<\/h2><\/div>/);
+  assert.doesNotMatch(html, /home-boost-note/);
+  // Flat card surface (no gradient) and roomier padding/gaps.
+  assert.match(html, /\.home-boost-card\{[^}]*background:var\(--card\)/);
+  assert.match(html, /\.home-boost-card\{[^}]*padding:12px/);
+  assert.match(html, /\.home-boost-scroll\{[^}]*gap:12px/);
+  // Heading matches the home summary label tone (small, muted).
+  assert.match(html, /\.home-boost-head h2\{[^}]*color:#5c5673/);
 });
