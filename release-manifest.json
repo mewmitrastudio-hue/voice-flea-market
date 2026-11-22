@@ -1,6 +1,6 @@
 {
-  "release": "2026.11.22-faceid-login",
-  "web_sha256": "8a6a4192349088e04791b8c693ce3eecd0a35a3acb0ffac04299f2ba9bd842c2",
+  "release": "2026.11.22-popular-section",
+  "web_sha256": "d334e9cf68ca613d4c209868e7decd213c0585bce4013b20260962aa5f57a4a2",
   "bundle_id": "com.ayuhide.koenofurima",
   "ios_app_icon_sha256": "55ebba6206924a7e6df7f9c87659c87f673b88a8ca96671b547fb907f591eaec",
   "minimum_build_number": 57,
