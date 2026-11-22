@@ -1,6 +1,6 @@
 {
-  "release": "2026.11.22-home-mascot-spots",
-  "web_sha256": "e35bf2793663c0224e4c3585b6c29e048f7dc7e1db738b7accde38f69e05b13d",
+  "release": "2026.11.22-mascot-concierge",
+  "web_sha256": "97a0ddce792ba84bde3db44bd5c9005a8c693e92ebff233c801b14885d1a8d81",
   "bundle_id": "com.ayuhide.koenofurima",
   "ios_app_icon_sha256": "55ebba6206924a7e6df7f9c87659c87f673b88a8ca96671b547fb907f591eaec",
   "minimum_build_number": 57,

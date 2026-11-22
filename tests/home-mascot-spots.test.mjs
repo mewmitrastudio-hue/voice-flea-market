@@ -159,8 +159,8 @@ test('boost promo card styles match the strip cards and center the mascot', () =
 /* --- リリースラベル --- */
 
 test('release label and manifest point at the home mascot spots build', () => {
-  assert.match(html, /<meta name="voice-flea-release" content="2026\.11\.22-home-mascot-spots">/);
-  assert.equal(manifest.release, '2026.11.22-home-mascot-spots');
+  assert.match(html, /<meta name="voice-flea-release" content="2026\.11\.22-mascot-concierge">/);
+  assert.equal(manifest.release, '2026.11.22-mascot-concierge');
   const digest = createHash('sha256').update(readFileSync(new URL('../index.html', import.meta.url))).digest('hex');
   assert.equal(manifest.web_sha256, digest, 'manifest web_sha256 matches index.html');
 });
