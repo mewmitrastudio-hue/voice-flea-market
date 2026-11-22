@@ -98,7 +98,7 @@ test('migration adds only the completion count and the popular ordering to the c
   const norm = s => s.replace(/\s+/g, ' ').trim();
   let body = bodyOf(migration);
   const addedLines = [
-    " (select count(*) from public.conversations c where c.seller_id=l.seller_id and c.delivery_status='accepted' and not c.is_inquiry) as seller_completed_count\n",
+    ",\n (select count(*) from public.conversations c where c.seller_id=l.seller_id and c.delivery_status='accepted' and not c.is_inquiry) as seller_completed_count\n",
     " case when sort_by='popular' then coalesce(seller_rating_avg,0)*seller_review_count end desc,\n",
     " case when sort_by='popular' then seller_completed_count end desc,\n",
     " case when sort_by='popular' then seller_review_count end desc,\n",
