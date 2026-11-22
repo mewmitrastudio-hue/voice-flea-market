@@ -128,8 +128,8 @@ test('concierge stays out of the other overlays and pages', () => {
 /* --- リリース整合 --- */
 
 test('release label and manifest point at the header nav polish build', () => {
-  assert.match(html, /<meta name="voice-flea-release" content="2026\.11.22-header-nav-polish">/);
-  assert.equal(manifest.release, '2026.11.22-header-nav-polish');
+  assert.match(html, /<meta name="voice-flea-release" content="2026\.11.22-header-layout2">/);
+  assert.equal(manifest.release, '2026.11.22-header-layout2');
   const digest = createHash('sha256').update(readFileSync(new URL('../index.html', import.meta.url))).digest('hex');
   assert.equal(manifest.web_sha256, digest, 'manifest web_sha256 matches index.html');
 });

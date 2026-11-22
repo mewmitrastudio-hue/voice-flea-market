@@ -17,12 +17,14 @@ function cssRule(selector) {
 
 /* --- 変更1: ヘッダー（グローバルページ移動バー）の空きにマスコット --- */
 
-test('header mascot sits in the global page nav, before the back button, as pure decoration', () => {
-  const navAt = html.indexOf('id="globalPageNav"');
+test('header mascot stands in the header nav zone, left of the button column, as pure decoration', () => {
+  const zoneAt = html.indexOf('class="header-nav-zone"');
   const mascotAt = html.indexOf('id="globalNavMascot"');
-  const backAt = html.indexOf('id="globalBackBtn"');
-  assert.ok(navAt !== -1 && mascotAt > navAt, 'mascot is inside the global page nav');
-  assert.ok(mascotAt < backAt, 'mascot is the first item of the nav row');
+  const actionsAt = html.indexOf('class="topactions"');
+  const navAt = html.indexOf('id="globalPageNav"');
+  assert.ok(zoneAt !== -1 && mascotAt > zoneAt, 'mascot is inside the header nav zone');
+  assert.ok(mascotAt < actionsAt && mascotAt < navAt,
+    'mascot is the left column of the zone, before the action buttons and the page nav');
   const tag = html.slice(html.lastIndexOf('<img', mascotAt), html.indexOf('>', mascotAt) + 1);
   assert.match(tag, /class="nav-mascot"/);
   assert.match(tag, /src="assets\/mascot-full\.webp"/, 'nav mascot uses the full-body asset so the feet stay visible');
@@ -160,8 +162,8 @@ test('boost promo card styles match the strip cards and center the mascot', () =
 /* --- リリースラベル --- */
 
 test('release label and manifest point at the header nav polish build', () => {
-  assert.match(html, /<meta name="voice-flea-release" content="2026\.11.22-header-nav-polish">/);
-  assert.equal(manifest.release, '2026.11.22-header-nav-polish');
+  assert.match(html, /<meta name="voice-flea-release" content="2026\.11.22-header-layout2">/);
+  assert.equal(manifest.release, '2026.11.22-header-layout2');
   const digest = createHash('sha256').update(readFileSync(new URL('../index.html', import.meta.url))).digest('hex');
   assert.equal(manifest.web_sha256, digest, 'manifest web_sha256 matches index.html');
 });
