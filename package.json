@@ -4,7 +4,7 @@
   "private": true,
   "scripts": {
     "test": "node --test tests/*.test.mjs",
-    "build": "mkdir -p www/assets && cp index.html www/index.html && cp assets/home-hero.webp www/assets/home-hero.webp",
+    "build": "mkdir -p www/assets && cp index.html www/index.html && cp assets/home-hero.webp www/assets/home-hero.webp && cp assets/mascot.webp www/assets/mascot.webp",
     "ios:sync": "npm run build && cap sync ios && node scripts/verify-ios-sync.mjs",
     "ios:verify": "node scripts/verify-ios-sync.mjs",
     "capawesome:build": "npm run build && cap sync ios && node scripts/prepare-native-release.mjs"
