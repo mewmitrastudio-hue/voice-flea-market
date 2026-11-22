@@ -17,7 +17,8 @@ assert.match(xml, /<key>NSCameraUsageDescription<\/key>\s*<string>\s*[^<\s][^<]*
   'The iOS app must describe camera access for profile photo uploads');
 for(const [key,label] of [
   ['NSMicrophoneUsageDescription','microphone'],
-  ['NSPhotoLibraryUsageDescription','photo library']
+  ['NSPhotoLibraryUsageDescription','photo library'],
+  ['NSFaceIDUsageDescription','Face ID']
 ]){
   const re=new RegExp('<key>'+key+'<\\/key>\\s*<string>\\s*[^<\\s][^<]*<\\/string>');
   assert.match(xml,re,'The iOS app must describe '+label+' access for media capture/selection');

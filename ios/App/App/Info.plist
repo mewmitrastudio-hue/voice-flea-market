@@ -30,6 +30,8 @@
 	<string>声のサンプルや納品用の音声を収録する場合にマイクを使用します。</string>
 	<key>NSPhotoLibraryUsageDescription</key>
 	<string>プロフィール写真を選ぶため、写真ライブラリにアクセスします。</string>
+	<key>NSFaceIDUsageDescription</key>
+	<string>Face IDでログインするために顔認証を使用します。</string>
 	<key>SKIncludeConsumableInAppPurchaseHistory</key>
 	<true/>
 	<key>UIApplicationSceneManifest</key>
