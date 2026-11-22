@@ -40,7 +40,7 @@ returns jsonb language sql stable security invoker set search_path='' as $$
  count(*) over(partition by boost_plan) as tier_count from matched
  ), paged as (
  select * from ranked order by
- case when sort_by='recommended' then case boost_plan when 'platinum' then 3 when 'gold' then 2 when 'silver' then 1 else 0 end desc,
+ case when sort_by='recommended' then case boost_plan when 'platinum' then 3 when 'gold' then 2 when 'silver' then 1 else 0 end else 0 end desc,
  case when sort_by='recommended' and boost_plan is not null then
  mod(mod(rotation_index-coalesce(rotation_epoch,floor(extract(epoch from now())/600)::bigint),tier_count)+tier_count,tier_count) else 0 end asc,
  case when sort_by='price' then price_jpy end asc,
