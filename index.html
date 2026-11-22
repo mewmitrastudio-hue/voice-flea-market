@@ -1,6 +1,6 @@
 <!doctype html>
 <!-- BUILD: 2026-09-17-public-policy-cleanup -->
-<html lang="ja"><head><meta charset="utf-8"><meta name="voice-flea-release" content="2026.11.22-chat-read-photo"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><title>声のフリマ</title>
+<html lang="ja"><head><meta charset="utf-8"><meta name="voice-flea-release" content="2026.11.22-faceid-login"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><title>声のフリマ</title>
 <style>
 :root{--bg:#f8f7ff;--card:#fff;--ink:#182033;--sub:#667085;--line:#e7e4f4;--brand:#6558ef;--brand2:#8b6df6;--pink:#f6d9ee;--blue:#dff2ff;--accent:#f0edff;--good:#087443;--bad:#b42318}*{box-sizing:border-box}body{margin:0;background:linear-gradient(180deg,#f3efff 0,#faf9ff 260px,#f8f7ff 100%);color:var(--ink);font-family:-apple-system,BlinkMacSystemFont,"Hiragino Sans",sans-serif}.app{max-width:440px;margin:auto;min-height:100vh;padding:16px 16px 260px}.brandwrap{display:flex;align-items:center;gap:11px;margin-top:16px}.brandicon{width:46px;height:46px;border-radius:16px;display:grid;place-items:center;font-size:24px;background:linear-gradient(145deg,#645df4,#9a63ef 58%,#d56ab9);box-shadow:0 10px 22px rgba(101,88,239,.24);position:relative}.brandicon:after{content:"✦";position:absolute;right:-5px;top:-8px;font-size:14px;color:#d56ab9;text-shadow:0 2px 8px rgba(213,106,185,.25)}.brandtext{min-width:0}.brand{font-size:30px;font-weight:950;letter-spacing:-.035em;background:linear-gradient(90deg,#282650,#5f58ef 56%,#a24e9b);-webkit-background-clip:text;background-clip:text;color:transparent;line-height:1.05} .tag{margin-top:7px;line-height:1.28;font-weight:900;letter-spacing:-.035em}.tag .line1{display:block;white-space:nowrap;font-size:12px;color:#3c3a62}.tag .line2{display:block;white-space:nowrap;font-size:13px;margin-top:3px;background:linear-gradient(90deg,#5f58ef,#9b4ca0);-webkit-background-clip:text;background-clip:text;color:transparent}.card{background:linear-gradient(180deg,rgba(255,255,255,.98),rgba(255,255,255,.94));border:1px solid var(--line);border-radius:20px;padding:15px;margin:12px 0;box-shadow:0 8px 24px rgba(73,57,130,.06)}.field{margin:12px 0}.field label{display:block;font-size:12px;font-weight:800;margin-bottom:6px}.field-req{display:inline-block;margin-left:6px;padding:1px 7px;border-radius:999px;background:#fdecec;color:var(--bad);font-size:10px;font-weight:900;vertical-align:1px}.field-opt{display:inline-block;margin-left:6px;padding:1px 7px;border-radius:999px;background:#eef0f4;color:var(--sub);font-size:10px;font-weight:800;vertical-align:1px}.field input,.field textarea,.field select{width:100%;border:1px solid var(--line);border-radius:12px;padding:12px;background:#fff;font-size:14px}.field textarea{min-height:82px}.btn{border:0;border-radius:13px;padding:12px 14px;font-weight:800;background:var(--brand);color:#fff}.btn.secondary{background:#fff;color:var(--brand);border:1px solid #cfd3ff}.btn.ghost{background:#eef0f4;color:#344054}.full{width:100%;margin-top:9px}.row{display:flex;gap:8px;align-items:center;justify-content:space-between}.small{font-size:11px;color:var(--sub)}.pill{display:inline-block;background:linear-gradient(135deg,#f0edff,#edf6ff);color:#4f46c8;padding:5px 8px;border-radius:999px;font-size:10px;margin:4px 3px 0 0}.price{font-weight:900}.hero{position:relative;overflow:hidden;margin-top:16px;background:linear-gradient(135deg,#5f5af4 0%,#7f61f5 52%,#b660b3 100%);color:#fff;padding:22px;border-radius:24px;box-shadow:0 14px 32px rgba(101,88,239,.24)}.hero:after{content:"";position:absolute;width:150px;height:150px;border-radius:50%;right:-55px;top:-65px;background:rgba(255,255,255,.14)}.hero:before{content:"";position:absolute;width:90px;height:90px;border-radius:50%;left:-30px;bottom:-40px;background:rgba(255,255,255,.1)}.hero h1{position:relative;z-index:1;font-size:23px;line-height:1.4;margin:0}.hero p{position:relative;z-index:1}.hero p{font-size:12px;opacity:.92}.nav{position:fixed;bottom:0;left:50%;transform:translateX(-50%);width:min(440px,100%);display:grid;grid-template-columns:repeat(2,minmax(0,1fr));grid-template-rows:repeat(3,52px);gap:6px;background:rgba(255,255,255,.98);border-top:1px solid var(--line);padding:8px 10px calc(8px + env(safe-area-inset-bottom));z-index:5;box-shadow:0 -8px 24px rgba(24,32,51,.06);overflow:hidden}.nav button{border:1px solid #d9dcff;background:#f1f2ff;color:#4d56b8;font-size:15px;font-weight:800;border-radius:14px;min-height:52px;padding:8px 8px;touch-action:manipulation;width:100%;min-width:0;box-shadow:0 2px 8px rgba(91,103,241,.08)}.nav button.on{background:linear-gradient(145deg,#5b67f1,#7c5cf5);color:#fff;border-color:transparent;font-weight:900;box-shadow:0 6px 14px rgba(91,103,241,.24)}.page{display:none}.page.on{display:block}.notice,.ok,.err{font-size:12px;padding:11px;border-radius:12px;margin-top:10px}.notice{background:#fff8e8;color:#805600}.ok{background:#ecfdf3;color:#087443}.err{background:#fef3f2;color:#b42318}.hide{display:none}.voice audio{width:100%;margin-top:8px;height:36px}.topbar{display:flex;justify-content:space-between;align-items:flex-start;gap:10px}.topbar .status{margin-top:18px;flex:0 0 auto}.status{font-size:10px;padding:7px 10px;border-radius:99px;background:#eef0f4;font-weight:800;border:1px solid #e4e7ec}.status.live{background:linear-gradient(135deg,#ecfdf3,#f3fff8);color:#087443;border-color:#c9efdc}.nav button{position:relative}.badge{display:none;position:absolute;top:4px;right:12px;min-width:17px;height:17px;padding:0 5px;border-radius:999px;background:#e11d48;color:#fff;font-size:10px;line-height:17px;font-weight:900}.badge.show{display:block}.appbox{border:1px solid #f0d4da;background:#fff7f8;border-radius:13px;padding:11px;margin-top:10px}.appmsg{font-size:12px;line-height:1.6;margin:7px 0}.appactions{display:flex;gap:7px;margin-top:8px}.appactions .btn{flex:1;padding:9px 8px;font-size:11px}.btn.reject{background:#fff;color:#b42318;border:1px solid #f0b7b0}.countbadge{display:inline-block;background:#e11d48;color:#fff;border-radius:999px;padding:4px 8px;font-size:10px;font-weight:900;margin-top:8px}.chatlist{display:grid;gap:10px}.chatrow{background:#fff;border:1px solid var(--line);border-radius:16px;padding:13px}.chathead{display:flex;justify-content:space-between;gap:8px;align-items:center}.chatbox{display:none}.chatbox.on{display:block}.chatmessages{display:flex;flex-direction:column;gap:8px;max-height:46vh;overflow:auto;padding:8px 0}.bubble{max-width:82%;padding:9px 11px;border-radius:15px;font-size:12px;line-height:1.55;white-space:pre-wrap;word-break:break-word}.mine{align-self:flex-end;background:var(--brand);color:#fff;border-bottom-right-radius:5px}.theirs{align-self:flex-start;background:#eef0f4;color:var(--ink);border-bottom-left-radius:5px}.chatcomposer{display:flex;gap:8px;margin-top:10px}.chatcomposer textarea{flex:1;min-height:44px;max-height:100px;border:1px solid var(--line);border-radius:12px;padding:10px;font-size:14px}.chatcomposer .btn{align-self:flex-end}.unread-dot{display:inline-flex;align-items:center;justify-content:center;min-width:20px;height:20px;padding:0 6px;border-radius:999px;background:#e11d48;color:#fff;font-size:10px;font-weight:900}
 
@@ -1195,7 +1195,7 @@ html body.normal-mode #home.page.on.home-has-pending{grid-template-rows:auto min
   <a class="btn" href="#publicListingsCard">声を探す</a>
   <a class="btn secondary" href="#publicLoginCard">ログイン・新規登録</a>
 </div>
-<div class="card" id="publicLoginCard"><div id="publicListingIntent" class="notice hide" role="status"></div><div class="field"><label for="email">メール</label><input id="email" autocomplete="email" autocapitalize="none" spellcheck="false" type="email" placeholder="you@example.com"></div><div class="field"><label for="password">パスワード</label><div class="password-control" id="passwordControl" onfocusout="passwordFocusOut(event)"><input id="password" autocomplete="current-password" autocapitalize="none" autocorrect="off" spellcheck="false" type="password" placeholder="8文字以上" aria-describedby="passwordVisibilityHint" onfocus="hidePasswordVisibility()" onchange="hidePasswordVisibility()"><button id="passwordVisibility" type="button" aria-controls="password" aria-pressed="false" aria-label="パスワードを表示" onpointerdown="keepPasswordFocus(event)" onclick="togglePasswordVisibility()"><svg viewBox="0 0 24 24" width="24" height="24" aria-hidden="true" focusable="false"><path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7S2 12 2 12Z" fill="none" stroke="currentColor" stroke-width="2"/><circle cx="12" cy="12" r="3" fill="none" stroke="currentColor" stroke-width="2"/><path class="password-eye-slash" d="M3 3l18 18" fill="none" stroke="currentColor" stroke-width="2"/></svg></button></div><p class="small" id="passwordVisibilityHint">画面共有・録画中はパスワードを表示しないでください。</p></div><details class="field"><summary>新規登録する方：表示名を設定</summary><label for="displayName">表示名（登録後もプロフィールで変更できます）</label><input id="displayName" autocomplete="nickname" maxlength="40" placeholder="表示名を入力"><p class="small">ログインには表示名の入力は不要です。</p></details><button class="btn full" onclick="signIn()">ログイン</button><button class="btn secondary full" onclick="signUp()">新規登録</button><div id="authMsg"></div></div>
+<div class="card" id="publicLoginCard"><div id="publicListingIntent" class="notice hide" role="status"></div><div class="field"><label for="email">メール</label><input id="email" autocomplete="email" autocapitalize="none" spellcheck="false" type="email" placeholder="you@example.com"></div><div class="field"><label for="password">パスワード</label><div class="password-control" id="passwordControl" onfocusout="passwordFocusOut(event)"><input id="password" autocomplete="current-password" autocapitalize="none" autocorrect="off" spellcheck="false" type="password" placeholder="8文字以上" aria-describedby="passwordVisibilityHint" onfocus="hidePasswordVisibility()" onchange="hidePasswordVisibility()"><button id="passwordVisibility" type="button" aria-controls="password" aria-pressed="false" aria-label="パスワードを表示" onpointerdown="keepPasswordFocus(event)" onclick="togglePasswordVisibility()"><svg viewBox="0 0 24 24" width="24" height="24" aria-hidden="true" focusable="false"><path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7S2 12 2 12Z" fill="none" stroke="currentColor" stroke-width="2"/><circle cx="12" cy="12" r="3" fill="none" stroke="currentColor" stroke-width="2"/><path class="password-eye-slash" d="M3 3l18 18" fill="none" stroke="currentColor" stroke-width="2"/></svg></button></div><p class="small" id="passwordVisibilityHint">画面共有・録画中はパスワードを表示しないでください。</p></div><details class="field"><summary>新規登録する方：表示名を設定</summary><label for="displayName">表示名（登録後もプロフィールで変更できます）</label><input id="displayName" autocomplete="nickname" maxlength="40" placeholder="表示名を入力"><p class="small">ログインには表示名の入力は不要です。</p></details><button class="btn full" onclick="signIn()">ログイン</button><button id="faceIdLoginBtn" class="btn secondary full hide" type="button" onclick="signInWithFaceId()">Face IDでログイン</button><button class="btn secondary full" onclick="signUp()">新規登録</button><div id="authMsg"></div></div>
 <div id="configNotice" class="notice">現在サービスへ接続できません。時間をおいて再度お試しください。</div>
 
 <div class="public-review-card" id="publicReviewInfo">
@@ -1404,6 +1404,7 @@ html body.normal-mode #home.page.on.home-has-pending{grid-template-rows:auto min
     <div class="main-menu-section account-section">
       <div class="main-menu-label">アカウント</div>
       <button onclick="menuGo('me')">👤 プロフィール・アカウント情報</button>
+      <button id="faceIdMenuBtn" type="button" onclick="closeMainMenu();openFaceIdSettings()">🔐 Face IDログイン設定</button>
       <div class="main-menu-account">
         <div>
           <div id="menuAccountEmail" class="main-menu-email">-</div>
@@ -2896,6 +2897,7 @@ function handleAuthStateChange(_event,session){
  currentUser=nextUser;
  const account=document.getElementById('menuAccountEmail');if(account)account.textContent=currentUser?.email||'-';
  setAdminMenuVisibility();
+ if(typeof refreshFaceIdLoginButton==='function')void refreshFaceIdLoginButton();
  if(previousId===(currentUser?.id||null))return; // refresh/refocus must preserve edits
  const revision=++authUIRevision;
  if(previousId){
@@ -2984,9 +2986,147 @@ async function signIn(){if(typeof hidePasswordVisibility==='function')hidePasswo
   if(!email.value.trim()||!email.checkValidity())return info('authMsg','メールアドレスを正しく入力してください。','err');
   if(!password.value)return info('authMsg','パスワードを入力してください。','err');
   if(!sb)return info('authMsg','まず接続設定が必要です','err');
-  const {error}=await sb.auth.signInWithPassword({email:email.value.trim(),password:password.value});
+  const signedInEmail=email.value.trim(),signedInPassword=password.value;
+  const {error}=await sb.auth.signInWithPassword({email:signedInEmail,password:signedInPassword});
   if(error)return info('authMsg',error.message,'err');
   resetLoginZoom();
+  void maybeEnrollFaceId(signedInEmail,signedInPassword);
+}
+// ------------------------------------------------------------------
+// Face IDログイン（iOSアプリのみ・任意設定）
+// プラグイン @capgo/capacitor-native-biometric の安全な保管領域
+// （iOSキーチェーン）にメール/パスワードを保存し、次回は生体認証で
+// 取り出して通常のパスワードログインを行う。Web版やプラグインが
+// 無い環境では全機能が静かに無効化され、通常ログインに影響しない。
+const FACE_ID_SERVER='koe-furima.com';
+const FACE_ID_EMAIL_KEY='vf_faceid_enabled_email';
+const FACE_ID_DECLINED_KEY='vf_faceid_declined';
+let faceIdNativePlugin=null;
+function isFaceIdPlatform(){return window.Capacitor?.isNativePlatform?.()===true&&window.Capacitor?.getPlatform?.()==='ios'}
+async function nativeBiometric(){
+  if(!isFaceIdPlatform())throw new Error('Face IDはiOSアプリでのみ使えます。');
+  if(!faceIdNativePlugin){const {registerPlugin}=await import('./capacitor-core.js');faceIdNativePlugin=registerPlugin('NativeBiometric')}
+  // Capacitor proxies expose a callable `then`; never return one directly from an async function.
+  return {plugin:faceIdNativePlugin};
+}
+async function faceIdAvailable(){
+  if(!isFaceIdPlatform())return false;
+  try{const {plugin}=await nativeBiometric();const result=await plugin.isAvailable();return !!result?.isAvailable}catch(_){return false}
+}
+function faceIdEnrolledEmail(){try{return safeLocalStorage.getItem(FACE_ID_EMAIL_KEY)||''}catch(_){return ''}}
+async function refreshFaceIdLoginButton(){
+  const btn=document.getElementById('faceIdLoginBtn');
+  if(!btn)return;
+  let show=false;
+  try{show=!!faceIdEnrolledEmail()&&await faceIdAvailable()}catch(_){show=false}
+  btn.classList.toggle('hide',!show);
+}
+async function signInWithFaceId(){
+  if(!sb)return info('authMsg','まず接続設定が必要です','err');
+  try{
+    const {plugin}=await nativeBiometric();
+    const creds=await plugin.getCredentials({server:FACE_ID_SERVER});
+    if(!creds?.username||!creds?.password)throw new Error('保存されたログイン情報がありません。');
+    const {error}=await sb.auth.signInWithPassword({email:creds.username,password:creds.password});
+    if(error){
+      // パスワード変更などで保存情報が古い場合は消去し、通常ログインへ誘導する。
+      try{await plugin.deleteCredentials({server:FACE_ID_SERVER})}catch(_){}
+      try{safeLocalStorage.removeItem(FACE_ID_EMAIL_KEY)}catch(_){}
+      void refreshFaceIdLoginButton();
+      return info('authMsg','保存されたログイン情報でログインできませんでした。パスワードでログインし直してください。','err');
+    }
+    resetLoginZoom();
+  }catch(error){
+    if(/cancel/i.test(String(error?.message||error||'')))return; // 本人が中止した場合は静かに戻る
+    console.warn('Face ID sign-in failed',error);
+    info('authMsg','Face IDでログインできませんでした。パスワードでログインしてください。','err');
+  }
+}
+async function maybeEnrollFaceId(emailAddress,passwordValue){
+  // パスワードログイン成功直後の任意登録。断った人には再び聞かない。
+  try{
+    if(!emailAddress||!passwordValue||!isFaceIdPlatform())return;
+    if(faceIdEnrolledEmail()===emailAddress){
+      // 同じアカウントなら、保存済みパスワードを最新に保つ（追加の認証は求めない）。
+      try{const {plugin}=await nativeBiometric();await plugin.setCredentials({username:emailAddress,password:passwordValue,server:FACE_ID_SERVER})}catch(_){}
+      return;
+    }
+    if(faceIdEnrolledEmail())return; // 別アカウントで設定済みの場合は触らない
+    if(safeLocalStorage.getItem(FACE_ID_DECLINED_KEY)==='1')return;
+    if(!await faceIdAvailable())return;
+    if(!confirm('次回からFace IDでログインできるようにしますか？\nログイン情報は端末の安全な領域（キーチェーン）にのみ保存されます。')){
+      safeLocalStorage.setItem(FACE_ID_DECLINED_KEY,'1');
+      return;
+    }
+    const {plugin}=await nativeBiometric();
+    await plugin.verifyIdentity({reason:'Face IDログインを設定します',title:'Face IDログイン設定',subtitle:'',description:''});
+    await plugin.setCredentials({username:emailAddress,password:passwordValue,server:FACE_ID_SERVER});
+    safeLocalStorage.setItem(FACE_ID_EMAIL_KEY,emailAddress);
+    void refreshFaceIdLoginButton();
+  }catch(error){console.warn('Face ID enrollment skipped',error)}
+}
+function openFaceIdSettings(){
+  const overlay=document.getElementById('faceIdOverlay');
+  if(!overlay)return;
+  const msg=document.getElementById('faceIdMsg');if(msg)msg.innerHTML='';
+  const pw=document.getElementById('faceIdPassword');if(pw)pw.value='';
+  overlay.classList.add('show');overlay.setAttribute('aria-hidden','false');
+  void refreshFaceIdSettings();
+}
+function closeFaceIdSettings(){
+  const overlay=document.getElementById('faceIdOverlay');
+  if(!overlay)return;
+  overlay.classList.remove('show');overlay.setAttribute('aria-hidden','true');
+  const pw=document.getElementById('faceIdPassword');if(pw)pw.value='';
+}
+async function refreshFaceIdSettings(){
+  const status=document.getElementById('faceIdStatus');
+  const enableArea=document.getElementById('faceIdEnableArea');
+  const disableBtn=document.getElementById('faceIdDisableBtn');
+  if(!status)return;
+  const enrolled=faceIdEnrolledEmail();
+  const available=await faceIdAvailable();
+  if(!isFaceIdPlatform())status.textContent='Face IDはiOSアプリでのみ設定できます。';
+  else if(!available)status.textContent='この端末ではFace IDが使えません。iPhoneの「設定」でFace IDが有効か確認してください。';
+  else if(enrolled)status.textContent=`設定済みです（${enrolled}）。ログアウト後はログイン画面の「Face IDでログイン」から入れます。`;
+  else status.textContent='まだ設定されていません。パスワードを入力して設定できます。';
+  enableArea?.classList.toggle('hide',!!enrolled||!available);
+  disableBtn?.classList.toggle('hide',!enrolled);
+}
+async function enableFaceIdLogin(){
+  const emailAddress=currentUser?.email||'';
+  const pw=document.getElementById('faceIdPassword')?.value||'';
+  if(!emailAddress)return info('faceIdMsg','ログイン後に操作してください。','err');
+  if(!pw)return info('faceIdMsg','パスワードを入力してください。','err');
+  if(!sb)return info('faceIdMsg','まず接続設定が必要です','err');
+  const btn=document.getElementById('faceIdEnableBtn');
+  if(btn)btn.disabled=true;
+  try{
+    // 入力されたパスワードが正しいことを再認証で確認してから保存する。
+    const {error}=await sb.auth.signInWithPassword({email:emailAddress,password:pw});
+    if(error)return info('faceIdMsg','パスワードが正しくありません。','err');
+    const {plugin}=await nativeBiometric();
+    await plugin.verifyIdentity({reason:'Face IDログインを設定します',title:'Face IDログイン設定',subtitle:'',description:''});
+    await plugin.setCredentials({username:emailAddress,password:pw,server:FACE_ID_SERVER});
+    safeLocalStorage.setItem(FACE_ID_EMAIL_KEY,emailAddress);
+    const input=document.getElementById('faceIdPassword');if(input)input.value='';
+    info('faceIdMsg','設定しました。次回からFace IDでログインできます。');
+    void refreshFaceIdSettings();
+    void refreshFaceIdLoginButton();
+  }catch(error){
+    if(/cancel/i.test(String(error?.message||error||'')))return;
+    console.warn('Face ID enable failed',error);
+    info('faceIdMsg','設定できませんでした。通信状況を確認してください。','err');
+  }finally{
+    if(btn)btn.disabled=false;
+  }
+}
+async function disableFaceIdLogin(){
+  try{const {plugin}=await nativeBiometric();await plugin.deleteCredentials({server:FACE_ID_SERVER})}catch(_){}
+  try{safeLocalStorage.removeItem(FACE_ID_EMAIL_KEY)}catch(_){}
+  info('faceIdMsg','Face IDログインを解除しました。');
+  void refreshFaceIdSettings();
+  void refreshFaceIdLoginButton();
 }
 // Account deletion must be performed by a verified server-side Supabase Edge Function.
 // Fail closed if the backend has not yet been deployed; never delete only local profile data.
@@ -6181,6 +6321,21 @@ function showRuleDoc(kind){const body=document.getElementById('rulesBody');if(bo
     <div id="accountDeleteMsg"></div>
     <button id="accountDeleteExecuteBtn" class="btn danger-btn full" type="button" onclick="executeAccountDeletion()" disabled>アカウントを削除する</button>
     <button class="btn secondary full" type="button" onclick="closeAccountDelete()">やめる</button>
+  </div>
+</div>
+<div id="faceIdOverlay" class="vf-confirm-overlay" aria-hidden="true">
+  <div class="vf-confirm-card" role="dialog" aria-modal="true" aria-labelledby="faceIdTitle">
+    <div class="vf-confirm-icon">🔐</div>
+    <h3 id="faceIdTitle">Face IDログイン</h3>
+    <p>設定すると、次回からパスワードを入力せずにFace IDでログインできます。ログイン情報は端末の安全な領域（キーチェーン）にのみ保存され、サーバーには送られません。</p>
+    <p id="faceIdStatus" class="small" style="text-align:left">状態を確認しています…</p>
+    <div id="faceIdEnableArea">
+      <div class="field"><label for="faceIdPassword">確認のため、現在のパスワードを入力してください</label><input id="faceIdPassword" type="password" autocomplete="current-password" placeholder="パスワード"></div>
+      <button id="faceIdEnableBtn" class="btn full" type="button" onclick="enableFaceIdLogin()">Face IDでログインできるようにする</button>
+    </div>
+    <button id="faceIdDisableBtn" class="btn secondary full hide" type="button" onclick="disableFaceIdLogin()">Face IDログインを解除する</button>
+    <div id="faceIdMsg"></div>
+    <button class="btn secondary full" type="button" onclick="closeFaceIdSettings()">閉じる</button>
   </div>
 </div>
 
