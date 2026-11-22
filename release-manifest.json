@@ -1,6 +1,6 @@
 {
-  "release": "2026.11.22-listing-image",
-  "web_sha256": "6f225ebaff86e3eefa1e06683a6c7ea18a388f48af21c93dc834346ec795fdbb",
+  "release": "2026.11.22-home-boost-strip",
+  "web_sha256": "e193238fd7573f4193a8529763170e0476c7771be66d1afca9e9f7969ad2b4c2",
   "bundle_id": "com.ayuhide.koenofurima",
   "ios_app_icon_sha256": "55ebba6206924a7e6df7f9c87659c87f673b88a8ca96671b547fb907f591eaec",
   "minimum_build_number": 57,
