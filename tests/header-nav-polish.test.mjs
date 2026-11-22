@@ -54,13 +54,13 @@ test('page nav buttons get a larger tap area without stretching full width', () 
   assert.match(nav, /onclick="openManualCenter\(\)"/, 'nav button actions are unchanged');
 });
 
-/* --- 変更3: ヘッダーの4アイコンボタンを横長に統一 --- */
+/* --- 変更3: ヘッダーのアイコンボタンを横長に統一（PR #77で右カラム内・3ボタンに再配置） --- */
 
 test('header action buttons share the row width equally as wide white buttons', () => {
-  assert.match(cssRule('body.normal-mode .topbar .topactions'), /width:100%/,
-    'the action row spans the full header width');
-  const rule = cssRule('body.normal-mode .topactions .refreshbtn,body.normal-mode .topactions .bellbtn');
-  assert.match(rule, /flex:1 1 0/, 'the four buttons divide the row equally');
+  assert.match(cssRule('body.normal-mode .header-nav-main .topactions'), /width:100%/,
+    'the action row spans the full width of the right column beside the mascot');
+  const rule = cssRule('body.normal-mode .topactions .bellbtn');
+  assert.match(rule, /flex:1 1 0/, 'the buttons divide the row equally');
   assert.match(rule, /height:48px!important/);
   assert.match(rule, /width:auto!important/, 'fixed square widths are released');
   assert.match(rule, /min-width:0!important/);
@@ -70,7 +70,7 @@ test('header action buttons share the row width equally as wide white buttons', 
 
 test('header buttons keep their actions and notification badges', () => {
   const bar = html.slice(html.indexOf('<div class="topbar">'), html.indexOf('<div id="globalPageNav"'));
-  assert.match(bar, /id="refreshBtn"[^>]*onclick="refreshAllData\(\)"/);
+  assert.doesNotMatch(html, /<button id="refreshBtn"/, 'the refresh button is gone (pull-to-refresh covers it)');
   assert.match(bar, /id="bellBtn"[^>]*onclick="openNotifications\(\)"/);
   assert.match(bar, /id="bellBadge" class="bellbadge"/, 'notification count badge stays on the bell button');
   assert.match(bar, /id="favoriteBtn"[^>]*onclick="openFavorites\(\)"/);
@@ -122,9 +122,9 @@ test('header catchcopy line 2 keeps enough room for its gradient-clipped glyphs'
 
 /* --- リリースラベル --- */
 
-test('release label and manifest point at the header nav polish build', () => {
-  assert.match(html, /<meta name="voice-flea-release" content="2026\.11\.22-header-nav-polish">/);
-  assert.equal(manifest.release, '2026.11.22-header-nav-polish');
+test('release label and manifest point at the current build', () => {
+  assert.match(html, /<meta name="voice-flea-release" content="2026\.11\.22-header-layout2">/);
+  assert.equal(manifest.release, '2026.11.22-header-layout2');
   const digest = createHash('sha256').update(readFileSync(new URL('../index.html', import.meta.url))).digest('hex');
   assert.equal(manifest.web_sha256, digest, 'manifest web_sha256 matches index.html');
 });
