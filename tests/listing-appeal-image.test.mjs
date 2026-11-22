@@ -89,9 +89,10 @@ test('create listing uploads the image, verifies the returned path, and only the
   assert.match(source, /if\(imagePath\)listingPayload\.image_path=imagePath/);
 });
 
-test('browse cards and the detail overlay render the appeal image first', () => {
-  const cardAt = html.indexOf('${listingAppealHtml(v)}${verifiedBoostIds.has');
-  assert.notEqual(cardAt, -1);
+test('browse tiles and the detail overlay render the appeal image first', () => {
+  const loadListingsSrc = html.slice(html.indexOf('async function loadListings('), html.indexOf('function listingActionHtml('));
+  assert.match(loadListingsSrc, /class="voice-tile"/);
+  assert.match(loadListingsSrc, /\$\{listingAppealHtml\(v\)\}/);
   const detailAt = html.indexOf('${listingAppealHtml(v,true)}${entry.boostPlan?');
   assert.notEqual(detailAt, -1);
 });
