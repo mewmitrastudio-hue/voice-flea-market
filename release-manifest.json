@@ -1,6 +1,6 @@
 {
-  "release": "2026.11.22-concierge-more-pages",
-  "web_sha256": "c43cd0aab4ed5836428662d99c411cfa5d345897655629f3b56ada3e868004cd",
+  "release": "2026.11.22-boost-disclaimer",
+  "web_sha256": "a4f959d3f4945681a35421821b5dc1d5e8e33968b4d5c8af8ee3bfaadf1153d3",
   "bundle_id": "com.ayuhide.koenofurima",
   "ios_app_icon_sha256": "55ebba6206924a7e6df7f9c87659c87f673b88a8ca96671b547fb907f591eaec",
   "minimum_build_number": 57,

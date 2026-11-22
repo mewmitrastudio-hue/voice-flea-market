@@ -127,9 +127,9 @@ test('concierge stays out of the other overlays and pages', () => {
 
 /* --- リリース整合 --- */
 
-test('release label and manifest point at the concierge more-pages build', () => {
-  assert.match(html, /<meta name="voice-flea-release" content="2026\.11\.22-concierge-more-pages">/);
-  assert.equal(manifest.release, '2026.11.22-concierge-more-pages');
+test('release label and manifest point at the boost disclaimer build', () => {
+  assert.match(html, /<meta name="voice-flea-release" content="2026\.11\.22-boost-disclaimer">/);
+  assert.equal(manifest.release, '2026.11.22-boost-disclaimer');
   const digest = createHash('sha256').update(readFileSync(new URL('../index.html', import.meta.url))).digest('hex');
   assert.equal(manifest.web_sha256, digest, 'manifest web_sha256 matches index.html');
 });
