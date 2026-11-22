@@ -25,7 +25,7 @@ test('header mascot sits in the global page nav, before the back button, as pure
   assert.ok(mascotAt < backAt, 'mascot is the first item of the nav row');
   const tag = html.slice(html.lastIndexOf('<img', mascotAt), html.indexOf('>', mascotAt) + 1);
   assert.match(tag, /class="nav-mascot"/);
-  assert.match(tag, /src="assets\/mascot\.webp"/);
+  assert.match(tag, /src="assets\/mascot-full\.webp"/, 'nav mascot uses the full-body asset so the feet stay visible');
   assert.match(tag, /alt=""/, 'decorative image keeps an empty alt');
   assert.match(tag, /aria-hidden="true"/);
   assert.match(tag, /\bhidden>/, 'mascot starts hidden until the home page is shown');
@@ -33,14 +33,15 @@ test('header mascot sits in the global page nav, before the back button, as pure
   assert.doesNotMatch(tag, /onclick/, 'mascot is not a tap target');
 });
 
-test('header mascot css keeps it small, cropped to the character and non-interactive', () => {
+test('header mascot css shows the whole body, inset from the left edge and non-interactive', () => {
   const rule = cssRule('.nav-mascot');
-  const width = Number(/width:(\d+)px/.exec(rule)[1]);
-  assert.ok(width >= 72 && width <= 96, `header mascot width ${width}px stays within 72-96px`);
-  assert.match(rule, /object-fit:cover/);
+  const height = Number(/height:(\d+)px/.exec(rule)[1]);
+  assert.ok(height >= 84 && height <= 92, `header mascot height ${height}px stays within 84-92px`);
+  assert.match(rule, /object-fit:contain/, 'contain keeps the full body (head to shoes) inside the frame');
+  assert.match(rule, /margin-left:12px/, 'mascot sits slightly in from the left edge');
   assert.match(rule, /pointer-events:none/);
   assert.match(cssRule('.nav-mascot[hidden]'), /display:none!important/);
-  assert.match(html, /@media\(max-width:390px\)\{\.nav-mascot\{width:72px;height:72px\}\}/, 'narrow screens shrink the mascot');
+  assert.match(html, /@media\(max-width:390px\)\{\.nav-mascot\{height:80px;margin-left:8px\}\}/, 'narrow screens shrink the mascot');
 });
 
 function navContext(currentUser) {
@@ -124,7 +125,7 @@ test('boost promo card carries the mascot, the approved copy and the boost dialo
   const {context} = stripContext({rpcResult: {data: {rows: []}, error: null}});
   const promo = context.homeBoostPromoCardHtml();
   assert.match(promo, /home-boost-card home-boost-promo/);
-  assert.match(promo, /<img class="boost-promo-mascot" src="assets\/mascot\.webp"/);
+  assert.match(promo, /<img class="boost-promo-mascot" src="assets\/mascot-full\.webp"/);
   assert.match(promo, /あなたの出品もここに流れます/);
   assert.match(promo, /ブーストでホームにPR/);
   assert.match(promo, /onclick="openBoostPreview\(\)"/, 'tap opens the existing boost purchase dialog');
@@ -152,15 +153,15 @@ test('boost promo card styles match the strip cards and center the mascot', () =
   const promo = cssRule('.home-boost-promo');
   assert.match(promo, /text-align:center/);
   const mascot = cssRule('.boost-promo-mascot');
-  assert.match(mascot, /width:88px/);
-  assert.match(mascot, /object-fit:cover/);
+  assert.match(mascot, /height:96px/);
+  assert.match(mascot, /object-fit:contain/, 'promo mascot shows the full body like the nav mascot');
 });
 
 /* --- リリースラベル --- */
 
-test('release label and manifest point at the boost disclaimer build', () => {
-  assert.match(html, /<meta name="voice-flea-release" content="2026\.11\.22-boost-disclaimer">/);
-  assert.equal(manifest.release, '2026.11.22-boost-disclaimer');
+test('release label and manifest point at the header nav polish build', () => {
+  assert.match(html, /<meta name="voice-flea-release" content="2026\.11.22-header-nav-polish">/);
+  assert.equal(manifest.release, '2026.11.22-header-nav-polish');
   const digest = createHash('sha256').update(readFileSync(new URL('../index.html', import.meta.url))).digest('hex');
   assert.equal(manifest.web_sha256, digest, 'manifest web_sha256 matches index.html');
 });
