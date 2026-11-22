@@ -1,6 +1,6 @@
 {
-  "release": "2026.11.22-home-hero",
-  "web_sha256": "a13d9b2b2633d598f4a501fe09b76f49cc38c8c6eac86083b39c71a23f305520",
+  "release": "2026.11.22-home-hero-anime",
+  "web_sha256": "6fde754d111dc0c09e5c66f9c620cadcd940b84f3e70ec7344ad52758639da76",
   "bundle_id": "com.ayuhide.koenofurima",
   "ios_app_icon_sha256": "55ebba6206924a7e6df7f9c87659c87f673b88a8ca96671b547fb907f591eaec",
   "minimum_build_number": 57,
