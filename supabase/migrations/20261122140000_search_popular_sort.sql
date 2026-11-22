@@ -30,7 +30,7 @@ returns jsonb language sql stable security invoker set search_path='' as $$
  jsonb_build_object('display_name',p.display_name,'avatar_path',p.avatar_path) as profiles,
  (select b.plan from public.public_active_boosts(array[l.id]) b order by case b.plan when 'platinum' then 3 when 'gold' then 2 when 'silver' then 1 else 0 end desc,b.starts_at desc limit 1) as boost_plan,
  (select round(avg(r.rating)::numeric,1) from public.reviews r where r.target_user_id=l.seller_id and r.rating between 1 and 5) as seller_rating_avg,
- (select count(*) from public.reviews r where r.target_user_id=l.seller_id and r.rating between 1 and 5) as seller_review_count
+ (select count(*) from public.reviews r where r.target_user_id=l.seller_id and r.rating between 1 and 5) as seller_review_count,
  (select count(*) from public.conversations c where c.seller_id=l.seller_id and c.delivery_status='accepted' and not c.is_inquiry) as seller_completed_count
  from public.listings l left join public.profiles p on p.id=l.seller_id
  where l.is_active and (selected_id is null or l.id=selected_id)
